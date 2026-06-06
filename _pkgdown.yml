@@ -1,0 +1,51 @@
+url: https://sounkou-bioinfo.github.io/Rbebelm/
+template:
+  bootstrap: 5
+
+navbar:
+  structure:
+    left: [intro, reference, articles]
+    right: [search, github]
+
+reference:
+  - title: Model loading and generation
+    contents:
+      - bebel_model_load
+      - bebel_generate
+      - bebel_chat
+      - bebel_agent
+      - bebel_append
+      - bebel_append_user
+      - bebel_append_tokens
+      - bebel_agent_generate
+      - bebel_assistant_turn
+      - bebel_agent_configure
+      - bebel_agent_info
+      - bebel_clear
+      - bebel_history
+      - bebel_transcript
+      - bebel_event_types
+      - bebel_event_handler
+      - bebel_console_event
+      - bebel_tokenize
+      - bebel_detokenize
+      - bebel_token_ids
+      - BebelModel
+      - BebelAgent
+  - title: Backend dispatch and diagnostics
+    contents:
+      - rbebelm_set_backend
+      - rbebelm_backend_info
+      - rbebelm_backend_features
+      - rbebelm_cpuid_info
+
+articles:
+  - title: Getting started
+    navbar: ~
+    contents:
+      - getting-started
+  - title: Runtime and streaming internals
+    navbar: ~
+    contents:
+      - streaming-generation
+      - backend-dispatch

@@ -1,0 +1,20 @@
+#!/bin/sh
+
+if [ -d "${HOME}/.cargo/bin" ]; then
+  export PATH="${PATH}:${HOME}/.cargo/bin"
+fi
+
+CARGO_VERSION="$(cargo --version)"
+if [ $? -ne 0 ]; then
+  echo "-------------- ERROR: CONFIGURATION FAILED --------------------"
+  echo "The cargo command is not available. Install Rust from https://www.rust-lang.org/tools/install"
+  echo "---------------------------------------------------------------"
+  exit 1
+fi
+RUSTC_VERSION="$(rustc --version || true)"
+echo "using Rust package manager: '${CARGO_VERSION}'"
+echo "using Rust compiler: '${RUSTC_VERSION}'"
+
+sed \
+  -e "s|@RBEBELM_PKG_LIBS@||g" \
+  src/Makevars.in > src/Makevars.win

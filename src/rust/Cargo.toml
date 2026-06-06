@@ -1,0 +1,26 @@
+[package]
+name = "rbebelm_backend"
+version = "0.0.0"
+edition = "2021"
+rust-version = "1.80"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[features]
+default = ["portable"]
+portable = []
+native-simd = []
+
+[dependencies]
+savvy = "0.10.2"
+bebelm = "0.2.0"
+rayon = "1"
+
+[profile.release]
+panic = "abort"
+lto = "thin"
+codegen-units = 1
+
+[workspace]

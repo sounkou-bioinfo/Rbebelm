@@ -1,0 +1,16 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^target$
+^src/rust/target$
+^src/rbebelm-backends$
+^src/backends$
+^src/vendor$
+^.*\.tar\.gz$
+^.*\.tgz$
+^.*\.Rcheck$
+^README\.html$
+^docs$
+
+^src/rust/\.cargo$
+^src/Makevars$
+^src/Makevars\.win$

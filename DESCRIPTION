@@ -1,0 +1,21 @@
+Package: Rbebelm
+Title: R Bindings for BebeLM CPU Inference
+Version: 0.0.0.9000
+Authors@R: c(
+    person(given = "Sounkou Mahamane", family = "Toure",
+           email = "sounkoutoure@gmail.com", role = c("aut", "cre")),
+    person("Maxime", "Chevalier-Boisvert", role = "cph",
+           comment = "BebeLM upstream"),
+    person("Hiroaki", "Yutani", role = "cph",
+           comment = "savvy R/Rust interface")
+  )
+Description: Provides experimental R bindings for the pure-Rust 'BebeLM' CPU-only language-model inference library. The native layer is structured as runtime-selected Rust backends so portable R binaries can avoid build-host-specific SIMD assumptions while still using optimized backends when available.
+License: MIT + file LICENSE
+URL: https://github.com/sounkou-bioinfo/Rbebelm, https://sounkou-bioinfo.github.io/Rbebelm
+BugReports: https://github.com/sounkou-bioinfo/Rbebelm/issues
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+SystemRequirements: Rust toolchain with cargo, GNU make
+Suggests: tinytest, roxygen2, rmarkdown, knitr, pkgdown
+VignetteBuilder: knitr

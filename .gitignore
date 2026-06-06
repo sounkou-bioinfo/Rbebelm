@@ -1,0 +1,28 @@
+# R build/check artifacts
+/Rbebelm_*.tar.gz
+/*.tgz
+/*.Rcheck/
+/README.html
+/docs/
+/pkgdown/
+
+# Native build artifacts
+/src/*.o
+/src/*.so
+/src/*.dylib
+/src/*.dll
+/src/Makevars
+/src/Makevars.win
+/src/rust/target/
+/src/rbebelm-backends/
+/src/backends/
+/src/vendor/
+/src/rust/.cargo/
+
+# R/RStudio
+.Rproj.user/
+*.Rproj
+
+# OS/editor
+.DS_Store
+*~
