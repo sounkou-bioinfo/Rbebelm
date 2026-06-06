@@ -43,6 +43,9 @@ reference:
       - rbebelm_backend_info
       - rbebelm_backend_features
       - rbebelm_cpuid_info
+  - title: S3 methods
+    contents:
+      - print.bebelGeneration
 
 articles:
   - title: Getting started
