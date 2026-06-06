@@ -15,12 +15,12 @@
 Source:
 [`DESCRIPTION`](https://github.com/sounkou-bioinfo/Rbebelm/blob/main/DESCRIPTION)
 
-Toure S (2026). *Rbebelm: R Bindings for BebeLM CPU Inference*. R
+Toure S (2026). *Rbebelm: 'R' Bindings for 'BebeLM' 'CPU' Inference*. R
 package version 0.0.0.9000,
 <https://github.com/sounkou-bioinfo/Rbebelm>.
 
     @Manual{,
-      title = {Rbebelm: R Bindings for BebeLM CPU Inference},
+      title = {Rbebelm: 'R' Bindings for 'BebeLM' 'CPU' Inference},
       author = {Sounkou Mahamane Toure},
       year = {2026},
       note = {R package version 0.0.0.9000},
