@@ -59,13 +59,14 @@ to
 ## Quick start
 
 Set `BEBELM_WEIGHTS_FILE` to the local GGUF path, or replace `weights`
-with an explicit file path.
+with an explicit file path. The README examples are evaluated when a
+local model file is available during rendering.
 
 ``` r
 
 library(Rbebelm)
 
-weights <- Sys.getenv("BEBELM_WEIGHTS_FILE")
+weights <- Sys.getenv("BEBELM_WEIGHTS_FILE", "LFM2.5-8B-A1B-Q4_K_M.gguf")
 model <- bebel_model_load(weights, num_threads = 2)
 
 # Agent-first API: one loaded model can back several conversations.
@@ -78,8 +79,34 @@ bebel_append_user(agent, "And Italy?")
 turn2 <- bebel_assistant_turn(agent, on_event = NULL)
 
 turn1
+#> <BebeLM assistant turn>
+#>   stop: eos 
+#>   tokens: 26 generated; 19 prompt
+#>   prefill: 8.6 tok/s 
+#>   decode: 8.68 tok/s 
+#>   text:
+#> <think>
+#> The user asks: "What is the capital of France? Answer briefly."</think>
+#> The capital of France is Paris.
 turn2
+#> <BebeLM assistant turn>
+#>   stop: eos 
+#>   tokens: 26 generated; 13 prompt
+#>   prefill: 9.0 tok/s 
+#>   decode: 8.61 tok/s 
+#>   text:
+#> <think>
+#> The user asks: "And Italy?" Possibly they are continuing a conversation</think>
+#> The capital of Italy is Rome.
 bebel_agent_info(agent)[c("history_tokens", "processed_tokens", "kv_tokens")]
+#> $history_tokens
+#> [1] 86
+#> 
+#> $processed_tokens
+#> [1] 84
+#> 
+#> $kv_tokens
+#> [1] 84
 ```
 
 A `BebelAgent` owns the token transcript and decode caches while sharing
@@ -133,8 +160,20 @@ result <- bebel_chat(
   on_event = bebel_console_event(),
   check_interrupt = TRUE
 )
+#> <think>
+#> The user asks: "In one concise sentence, what does runtime SIMD</think>
+#> Runtime SIMD dispatch dynamically selects and executes the most efficient instruction variant for the current hardware at execution time, allowing programs to adapt to varying processor
 
 result
+#> <BebeLM chat result>
+#>   stop: max_new 
+#>   tokens: 48 generated; 22 prompt
+#>   prefill: 8.7 tok/s 
+#>   decode: 8.85 tok/s 
+#>   text:
+#> <think>
+#> The user asks: "In one concise sentence, what does runtime SIMD</think>
+#> Runtime SIMD dispatch dynamically selects and executes the most efficient instruction variant for the current hardware at execution time, allowing programs to adapt to varying processor
 ```
 
 For plain text completion, use
@@ -151,7 +190,15 @@ raw_result <- bebel_generate(
   on_event = bebel_console_event(),
   check_interrupt = TRUE
 )
+#>  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However
 raw_result
+#> <BebeLM generation result>
+#>   stop: max_new 
+#>   tokens: 24 generated; 8 prompt
+#>   prefill: 8.7 tok/s 
+#>   decode: 9.06 tok/s 
+#>   text:
+#>  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However
 ```
 
 Agents can also be driven at the lower level with raw text or token ids:
@@ -165,8 +212,12 @@ raw_turn <- bebel_agent_generate(raw_agent, on_event = NULL)
 ids <- bebel_tokenize(model, " and its airport code is", add_bos = FALSE)
 bebel_append_tokens(raw_agent, ids)
 bebel_history(raw_agent)[1:8]
+#> [1] 124894    597   5205    302   3980    355   4741     22
 bebel_token_ids()[c("TOKEN_THINK", "TOKEN_TOOL_CALL_START", "TOKEN_TOOL_CALL_END")]
+#>           TOKEN_THINK TOKEN_TOOL_CALL_START   TOKEN_TOOL_CALL_END 
+#>                124901                124905                124906
 raw_turn$text
+#> [1] " Paris. city name: france. name: france. city name: paris."
 ```
 
 Tools can be orchestrated with an Agent run loop. The `context` object
@@ -232,6 +283,7 @@ invisible(bebel_generate(
   )
 ))
 paste0(deltas, collapse = "")
+#> [1] " be used to update a text field in a UI component."
 ```
 
 You can also pass a named list of event-specific handlers directly:
@@ -252,6 +304,8 @@ invisible(bebel_generate(
   )
 ))
 counts
+#>     text_delta thinking_delta           done 
+#>              4              0              1
 ```
 
 ## Interrupts and streaming
@@ -305,8 +359,65 @@ Inspect the current CPU/runtime and selected backend:
 ``` r
 
 rbebelm_cpuid_info()
+#> $cpu_x86_64_v3
+#> [1] TRUE
+#> 
+#> $cpu_x86_64_v4
+#> [1] FALSE
+#> 
+#> $cpu_neon
+#> [1] FALSE
+#> 
+#> $cpu_wasm_simd128
+#> [1] FALSE
 rbebelm_backend_features()
+#> $backend
+#> [1] "avx2"
+#> 
+#> $target_arch
+#> [1] "x86_64"
+#> 
+#> $target_os
+#> [1] "linux"
+#> 
+#> $rust_package
+#> [1] "rbebelm_backend"
+#> 
+#> $rust_package_version
+#> [1] "0.0.0"
+#> 
+#> $native_simd_feature
+#> [1] TRUE
+#> 
+#> $compiled_avx2
+#> [1] TRUE
+#> 
+#> $compiled_avx512f
+#> [1] FALSE
+#> 
+#> $compiled_neon
+#> [1] FALSE
+#> 
+#> $compiled_wasm_simd128
+#> [1] FALSE
 rbebelm_backend_info()
+#> $dispatch_mode
+#> [1] "dynamic"
+#> 
+#> $requested_backend
+#> [1] "auto"
+#> 
+#> $selected_backend
+#> [1] "avx2"
+#> 
+#> $installed_backends
+#> [1] "scalar,avx2,avx512"
+#> 
+#> $supported_backends
+#> [1] "scalar,avx2"
+#> 
+#> $backend_loaded
+#> [1] TRUE
 ```
 
 ## Development
