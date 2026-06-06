@@ -17,8 +17,12 @@ reference:
       - bebel_append
       - bebel_append_user
       - bebel_append_tokens
+      - bebel_append_tool_result
       - bebel_agent_generate
       - bebel_assistant_turn
+      - bebel_agent_run
+      - bebel_tool
+      - bebel_parse_tool_call
       - bebel_agent_configure
       - bebel_agent_info
       - bebel_clear
@@ -30,6 +34,8 @@ reference:
       - bebel_tokenize
       - bebel_detokenize
       - bebel_token_ids
+      - live_console
+      - bebel_live_console
       - BebelModel
       - BebelAgent
   - title: Backend dispatch and diagnostics

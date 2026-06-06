@@ -5,6 +5,7 @@ SEXP savvy_rbebelm_backend_features__ffi(void);
 // methods and associated functions for BebelAgent
 SEXP savvy_BebelAgent_append__ffi(SEXP self__, SEXP c_arg__text);
 SEXP savvy_BebelAgent_append_tokens__ffi(SEXP self__, SEXP c_arg__ids);
+SEXP savvy_BebelAgent_append_tool_result__ffi(SEXP self__, SEXP c_arg__content);
 SEXP savvy_BebelAgent_append_user__ffi(SEXP self__, SEXP c_arg__message);
 SEXP savvy_BebelAgent_assistant_turn__ffi(SEXP self__, SEXP c_arg__check_interrupt, SEXP c_arg__on_event);
 SEXP savvy_BebelAgent_clear__ffi(SEXP self__);

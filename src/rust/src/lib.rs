@@ -1,5 +1,6 @@
 mod agent;
 mod backend;
+mod chatml;
 mod events;
 mod generation;
 mod model;

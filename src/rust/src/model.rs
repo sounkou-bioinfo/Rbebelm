@@ -4,6 +4,7 @@ use bebelm::model::Model;
 use bebelm::tokenizer::Tokenizer;
 use savvy::{savvy, FunctionSexp, IntegerSexp, OwnedListSexp};
 
+use crate::chatml::{user_turn, ASSISTANT_OPEN};
 use crate::generation::{run_one_shot, turn_to_list};
 use crate::options::GenerationOptions;
 use crate::util::{err, ids_from_integer, ids_to_sexp, init_rayon, str_scalar};
@@ -93,8 +94,8 @@ impl BebelModel {
     ) -> savvy::Result<savvy::Sexp> {
         let mut opts = GenerationOptions::new(greedy, check_interrupt, on_event, max_gen, max_context, max_think, temperature, top_k, repeat_penalty)?;
         let tok = Tokenizer::from_gguf(self.inner.gguf()).map_err(|e| err(format!("cannot create BebeLM tokenizer: {e}")))?;
-        let mut history = tok.encode(&format!("<|im_start|>user\n{message}<|im_end|>\n"), true);
-        history.extend(tok.encode("<|im_start|>assistant\n", false));
+        let mut history = tok.encode(&user_turn(message), true);
+        history.extend(tok.encode(ASSISTANT_OPEN, false));
         let turn = run_one_shot(self.inner.as_ref(), tok, history, &mut opts)?;
         turn_to_list(turn)
     }

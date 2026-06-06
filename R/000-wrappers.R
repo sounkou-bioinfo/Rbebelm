@@ -69,6 +69,12 @@ NULL
   }
 }
 
+`BebelAgent_append_tool_result` <- function(self) {
+  function(`content`) {
+    .Call(savvy_BebelAgent_append_tool_result__impl, `self`, `content`)
+  }
+}
+
 `BebelAgent_append_user` <- function(self) {
   function(`message`) {
     .Call(savvy_BebelAgent_append_user__impl, `self`, `message`)
@@ -122,6 +128,7 @@ NULL
   e$.ptr <- ptr
   e$`append` <- `BebelAgent_append`(ptr)
   e$`append_tokens` <- `BebelAgent_append_tokens`(ptr)
+  e$`append_tool_result` <- `BebelAgent_append_tool_result`(ptr)
   e$`append_user` <- `BebelAgent_append_user`(ptr)
   e$`assistant_turn` <- `BebelAgent_assistant_turn`(ptr)
   e$`clear` <- `BebelAgent_clear`(ptr)

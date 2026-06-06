@@ -235,6 +235,244 @@ bebel_transcript <- function(agent) {
   agent$transcript()
 }
 
+
+#' Append a ChatML tool result turn to a BebeLM agent transcript
+#'
+#' @param agent A `BebelAgent` object.
+#' @param content Tool result content to append.
+#' @return Invisibly returns `agent`.
+#' @export
+bebel_append_tool_result <- function(agent, content) {
+  check_bebel_agent(agent)
+  agent$append_tool_result(as.character(content)[1])
+  invisible(agent)
+}
+
+#' Define a BebeLM R tool
+#'
+#' @param name Tool name exposed to the tool dispatcher.
+#' @param fun Function to run. It is called as `fun(args = ..., context = ..., call = ...)`
+#'   when it accepts those names, otherwise with progressively simpler fallbacks.
+#' @param description Optional human-readable description.
+#' @param schema Optional schema/metadata object for prompts or adapters.
+#' @return A `bebelTool` object.
+#' @export
+bebel_tool <- function(name, fun, description = NULL, schema = NULL) {
+  if (!is.character(name) || length(name) != 1L || !nzchar(name)) {
+    stop("tool name must be a single non-empty string", call. = FALSE)
+  }
+  if (!is.function(fun)) {
+    stop("tool fun must be a function", call. = FALSE)
+  }
+  structure(
+    list(name = name, fun = fun, description = description, schema = schema),
+    class = "bebelTool"
+  )
+}
+
+#' @export
+print.bebelTool <- function(x, ...) {
+  cat("<bebelTool>", x$name, "\n")
+  if (!is.null(x$description)) cat("  ", x$description, "\n", sep = "")
+  invisible(x)
+}
+
+normalize_bebel_tools <- function(tools) {
+  if (is.null(tools)) return(list())
+  if (inherits(tools, "bebelTool")) tools <- list(tools)
+  if (!is.list(tools)) stop("tools must be a list of bebelTool objects or functions", call. = FALSE)
+  out <- list()
+  for (i in seq_along(tools)) {
+    tool <- tools[[i]]
+    if (inherits(tool, "bebelTool")) {
+      name <- tool$name
+    } else if (is.function(tool)) {
+      name <- names(tools)[i]
+      if (is.null(name) || !nzchar(name)) stop("function tools must be named", call. = FALSE)
+      tool <- bebel_tool(name, tool)
+    } else {
+      stop("tools must contain bebelTool objects or functions", call. = FALSE)
+    }
+    out[[name]] <- tool
+  }
+  out
+}
+
+#' Parse a BebeLM tool call block
+#'
+#' The default parser accepts JSON objects such as `{\"name\": \"tool\", \"arguments\": {...}}`
+#' when `jsonlite` is installed, or a simple `name({...})` form. Pass a custom
+#' parser to `bebel_agent_run()` for model- or prompt-specific formats.
+#'
+#' @param content Accumulated content between BebeLM tool-call delimiters.
+#' @return A list with `name`, `arguments`, and `raw`.
+#' @export
+bebel_parse_tool_call <- function(content) {
+  raw <- paste(content, collapse = "")
+  x <- trimws(raw)
+  if (!nzchar(x)) stop("empty tool call", call. = FALSE)
+
+  if (requireNamespace("jsonlite", quietly = TRUE) && grepl("^\\s*\\{", x)) {
+    obj <- jsonlite::fromJSON(x, simplifyVector = FALSE)
+    name <- obj$name %||% obj$tool %||% (obj[["function"]] %||% list())$name
+    args <- obj$arguments %||% obj$args %||% obj$input %||% list()
+    if (is.character(args) && length(args) == 1L && grepl("^\\s*\\{", args)) {
+      args <- tryCatch(jsonlite::fromJSON(args, simplifyVector = FALSE), error = function(e) args)
+    }
+    if (is.null(name) || !nzchar(name)) stop("JSON tool call has no name/tool/function.name", call. = FALSE)
+    return(list(name = name, arguments = args, raw = raw))
+  }
+
+  m <- regexec("^([A-Za-z_][A-Za-z0-9_.-]*)\\s*\\((.*)\\)$", x, perl = TRUE)
+  hit <- regmatches(x, m)[[1]]
+  if (length(hit)) {
+    args <- trimws(hit[3])
+    parsed <- list()
+    if (nzchar(args) && requireNamespace("jsonlite", quietly = TRUE)) {
+      parsed <- tryCatch(jsonlite::fromJSON(args, simplifyVector = FALSE), error = function(e) args)
+    } else if (nzchar(args)) {
+      parsed <- args
+    }
+    return(list(name = hit[2], arguments = parsed, raw = raw))
+  }
+
+  stop("cannot parse tool call; provide a custom parse_tool_call function", call. = FALSE)
+}
+
+call_bebel_hook <- function(hooks, name, ...) {
+  hook <- hooks[[name]]
+  if (is.null(hook)) return(invisible(NULL))
+  if (!is.function(hook)) stop("hook '", name, "' must be a function", call. = FALSE)
+  hook(...)
+  invisible(NULL)
+}
+
+invoke_bebel_tool <- function(tool, call, context) {
+  fun <- tool$fun
+  nms <- names(formals(fun))
+  if ("args" %in% nms || "context" %in% nms || "call" %in% nms) {
+    args <- list()
+    if ("args" %in% nms) args$args <- call$arguments
+    if ("context" %in% nms) args$context <- context
+    if ("call" %in% nms) args$call <- call
+    return(do.call(fun, args))
+  }
+  if (is.list(call$arguments)) {
+    return(do.call(fun, call$arguments))
+  }
+  fun(call$arguments)
+}
+
+format_bebel_tool_result <- function(call, result, error = NULL) {
+  payload <- list(
+    tool = call$name,
+    ok = is.null(error),
+    result = if (is.null(error)) result else NULL,
+    error = if (!is.null(error)) conditionMessage(error) else NULL
+  )
+  if (requireNamespace("jsonlite", quietly = TRUE)) {
+    jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null")
+  } else {
+    paste0("tool=", call$name, " ok=", is.null(error), " result=", paste(utils::capture.output(utils::str(payload)), collapse = "\\n"))
+  }
+}
+
+#' Run a BebeLM agent with R tool dispatch
+#'
+#' This is an Agent-first orchestration loop. It observes `tool_call_end` events,
+#' parses tool calls, invokes matching R tools with private `context`, appends
+#' tool results to the agent transcript, and continues generation.
+#'
+#' @param agent A `BebelAgent` object.
+#' @param tools A list of `bebel_tool()` objects or named functions.
+#' @param context Private run context passed to tools and hooks but not appended to the model transcript.
+#' @param hooks Optional named list of hooks: `turn_start`, `event`, `tool_request`,
+#'   `tool_result`, `tool_error`, `turn_end`.
+#' @param parse_tool_call Function converting tool-call content to `list(name, arguments, raw)`.
+#' @param max_steps Maximum assistant/tool iterations.
+#' @param on_event Optional event callback or handler list for model events.
+#' @param check_interrupt Check for Ctrl-C during generation.
+#' @return A `bebelAgentRun` list with turns, tool calls, and final agent info.
+#' @export
+bebel_agent_run <- function(
+  agent,
+  tools = list(),
+  context = new.env(parent = emptyenv()),
+  hooks = list(),
+  parse_tool_call = bebel_parse_tool_call,
+  max_steps = 4,
+  on_event = NULL,
+  check_interrupt = TRUE
+) {
+  check_bebel_agent(agent)
+  tools <- normalize_bebel_tools(tools)
+  if (!is.list(hooks)) stop("hooks must be a named list", call. = FALSE)
+  if (!is.function(parse_tool_call)) stop("parse_tool_call must be a function", call. = FALSE)
+
+  turns <- list()
+  calls <- list()
+  for (step in seq_len(max_steps)) {
+    tool_blocks <- character()
+    user_event <- normalize_bebel_on_event(on_event)
+    collector <- bebel_event_handler(
+      tool_call_end = function(event) {
+        tool_blocks <<- c(tool_blocks, event$content)
+        call_bebel_hook(hooks, "event", event = event, context = context, agent = agent, step = step)
+        if (!is.null(user_event)) user_event(event)
+      },
+      default = function(event) {
+        call_bebel_hook(hooks, "event", event = event, context = context, agent = agent, step = step)
+        if (!is.null(user_event)) user_event(event)
+      }
+    )
+
+    call_bebel_hook(hooks, "turn_start", context = context, agent = agent, step = step)
+    turn <- bebel_assistant_turn(agent, on_event = collector, check_interrupt = check_interrupt)
+    turns[[length(turns) + 1L]] <- turn
+    call_bebel_hook(hooks, "turn_end", turn = turn, context = context, agent = agent, step = step)
+
+    if (!length(tool_blocks)) break
+
+    for (block in tool_blocks) {
+      call <- parse_tool_call(block)
+      calls[[length(calls) + 1L]] <- call
+      call_bebel_hook(hooks, "tool_request", call = call, context = context, agent = agent, step = step)
+      tool <- tools[[call$name]]
+      if (is.null(tool)) {
+        err <- simpleError(paste0("unknown tool: ", call$name))
+        call_bebel_hook(hooks, "tool_error", call = call, error = err, context = context, agent = agent, step = step)
+        bebel_append_tool_result(agent, format_bebel_tool_result(call, NULL, err))
+        next
+      }
+      result <- tryCatch(
+        invoke_bebel_tool(tool, call, context),
+        error = function(e) e
+      )
+      if (inherits(result, "error")) {
+        call_bebel_hook(hooks, "tool_error", call = call, error = result, context = context, agent = agent, step = step)
+        bebel_append_tool_result(agent, format_bebel_tool_result(call, NULL, result))
+      } else {
+        call_bebel_hook(hooks, "tool_result", call = call, result = result, context = context, agent = agent, step = step)
+        bebel_append_tool_result(agent, format_bebel_tool_result(call, result))
+      }
+    }
+  }
+
+  structure(
+    list(turns = turns, tool_calls = calls, context = context, agent_info = bebel_agent_info(agent)),
+    class = "bebelAgentRun"
+  )
+}
+
+#' @export
+print.bebelAgentRun <- function(x, ...) {
+  cat("<bebelAgentRun>\n")
+  cat("  turns:", length(x$turns), "\n")
+  cat("  tool calls:", length(x$tool_calls), "\n")
+  if (length(x$turns)) print(x$turns[[length(x$turns)]])
+  invisible(x)
+}
+
 #' Build a BebeLM generation event handler
 #'
 #' `bebel_event_handler()` creates a single `on_event` callback from handlers for
@@ -455,6 +693,84 @@ bebel_chat <- function(
   out
 }
 
+
+#' Live terminal console for BebeLM chats
+#'
+#' Start an interactive terminal chat loop. `live_console(model)` creates a new
+#' `BebelAgent`; `live_console(agent)` reuses the provided agent transcript and
+#' caches. Type `/quit` or `/exit` to leave the loop.
+#'
+#' @param x A `BebelModel` or `BebelAgent`.
+#' @param ... Additional arguments passed to methods.
+#' @return Invisibly returns the `BebelAgent` used by the console.
+#' @export
+live_console <- function(x, ...) {
+  UseMethod("live_console")
+}
+
+#' @rdname live_console
+#' @inheritParams bebel_agent
+#' @export
+live_console.BebelModel <- function(
+  x,
+  ...,
+  greedy = FALSE,
+  max_gen = NULL,
+  max_context = NULL,
+  max_think = NULL,
+  temperature = NULL,
+  top_k = NULL,
+  repeat_penalty = NULL
+) {
+  agent <- bebel_agent(
+    x,
+    greedy = greedy,
+    max_gen = max_gen,
+    max_context = max_context,
+    max_think = max_think,
+    temperature = temperature,
+    top_k = top_k,
+    repeat_penalty = repeat_penalty
+  )
+  live_console(agent, ...)
+}
+
+#' @rdname live_console
+#' @param prompt Prompt displayed before reading each user message.
+#' @param exit_commands Character vector of commands that exit the console.
+#' @param on_event Event handler used for assistant output.
+#' @param check_interrupt Check for Ctrl-C during generation.
+#' @export
+live_console.BebelAgent <- function(
+  x,
+  prompt = "You: ",
+  exit_commands = c("/quit", "/exit"),
+  on_event = bebel_console_event(),
+  check_interrupt = TRUE,
+  ...
+) {
+  check_bebel_agent(x)
+  if (!interactive()) {
+    warning("live_console() is intended for interactive R sessions", call. = FALSE)
+  }
+  cat("BebeLM live console. Type /quit or /exit to stop.\n")
+  repeat {
+    message <- readline(prompt)
+    if (!nzchar(message)) next
+    if (message %in% exit_commands) break
+    bebel_append_user(x, message)
+    cat("Assistant: ")
+    bebel_assistant_turn(x, on_event = on_event, check_interrupt = check_interrupt)
+  }
+  invisible(x)
+}
+
+#' @rdname live_console
+#' @export
+bebel_live_console <- function(x, ...) {
+  live_console(x, ...)
+}
+
 #' @export
 print.BebelModel <- function(x, ...) {
   info <- x$info()
@@ -482,7 +798,15 @@ print.BebelAgent <- function(x, ...) {
 #' @return Invisibly returns `x`.
 #' @export
 print.bebelGeneration <- function(x, ...) {
-  kind <- if (inherits(x, "bebelChatResult")) "BebeLM chat result" else "BebeLM generation result"
+  kind <- if (inherits(x, "bebelAssistantTurnResult")) {
+    "BebeLM assistant turn"
+  } else if (inherits(x, "bebelAgentGenerateResult")) {
+    "BebeLM agent generation"
+  } else if (inherits(x, "bebelChatResult")) {
+    "BebeLM chat result"
+  } else {
+    "BebeLM generation result"
+  }
   cat("<", kind, ">\n", sep = "")
   cat("  stop:", x$stop, "\n")
   cat("  tokens:", x$generated_tokens, "generated;", x$prompt_tokens, "prompt\n")

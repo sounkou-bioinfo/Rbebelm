@@ -64,6 +64,11 @@ SEXP savvy_BebelAgent_append_tokens__impl(SEXP self__, SEXP c_arg__ids) {
     return handle_result(res);
 }
 
+SEXP savvy_BebelAgent_append_tool_result__impl(SEXP self__, SEXP c_arg__content) {
+    SEXP res = Rbebelm_BebelAgent_append_tool_result_ffi(self__, c_arg__content);
+    return handle_result(res);
+}
+
 SEXP savvy_BebelAgent_append_user__impl(SEXP self__, SEXP c_arg__message) {
     SEXP res = Rbebelm_BebelAgent_append_user_ffi(self__, c_arg__message);
     return handle_result(res);
@@ -146,6 +151,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"savvy_rbebelm_backend_features__impl", (DL_FUNC) &savvy_rbebelm_backend_features__impl, 0},
     {"savvy_BebelAgent_append__impl", (DL_FUNC) &savvy_BebelAgent_append__impl, 2},
     {"savvy_BebelAgent_append_tokens__impl", (DL_FUNC) &savvy_BebelAgent_append_tokens__impl, 2},
+    {"savvy_BebelAgent_append_tool_result__impl", (DL_FUNC) &savvy_BebelAgent_append_tool_result__impl, 2},
     {"savvy_BebelAgent_append_user__impl", (DL_FUNC) &savvy_BebelAgent_append_user__impl, 2},
     {"savvy_BebelAgent_assistant_turn__impl", (DL_FUNC) &savvy_BebelAgent_assistant_turn__impl, 3},
     {"savvy_BebelAgent_clear__impl", (DL_FUNC) &savvy_BebelAgent_clear__impl, 1},

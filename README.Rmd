@@ -86,14 +86,22 @@ turn1 <- bebel_assistant_turn(agent, on_event = NULL)
 bebel_append_user(agent, "And Italy?")
 turn2 <- bebel_assistant_turn(agent, on_event = NULL)
 
-c(france = turn1$text, italy = turn2$text)
+turn1
+turn2
 bebel_agent_info(agent)[c("history_tokens", "processed_tokens", "kv_tokens")]
 ```
 
 A `BebelAgent` owns the token transcript and decode caches while sharing the
 loaded model weights. Later turns only prefill newly appended tokens. Use
 `bebel_clear(agent)` to reset the transcript and caches without reloading the
-GGUF.
+GGUF. For an ellmer-style terminal loop, call `live_console(agent)` or
+`live_console(model)` in an interactive R session.
+
+```{r live-console, eval=FALSE}
+live_console(agent)
+# or create a fresh agent from a model:
+live_console(model, max_gen = 256, max_think = 64)
+```
 
 One-shot helpers are still available for simple calls. `bebel_chat()` wraps a
 single ChatML user/assistant turn:
@@ -140,6 +148,41 @@ bebel_append_tokens(raw_agent, ids)
 bebel_history(raw_agent)[1:8]
 bebel_token_ids()[c("TOKEN_THINK", "TOKEN_TOOL_CALL_START", "TOKEN_TOOL_CALL_END")]
 raw_turn$text
+```
+
+Tools can be orchestrated with an Agent-first run loop. The `context` object is
+private to R tools and hooks; it is not sent to the model. This mirrors the
+RunContext-style use case where tools and observability hooks share thread/run
+metadata without exposing it in the prompt.
+
+```{r tools, eval=FALSE}
+ctx <- list(thread_id = "thread-001", log = list())
+
+tools <- list(
+  lookup_capital = bebel_tool(
+    "lookup_capital",
+    function(args, context, call) {
+      context$log <- c(context$log, paste("tool", call$name, args$country))
+      c(France = "Paris", Italy = "Rome")[[args$country]]
+    },
+    description = "Return a capital city for a country."
+  )
+)
+
+hooks <- list(
+  tool_request = function(call, context, ...) {
+    context$log <- c(context$log, paste("request", call$name))
+  },
+  tool_result = function(call, result, context, ...) {
+    context$log <- c(context$log, paste("result", call$name, result))
+  }
+)
+
+agent <- bebel_agent(model, max_gen = 128, max_think = 16)
+bebel_append_user(agent, "Use tools if needed: what is the capital of Italy?")
+run <- bebel_agent_run(agent, tools = tools, context = ctx, hooks = hooks)
+run
+ctx$log
 ```
 
 The same event stream can be consumed programmatically. For example, collect
@@ -216,7 +259,7 @@ rbebelm_backend_features()
 rbebelm_backend_info()
 ```
 
-## API sketch
+## Exported API
 
 ```{r api-sketch}
 ls("package:Rbebelm")
@@ -228,6 +271,7 @@ Core calls:
 - `bebel_agent(model, ...)`, `bebel_append_user(agent, message)`, `bebel_assistant_turn(agent, ...)`
 - `bebel_append(agent, text)`, `bebel_append_tokens(agent, ids)`, `bebel_agent_generate(agent, ...)`
 - `bebel_tokenize(model, text)`, `bebel_detokenize(model, ids)`, `bebel_token_ids()`
+- `live_console(model_or_agent)`, `bebel_live_console(model_or_agent)`
 - `bebel_event_types()`
 - `bebel_event_handler(text_delta = ..., thinking_delta = ..., tool_call_delta = ..., done = ..., default = ...)`
 - `bebel_generate(model, prompt, on_event = bebel_console_event(), check_interrupt = TRUE, ...)`

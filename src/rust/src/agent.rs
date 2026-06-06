@@ -6,12 +6,11 @@ use bebelm::sampler::Sampler;
 use bebelm::tokenizer::{Tokenizer, TOKEN_IM_END};
 use savvy::{savvy, FunctionSexp, IntegerSexp, OwnedListSexp};
 
+use crate::chatml::{tool_turn, user_turn, ASSISTANT_OPEN};
 use crate::generation::{run_state, turn_to_list};
 use crate::model::BebelModel;
 use crate::options::{maybe_update_sampler, GenerationOptions};
 use crate::util::{checked_positive_usize, checked_usize, err, ids_from_integer, ids_to_sexp, int_scalar, real_scalar, str_scalar};
-
-const ASSISTANT_OPEN: &str = "<|im_start|>assistant\n";
 
 /// Persistent BebeLM conversation agent with transcript and decode caches.
 /// @export
@@ -111,7 +110,13 @@ impl BebelAgent {
     /// Append a ChatML user turn to the transcript.
     /// @export
     fn append_user(&mut self, message: &str) -> savvy::Result<savvy::Sexp> {
-        self.append(&format!("<|im_start|>user\n{message}<|im_end|>\n"))
+        self.append(&user_turn(message))
+    }
+
+    /// Append a ChatML tool result turn to the transcript.
+    /// @export
+    fn append_tool_result(&mut self, content: &str) -> savvy::Result<savvy::Sexp> {
+        self.append(&tool_turn(content))
     }
 
     /// Append already-tokenized ids to the transcript.

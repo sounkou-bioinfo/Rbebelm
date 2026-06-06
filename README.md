@@ -84,11 +84,26 @@ turn1 <- bebel_assistant_turn(agent, on_event = NULL)
 bebel_append_user(agent, "And Italy?")
 turn2 <- bebel_assistant_turn(agent, on_event = NULL)
 
-c(france = turn1$text, italy = turn2$text)
-#>                                                                                                                      france 
-#>       "<think>\nThe user asks: \"What is the capital of France? Answer briefly.\"</think>\nThe capital of France is Paris." 
-#>                                                                                                                       italy 
-#> "<think>\nThe user asks: \"And Italy?\" Possibly they are continuing a conversation</think>\nThe capital of Italy is Rome."
+turn1
+#> <BebeLM assistant turn>
+#>   stop: eos 
+#>   tokens: 26 generated; 19 prompt
+#>   prefill: 9.4 tok/s 
+#>   decode: 9.48 tok/s 
+#>   text:
+#> <think>
+#> The user asks: "What is the capital of France? Answer briefly."</think>
+#> The capital of France is Paris.
+turn2
+#> <BebeLM assistant turn>
+#>   stop: eos 
+#>   tokens: 26 generated; 13 prompt
+#>   prefill: 9.5 tok/s 
+#>   decode: 9.57 tok/s 
+#>   text:
+#> <think>
+#> The user asks: "And Italy?" Possibly they are continuing a conversation</think>
+#> The capital of Italy is Rome.
 bebel_agent_info(agent)[c("history_tokens", "processed_tokens", "kv_tokens")]
 #> $history_tokens
 #> [1] 86
@@ -103,7 +118,15 @@ bebel_agent_info(agent)[c("history_tokens", "processed_tokens", "kv_tokens")]
 A `BebelAgent` owns the token transcript and decode caches while sharing
 the loaded model weights. Later turns only prefill newly appended
 tokens. Use `bebel_clear(agent)` to reset the transcript and caches
-without reloading the GGUF.
+without reloading the GGUF. For an ellmer-style terminal loop, call
+`live_console(agent)` or `live_console(model)` in an interactive R
+session.
+
+``` r
+live_console(agent)
+# or create a fresh agent from a model:
+live_console(model, max_gen = 256, max_think = 64)
+```
 
 One-shot helpers are still available for simple calls. `bebel_chat()`
 wraps a single ChatML user/assistant turn:
@@ -127,8 +150,8 @@ result
 #> <BebeLM chat result>
 #>   stop: max_new 
 #>   tokens: 48 generated; 22 prompt
-#>   prefill: 9.5 tok/s 
-#>   decode: 9.63 tok/s 
+#>   prefill: 9.8 tok/s 
+#>   decode: 10.05 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "In one concise sentence, what does runtime SIMD</think>
@@ -152,8 +175,8 @@ raw_result
 #> <BebeLM generation result>
 #>   stop: max_new 
 #>   tokens: 24 generated; 8 prompt
-#>   prefill: 9.5 tok/s 
-#>   decode: 10.04 tok/s 
+#>   prefill: 9.8 tok/s 
+#>   decode: 10.24 tok/s 
 #>   text:
 #>  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However
 ```
@@ -174,6 +197,41 @@ bebel_token_ids()[c("TOKEN_THINK", "TOKEN_TOOL_CALL_START", "TOKEN_TOOL_CALL_END
 #>                124901                124905                124906
 raw_turn$text
 #> [1] " Paris. city name: france. name: france. city name: paris."
+```
+
+Tools can be orchestrated with an Agent-first run loop. The `context`
+object is private to R tools and hooks; it is not sent to the model.
+This mirrors the RunContext-style use case where tools and observability
+hooks share thread/run metadata without exposing it in the prompt.
+
+``` r
+ctx <- list(thread_id = "thread-001", log = list())
+
+tools <- list(
+  lookup_capital = bebel_tool(
+    "lookup_capital",
+    function(args, context, call) {
+      context$log <- c(context$log, paste("tool", call$name, args$country))
+      c(France = "Paris", Italy = "Rome")[[args$country]]
+    },
+    description = "Return a capital city for a country."
+  )
+)
+
+hooks <- list(
+  tool_request = function(call, context, ...) {
+    context$log <- c(context$log, paste("request", call$name))
+  },
+  tool_result = function(call, result, context, ...) {
+    context$log <- c(context$log, paste("result", call$name, result))
+  }
+)
+
+agent <- bebel_agent(model, max_gen = 128, max_think = 16)
+bebel_append_user(agent, "Use tools if needed: what is the capital of Italy?")
+run <- bebel_agent_run(agent, tools = tools, context = ctx, hooks = hooks)
+run
+ctx$log
 ```
 
 The same event stream can be consumed programmatically. For example,
@@ -311,23 +369,25 @@ rbebelm_backend_info()
 #> [1] TRUE
 ```
 
-## API sketch
+## Exported API
 
 ``` r
 ls("package:Rbebelm")
 #>  [1] "bebel_agent"              "bebel_agent_configure"   
 #>  [3] "bebel_agent_generate"     "bebel_agent_info"        
-#>  [5] "bebel_append"             "bebel_append_tokens"     
-#>  [7] "bebel_append_user"        "bebel_assistant_turn"    
-#>  [9] "bebel_chat"               "bebel_clear"             
-#> [11] "bebel_console_event"      "bebel_detokenize"        
-#> [13] "bebel_event_handler"      "bebel_event_types"       
-#> [15] "bebel_generate"           "bebel_history"           
-#> [17] "bebel_model_load"         "bebel_token_ids"         
-#> [19] "bebel_tokenize"           "bebel_transcript"        
-#> [21] "BebelAgent"               "BebelModel"              
-#> [23] "rbebelm_backend_features" "rbebelm_backend_info"    
-#> [25] "rbebelm_cpuid_info"       "rbebelm_set_backend"
+#>  [5] "bebel_agent_run"          "bebel_append"            
+#>  [7] "bebel_append_tokens"      "bebel_append_tool_result"
+#>  [9] "bebel_append_user"        "bebel_assistant_turn"    
+#> [11] "bebel_chat"               "bebel_clear"             
+#> [13] "bebel_console_event"      "bebel_detokenize"        
+#> [15] "bebel_event_handler"      "bebel_event_types"       
+#> [17] "bebel_generate"           "bebel_history"           
+#> [19] "bebel_model_load"         "bebel_parse_tool_call"   
+#> [21] "bebel_token_ids"          "bebel_tokenize"          
+#> [23] "bebel_tool"               "bebel_transcript"        
+#> [25] "BebelAgent"               "BebelModel"              
+#> [27] "rbebelm_backend_features" "rbebelm_backend_info"    
+#> [29] "rbebelm_cpuid_info"       "rbebelm_set_backend"
 ```
 
 Core calls:
@@ -339,6 +399,7 @@ Core calls:
   `bebel_agent_generate(agent, ...)`
 - `bebel_tokenize(model, text)`, `bebel_detokenize(model, ids)`,
   `bebel_token_ids()`
+- `live_console(model_or_agent)`, `bebel_live_console(model_or_agent)`
 - `bebel_event_types()`
 - `bebel_event_handler(text_delta = ..., thinking_delta = ..., tool_call_delta = ..., done = ..., default = ...)`
 - `bebel_generate(model, prompt, on_event = bebel_console_event(), check_interrupt = TRUE, ...)`
