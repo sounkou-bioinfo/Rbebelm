@@ -10,7 +10,7 @@ Authors@R: c(
            comment = "savvy R/Rust interface")
   )
 Description: Provides experimental 'R' bindings for the pure-Rust 'BebeLM' 'CPU'-only language-model inference library <https://github.com/maximecb/bebelm>. The native layer is structured as runtime-selected Rust backends so portable 'R' binaries can avoid build-host-specific SIMD assumptions while still using optimized backends when available.
-License: MIT + file LICENSE
+License: GPL (>= 2)
 URL: https://github.com/sounkou-bioinfo/Rbebelm, https://sounkou-bioinfo.github.io/Rbebelm
 BugReports: https://github.com/sounkou-bioinfo/Rbebelm/issues
 Encoding: UTF-8
