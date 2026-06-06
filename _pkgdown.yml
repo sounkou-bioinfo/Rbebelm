@@ -48,12 +48,10 @@ reference:
       - print.bebelGeneration
 
 articles:
-  - title: Getting started
+  - title: Guides
     navbar: ~
     contents:
       - getting-started
-  - title: Runtime and streaming internals
-    navbar: ~
-    contents:
-      - streaming-generation
-      - backend-dispatch
+      - agents-and-tools
+      - events-and-adapters
+      - backend-and-webr

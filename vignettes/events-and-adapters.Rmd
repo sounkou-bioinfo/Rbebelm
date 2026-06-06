@@ -1,0 +1,100 @@
+---
+title: "Events and adapters"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Events and adapters}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+weights_file <- Sys.getenv("BEBELM_WEIGHTS_FILE")
+has_weights <- nzchar(weights_file) && file.exists(weights_file)
+```
+
+Generation in `Rbebelm` is event-based. The Rust decode loop emits a finite event
+protocol reported by `bebel_event_types()`.
+
+```{r}
+library(Rbebelm)
+bebel_event_types()
+```
+
+Events describe stream lifecycle, thinking blocks, answer text blocks,
+tool-list blocks, tool-call blocks, and completion. Console output is just one
+event handler: `bebel_console_event()`.
+
+## Collect text deltas
+
+Use `on_event = NULL` for silent generation, or provide a callback to consume
+selected events.
+
+```{r, eval=has_weights}
+model <- bebel_model_load(Sys.getenv("BEBELM_WEIGHTS_FILE"), num_threads = 2)
+text <- character()
+thinking <- character()
+
+turn <- bebel_generate(
+  model,
+  "A text delta callback can",
+  greedy = TRUE,
+  max_gen = 12,
+  max_think = 16,
+  on_event = bebel_event_handler(
+    text_delta = function(event) text <<- c(text, event$delta),
+    thinking_delta = function(event) thinking <<- c(thinking, event$delta)
+  )
+)
+
+paste0(text, collapse = "")
+turn[c("stop", "generated_tokens", "decode_tps")]
+```
+
+## Handler lists
+
+A named list can also be supplied directly. Unknown handler names are rejected so
+stale event code fails early.
+
+```{r, eval=has_weights}
+counts <- c(text_delta = 0L, thinking_delta = 0L, done = 0L)
+
+invisible(bebel_generate(
+  model,
+  "An event handler list can",
+  greedy = TRUE,
+  max_gen = 4,
+  max_think = 16,
+  on_event = list(
+    text_delta = function(event) counts["text_delta"] <<- counts[["text_delta"]] + 1L,
+    thinking_delta = function(event) counts["thinking_delta"] <<- counts[["thinking_delta"]] + 1L,
+    done = function(event) counts["done"] <<- counts[["done"]] + 1L
+  )
+))
+
+counts
+```
+
+## SSE example
+
+An SSE endpoint can serialize each event as it arrives. The sketch below shows the
+adapter shape; the exact response object depends on the web framework.
+
+```{r, eval=FALSE}
+sse_handler <- function(response) {
+  bebel_event_handler(
+    default = function(event) {
+      payload <- jsonlite::toJSON(event, auto_unbox = TRUE, null = "null")
+      response$write(paste0("event: ", event$type, "\n"))
+      response$write(paste0("data: ", payload, "\n\n"))
+      response$flush()
+    }
+  )
+}
+
+bebel_agent_generate(agent, on_event = sse_handler(response))
+```
+
+Tool adapters use the same event stream. `bebel_agent_run()` listens for
+`tool_call_end` events, parses their accumulated content, invokes R tools, and
+appends tool results to the transcript.

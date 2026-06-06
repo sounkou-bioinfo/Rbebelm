@@ -7,13 +7,6 @@ output: github_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 weights_file <- Sys.getenv("BEBELM_WEIGHTS_FILE")
-if (!nzchar(weights_file)) {
-  local_weights_file <- "/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf"
-  if (file.exists(local_weights_file)) {
-    Sys.setenv(BEBELM_WEIGHTS_FILE = local_weights_file)
-    weights_file <- local_weights_file
-  }
-}
 has_weights <- nzchar(weights_file) && file.exists(weights_file)
 ```
 
