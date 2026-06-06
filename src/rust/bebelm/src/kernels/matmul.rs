@@ -30,14 +30,14 @@ fn load8(s: &[f32]) -> f32x8 {
 /// Dot product of two equal-length `f32` slices.
 ///
 /// Vectorized with `f32x8` over four independent accumulators (ILP, to hide FMA latency),
-/// with a scalar tail for any remainder. Because this sums lane-wise partial products with
+/// with a scalar tail for any remainder. Because this sums vector partial products with
 /// fused multiply-add, the result is **not** bit-identical to a left-to-right scalar dot —
 /// the rounding differs. (Inputs in `matvec` are always a multiple of the 256-wide block,
 /// so the tail there is empty; the tail only serves small/odd callers and tests.)
 #[inline]
 pub fn dot(a: &[f32], b: &[f32]) -> f32 {
     debug_assert_eq!(a.len(), b.len());
-    const W: usize = 8; // f32x8 lane count
+    const W: usize = 8; // f32x8 width
     const STEP: usize = W * 4; // four accumulators per iteration
     let n = a.len();
 
@@ -70,7 +70,7 @@ pub fn dot(a: &[f32], b: &[f32]) -> f32 {
 /// Over 32 weights from one nibble half of `q` (low if `!high`, else the high nibble) and
 /// the matching 32 activations, return `(Σ nibble_i · x_i, Σ x_i)` — the two sums the Q4_K
 /// factoring below needs. The dot/sum accumulate in `f32x8`; the per-byte nibble mask/shift
-/// stays scalar (portable SIMD can't widen `u8`→`f32` lanes without a scalar gather).
+/// stays scalar (portable SIMD cannot widen these `u8` values without a scalar gather).
 #[inline(always)]
 fn nibble_dot32(q: &[u8], x: &[f32], high: bool) -> (f32, f32) {
     let mut qx = f32x8::splat(0.0);
@@ -243,7 +243,7 @@ fn dot_q4k_row_q8(row: &[u8], a: &Q8Vec) -> f32 {
 }
 
 /// Over one 16-weight Q6_K sub-block, return `Σ (q_i − 32)·x_i` — the `−32` recentering
-/// folded into each lane. `ql`/`qh` are the current half's slices; `(ql_off, high, shift)`
+/// folded into each vector element. `ql`/`qh` are the current half's slices; `(ql_off, high, shift)`
 /// pick this group's `ql` nibble and `qh` 2-bit field (see [`dot_q6k_block`]); `l_start` is
 /// the sub-block's offset (0 or 16) into the half's 32-wide index `l`.
 #[inline(always)]

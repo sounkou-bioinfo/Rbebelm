@@ -6,6 +6,7 @@ output: github_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+has_weights <- nzchar(Sys.getenv("BEBELM_WEIGHTS_FILE")) && file.exists(Sys.getenv("BEBELM_WEIGHTS_FILE"))
 ```
 
 # Rbebelm
@@ -68,16 +69,16 @@ from the upstream model source documented by
 
 ## Quick start
 
-The examples below use the GGUF weights at
-`/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf`.
+Set `BEBELM_WEIGHTS_FILE` to the local GGUF path, or replace `weights` with an
+explicit file path.
 
-```{r quick-start}
+```{r quick-start, eval=has_weights}
 library(Rbebelm)
 
-weights <- "/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf"
+weights <- Sys.getenv("BEBELM_WEIGHTS_FILE")
 model <- bebel_model_load(weights, num_threads = 2)
 
-# Agent-first API: one loaded model can back several cheap conversations.
+# Agent-first API: one loaded model can back several conversations.
 agent <- bebel_agent(model, greedy = TRUE, max_gen = 48, max_think = 16)
 
 bebel_append_user(agent, "What is the capital of France? Answer briefly.")
@@ -126,10 +127,10 @@ You can also create the console directly from a model:
 bebel_live_console(model, max_gen = 256, max_think = 64)
 ```
 
-One-shot helpers are still available for simple calls. `bebel_chat()` wraps a
+Convenience helpers are still available for simple calls. `bebel_chat()` wraps a
 single ChatML user/assistant turn:
 
-```{r one-shot-chat}
+```{r chat-helper, eval=has_weights}
 # on_event defaults to bebel_console_event(): thinking and text print live.
 result <- bebel_chat(
   model,
@@ -144,9 +145,9 @@ result <- bebel_chat(
 result
 ```
 
-For one-shot non-chat completion, use `bebel_generate()`: 
+For plain text completion, use `bebel_generate()`: 
 
-```{r raw-generate}
+```{r raw-generate, eval=has_weights}
 raw_result <- bebel_generate(
   model,
   "Runtime SIMD dispatch is useful because",
@@ -161,7 +162,7 @@ raw_result
 
 Agents can also be driven at the lower level with raw text or token ids:
 
-```{r agent-raw}
+```{r agent-raw, eval=has_weights}
 raw_agent <- bebel_agent(model, greedy = TRUE, max_gen = 16, max_think = 0)
 bebel_append(raw_agent, "The capital of France is")
 raw_turn <- bebel_agent_generate(raw_agent, on_event = NULL)
@@ -173,10 +174,10 @@ bebel_token_ids()[c("TOKEN_THINK", "TOKEN_TOOL_CALL_START", "TOKEN_TOOL_CALL_END
 raw_turn$text
 ```
 
-Tools can be orchestrated with an Agent-first run loop. The `context` object is
-private to R tools and hooks; it is not sent to the model. This mirrors the
-RunContext-style use case where tools and observability hooks share thread/run
-metadata without exposing it in the prompt.
+Tools can be orchestrated with an Agent run loop. The `context` object is private
+to R tools and hooks; it is not sent to the model. A tool is dispatched only when
+the model emits a BebeLM tool-call block, so prompts should describe the
+available tools and the expected call format.
 
 ```{r tools, eval=FALSE}
 ctx <- new.env(parent = emptyenv())
@@ -203,8 +204,15 @@ hooks <- list(
   }
 )
 
+tool_prompt <- paste(
+  "Available tool:",
+  "lookup_capital({\"country\": <country>}) returns a capital city.",
+  "When a tool is needed, emit a BebeLM tool-call block containing only the call.",
+  "Question: what is the capital of Italy?"
+)
+
 agent <- bebel_agent(model, max_gen = 128, max_think = 16)
-bebel_append_user(agent, "Use tools if needed: what is the capital of Italy?")
+bebel_append_user(agent, tool_prompt)
 run <- bebel_agent_run(agent, tools = tools, context = ctx, hooks = hooks)
 run
 ctx$log
@@ -213,7 +221,7 @@ ctx$log
 The same event stream can be consumed programmatically. For example, collect
 only answer-text deltas while suppressing console output:
 
-```{r event-callback}
+```{r event-callback, eval=has_weights}
 deltas <- character()
 invisible(bebel_generate(
   model,
@@ -230,7 +238,7 @@ paste0(deltas, collapse = "")
 
 You can also pass a named list of event-specific handlers directly:
 
-```{r event-list-callback}
+```{r event-list-callback, eval=has_weights}
 counts <- c(text_delta = 0L, thinking_delta = 0L, done = 0L)
 invisible(bebel_generate(
   model,
@@ -267,8 +275,7 @@ include the delimiter token `id` and `marker`; end events contain accumulated
 BebeLM that avoids native-only `mmap` and Rayon imports on Emscripten: GGUF files
 are read from the webR filesystem into memory and matmul runs serially. If you
 mount or download a GGUF into the webR virtual filesystem, `bebel_model_load()`
-will attempt to load it. Very large models can still exhaust browser/webR memory;
-that is a runtime/resource limit, not an API stub.
+will attempt to load it. Very large models can still exhaust browser/webR memory.
 
 ## Runtime backend dispatch
 
@@ -278,8 +285,8 @@ in the selected backend library. The dispatcher checks CPU/OS support before
 loading SIMD backends, so a portable binary can avoid executing unsupported
 instructions.
 
-Backend loading is one-shot per R process. If you need to benchmark or debug a
-specific backend, call `rbebelm_set_backend()` before the first native Rbebelm
+Backend selection happens once per R process. If you need to benchmark or debug
+a specific backend, call `rbebelm_set_backend()` before the first native Rbebelm
 call in a fresh `Rscript` process:
 
 ```{r request-auto, eval=FALSE}
@@ -288,33 +295,11 @@ rbebelm_set_backend("auto")
 
 Inspect the current CPU/runtime and selected backend:
 
-```{r backend-state}
+```{r backend-state, eval=has_weights}
 rbebelm_cpuid_info()
 rbebelm_backend_features()
 rbebelm_backend_info()
 ```
-
-## Exported API
-
-```{r api-sketch}
-ls("package:Rbebelm")
-```
-
-Core calls:
-
-- `bebel_model_load(path, num_threads = NULL)`
-- `bebel_agent(model, ...)`, `bebel_append_user(agent, message)`, `bebel_assistant_turn(agent, ...)`
-- `bebel_append(agent, text)`, `bebel_append_tokens(agent, ids)`, `bebel_agent_generate(agent, ...)`
-- `bebel_tokenize(model, text)`, `bebel_detokenize(model, ids)`, `bebel_token_ids()`
-- `bebel_live_console(model_or_agent)`
-- `bebel_event_types()`
-- `bebel_event_handler(text_delta = ..., thinking_delta = ..., tool_call_delta = ..., done = ..., default = ...)`
-- `bebel_generate(model, prompt, on_event = bebel_console_event(), check_interrupt = TRUE, ...)`
-- `bebel_chat(model, message, on_event = bebel_console_event(), check_interrupt = TRUE, ...)`
-- `rbebelm_cpuid_info()`
-- `rbebelm_backend_info()`
-- `rbebelm_backend_features()`
-- `rbebelm_set_backend("auto" | "scalar" | "avx2" | "avx512" | "neon")`
 
 ## Development
 

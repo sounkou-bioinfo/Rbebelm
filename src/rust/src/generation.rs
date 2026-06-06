@@ -22,7 +22,7 @@ pub fn trim_context(cache: &mut Cache, max_context: usize) {
     }
 }
 
-pub fn run_one_shot(model: &Model, tok: Tokenizer, history: Vec<u32>, opts: &mut GenerationOptions) -> savvy::Result<Turn> {
+pub fn run_generation(model: &Model, tok: Tokenizer, history: Vec<u32>, opts: &mut GenerationOptions) -> savvy::Result<Turn> {
     let mut cache = Cache::new();
     let mut history = history;
     run_state(
