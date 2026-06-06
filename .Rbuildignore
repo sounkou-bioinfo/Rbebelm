@@ -10,6 +10,7 @@
 ^.*\.Rcheck$
 ^README\.html$
 ^docs$
+^\.github$
 
 ^src/rust/\.cargo$
 ^src/Makevars$

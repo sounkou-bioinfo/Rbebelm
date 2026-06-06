@@ -1,13 +1,19 @@
+#[cfg(not(target_os = "emscripten"))]
 use std::sync::Once;
 
+#[cfg(not(target_os = "emscripten"))]
 use savvy::ffi::SEXP;
-use savvy::{unwind_protect, IntegerSexp, OwnedIntegerSexp, OwnedLogicalSexp, OwnedRealSexp, OwnedStringSexp};
+#[cfg(not(target_os = "emscripten"))]
+use savvy::{unwind_protect, IntegerSexp, OwnedRealSexp};
+use savvy::{OwnedIntegerSexp, OwnedLogicalSexp, OwnedStringSexp};
 
+#[cfg(not(target_os = "emscripten"))]
 unsafe extern "C" {
     static mut R_NilValue: SEXP;
     fn R_CheckUserInterrupt();
 }
 
+#[cfg(not(target_os = "emscripten"))]
 static RAYON_INIT: Once = Once::new();
 
 pub fn err(message: impl Into<String>) -> savvy::Error {
@@ -26,6 +32,7 @@ pub fn int_scalar(value: i32) -> savvy::Result<OwnedIntegerSexp> {
     Ok(out)
 }
 
+#[cfg(not(target_os = "emscripten"))]
 pub fn real_scalar(value: f64) -> savvy::Result<OwnedRealSexp> {
     let mut out = OwnedRealSexp::new(1)?;
     out.set_elt(0, value)?;
@@ -38,6 +45,7 @@ pub fn bool_scalar(value: bool) -> savvy::Result<OwnedLogicalSexp> {
     Ok(out)
 }
 
+#[cfg(not(target_os = "emscripten"))]
 pub fn checked_usize(value: Option<f64>, name: &str) -> savvy::Result<Option<usize>> {
     match value {
         None => Ok(None),
@@ -46,6 +54,7 @@ pub fn checked_usize(value: Option<f64>, name: &str) -> savvy::Result<Option<usi
     }
 }
 
+#[cfg(not(target_os = "emscripten"))]
 pub fn checked_positive_usize(value: Option<f64>, name: &str) -> savvy::Result<Option<usize>> {
     match checked_usize(value, name)? {
         Some(0) => Err(err(format!("{name} must be >= 1"))),
@@ -53,6 +62,7 @@ pub fn checked_positive_usize(value: Option<f64>, name: &str) -> savvy::Result<O
     }
 }
 
+#[cfg(not(target_os = "emscripten"))]
 pub fn init_rayon(num_threads: Option<f64>) -> savvy::Result<()> {
     let threads = checked_positive_usize(num_threads, "num_threads")?;
     if let Some(n) = threads {
@@ -68,6 +78,7 @@ pub fn init_rayon(num_threads: Option<f64>) -> savvy::Result<()> {
     Ok(())
 }
 
+#[cfg(not(target_os = "emscripten"))]
 pub fn ids_to_sexp(ids: &[u32]) -> savvy::Result<OwnedIntegerSexp> {
     let mut out = OwnedIntegerSexp::new(ids.len())?;
     for (i, &id) in ids.iter().enumerate() {
@@ -77,6 +88,7 @@ pub fn ids_to_sexp(ids: &[u32]) -> savvy::Result<OwnedIntegerSexp> {
     Ok(out)
 }
 
+#[cfg(not(target_os = "emscripten"))]
 pub fn ids_from_integer(ids: IntegerSexp) -> savvy::Result<Vec<u32>> {
     ids.as_slice()
         .iter()
@@ -90,6 +102,7 @@ pub fn ids_from_integer(ids: IntegerSexp) -> savvy::Result<Vec<u32>> {
         .collect()
 }
 
+#[cfg(not(target_os = "emscripten"))]
 pub fn check_user_interrupt() -> savvy::Result<()> {
     unsafe {
         unwind_protect(|| {

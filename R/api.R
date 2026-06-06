@@ -696,24 +696,24 @@ bebel_chat <- function(
 
 #' Live terminal console for BebeLM chats
 #'
-#' Start an interactive terminal chat loop. `live_console(model)` creates a new
-#' `BebelAgent`; `live_console(agent)` reuses the provided agent transcript and
-#' caches. Type `/quit` or `/exit` to leave the loop.
+#' Start an interactive terminal chat loop. If `x` is a `BebelModel`, a new
+#' `BebelAgent` is created. If `x` is a `BebelAgent`, its existing transcript and
+#' caches are reused. Type `/quit` or `/exit` to leave the loop.
 #'
 #' @param x A `BebelModel` or `BebelAgent`.
-#' @param ... Additional arguments passed to methods.
+#' @param prompt Prompt displayed before reading each user message.
+#' @param exit_commands Character vector of commands that exit the console.
+#' @param on_event Event handler used for assistant output.
+#' @param check_interrupt Check for Ctrl-C during generation.
+#' @inheritParams bebel_agent
 #' @return Invisibly returns the `BebelAgent` used by the console.
 #' @export
-live_console <- function(x, ...) {
-  UseMethod("live_console")
-}
-
-#' @rdname live_console
-#' @inheritParams bebel_agent
-#' @export
-live_console.BebelModel <- function(
+bebel_live_console <- function(
   x,
-  ...,
+  prompt = ">>> ",
+  exit_commands = c("/quit", "/exit"),
+  on_event = bebel_console_event(),
+  check_interrupt = TRUE,
   greedy = FALSE,
   max_gen = NULL,
   max_context = NULL,
@@ -722,53 +722,35 @@ live_console.BebelModel <- function(
   top_k = NULL,
   repeat_penalty = NULL
 ) {
-  agent <- bebel_agent(
-    x,
-    greedy = greedy,
-    max_gen = max_gen,
-    max_context = max_context,
-    max_think = max_think,
-    temperature = temperature,
-    top_k = top_k,
-    repeat_penalty = repeat_penalty
-  )
-  live_console(agent, ...)
-}
-
-#' @rdname live_console
-#' @param prompt Prompt displayed before reading each user message.
-#' @param exit_commands Character vector of commands that exit the console.
-#' @param on_event Event handler used for assistant output.
-#' @param check_interrupt Check for Ctrl-C during generation.
-#' @export
-live_console.BebelAgent <- function(
-  x,
-  prompt = "You: ",
-  exit_commands = c("/quit", "/exit"),
-  on_event = bebel_console_event(),
-  check_interrupt = TRUE,
-  ...
-) {
-  check_bebel_agent(x)
-  if (!interactive()) {
-    warning("live_console() is intended for interactive R sessions", call. = FALSE)
+  if (inherits(x, "BebelModel")) {
+    x <- bebel_agent(
+      x,
+      greedy = greedy,
+      max_gen = max_gen,
+      max_context = max_context,
+      max_think = max_think,
+      temperature = temperature,
+      top_k = top_k,
+      repeat_penalty = repeat_penalty
+    )
+  } else {
+    check_bebel_agent(x)
   }
-  cat("BebeLM live console. Type /quit or /exit to stop.\n")
+  if (!interactive()) {
+    warning("bebel_live_console() is intended for interactive R sessions", call. = FALSE)
+  }
+  cat("\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557\n")
+  cat("\u2551  Entering BebeLM live console.                     \u2551\n")
+  cat("\u2551  Type /quit or /exit to return to R.               \u2551\n")
+  cat("\u255a\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255d\n")
   repeat {
     message <- readline(prompt)
     if (!nzchar(message)) next
     if (message %in% exit_commands) break
     bebel_append_user(x, message)
-    cat("Assistant: ")
     bebel_assistant_turn(x, on_event = on_event, check_interrupt = check_interrupt)
   }
   invisible(x)
-}
-
-#' @rdname live_console
-#' @export
-bebel_live_console <- function(x, ...) {
-  live_console(x, ...)
 }
 
 #' @export

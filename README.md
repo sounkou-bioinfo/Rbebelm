@@ -88,8 +88,8 @@ turn1
 #> <BebeLM assistant turn>
 #>   stop: eos 
 #>   tokens: 26 generated; 19 prompt
-#>   prefill: 9.4 tok/s 
-#>   decode: 9.48 tok/s 
+#>   prefill: 7.8 tok/s 
+#>   decode: 9.61 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "What is the capital of France? Answer briefly."</think>
@@ -99,7 +99,7 @@ turn2
 #>   stop: eos 
 #>   tokens: 26 generated; 13 prompt
 #>   prefill: 9.5 tok/s 
-#>   decode: 9.57 tok/s 
+#>   decode: 9.40 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "And Italy?" Possibly they are continuing a conversation</think>
@@ -119,13 +119,33 @@ A `BebelAgent` owns the token transcript and decode caches while sharing
 the loaded model weights. Later turns only prefill newly appended
 tokens. Use `bebel_clear(agent)` to reset the transcript and caches
 without reloading the GGUF. For an ellmer-style terminal loop, call
-`live_console(agent)` or `live_console(model)` in an interactive R
-session.
+`bebel_live_console(agent)` or `bebel_live_console(model)` in an
+interactive R session.
 
 ``` r
-live_console(agent)
-# or create a fresh agent from a model:
-live_console(model, max_gen = 256, max_think = 64)
+chat <- bebel_agent(model, max_gen = 256, max_think = 64)
+bebel_live_console(chat)
+#> ╔══════════════════════════════════════════════════════╗
+#> ║  Entering BebeLM live console.                     ║
+#> ║  Type /quit or /exit to return to R.               ║
+#> ╚══════════════════════════════════════════════════════╝
+#> >>> What is BebeLM?
+#> <think>
+#> The user asks for a brief explanation of BebeLM.
+#> </think>
+#> BebeLM is a small, CPU-focused local language model runtime written in Rust.
+#>
+#> >>> Why use the R agent API?
+#> The R agent keeps the transcript and decode caches alive across turns while
+#> sharing the loaded GGUF weights.
+#>
+#> >>> /quit
+```
+
+You can also create the console directly from a model:
+
+``` r
+bebel_live_console(model, max_gen = 256, max_think = 64)
 ```
 
 One-shot helpers are still available for simple calls. `bebel_chat()`
@@ -150,8 +170,8 @@ result
 #> <BebeLM chat result>
 #>   stop: max_new 
 #>   tokens: 48 generated; 22 prompt
-#>   prefill: 9.8 tok/s 
-#>   decode: 10.05 tok/s 
+#>   prefill: 9.4 tok/s 
+#>   decode: 9.70 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "In one concise sentence, what does runtime SIMD</think>
@@ -176,7 +196,7 @@ raw_result
 #>   stop: max_new 
 #>   tokens: 24 generated; 8 prompt
 #>   prefill: 9.8 tok/s 
-#>   decode: 10.24 tok/s 
+#>   decode: 9.90 tok/s 
 #>   text:
 #>  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However
 ```
@@ -205,7 +225,9 @@ This mirrors the RunContext-style use case where tools and observability
 hooks share thread/run metadata without exposing it in the prompt.
 
 ``` r
-ctx <- list(thread_id = "thread-001", log = list())
+ctx <- new.env(parent = emptyenv())
+ctx$thread_id <- "thread-001"
+ctx$log <- character()
 
 tools <- list(
   lookup_capital = bebel_tool(
@@ -287,6 +309,18 @@ Delta events contain `delta`, `id`, and `index`; control start/end
 events include the delimiter token `id` and `marker`; end events contain
 accumulated `content`. Console printing is just the default event
 handler. Use `on_event = NULL` for silent batch-style generation.
+
+## webR / wasm
+
+`Rbebelm` has a webR build path following the same
+explicit-compatibility style as `Ropendal`: the package loads in webR,
+backend diagnostics report the static `wasm_simd128` backend, and
+R-level helpers such as event types, token constants, tool definitions,
+and tool-call parsing are available. Full GGUF inference is not exposed
+in webR yet because upstream BebeLM currently uses mmap-based GGUF
+loading and the reference Q4_K_M model is a multi-GB artifact that is
+not browser-practical. In webR, model-loading and generation APIs fail
+explicitly rather than pretending to work.
 
 ## Runtime backend dispatch
 
@@ -382,12 +416,13 @@ ls("package:Rbebelm")
 #> [13] "bebel_console_event"      "bebel_detokenize"        
 #> [15] "bebel_event_handler"      "bebel_event_types"       
 #> [17] "bebel_generate"           "bebel_history"           
-#> [19] "bebel_model_load"         "bebel_parse_tool_call"   
-#> [21] "bebel_token_ids"          "bebel_tokenize"          
-#> [23] "bebel_tool"               "bebel_transcript"        
-#> [25] "BebelAgent"               "BebelModel"              
-#> [27] "rbebelm_backend_features" "rbebelm_backend_info"    
-#> [29] "rbebelm_cpuid_info"       "rbebelm_set_backend"
+#> [19] "bebel_live_console"       "bebel_model_load"        
+#> [21] "bebel_parse_tool_call"    "bebel_token_ids"         
+#> [23] "bebel_tokenize"           "bebel_tool"              
+#> [25] "bebel_transcript"         "BebelAgent"              
+#> [27] "BebelModel"               "rbebelm_backend_features"
+#> [29] "rbebelm_backend_info"     "rbebelm_cpuid_info"      
+#> [31] "rbebelm_set_backend"
 ```
 
 Core calls:
@@ -399,7 +434,7 @@ Core calls:
   `bebel_agent_generate(agent, ...)`
 - `bebel_tokenize(model, text)`, `bebel_detokenize(model, ids)`,
   `bebel_token_ids()`
-- `live_console(model_or_agent)`, `bebel_live_console(model_or_agent)`
+- `bebel_live_console(model_or_agent)`
 - `bebel_event_types()`
 - `bebel_event_handler(text_delta = ..., thinking_delta = ..., tool_call_delta = ..., done = ..., default = ...)`
 - `bebel_generate(model, prompt, on_event = bebel_console_event(), check_interrupt = TRUE, ...)`

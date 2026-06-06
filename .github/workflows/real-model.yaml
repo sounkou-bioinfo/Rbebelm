@@ -1,0 +1,56 @@
+name: real model tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-model:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      CARGO_BUILD_JOBS: 2
+      BEBELM_WEIGHTS_FILE: ${{ github.workspace }}/.models/LFM2.5-8B-A1B-Q4_K_M.gguf
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::tinytest, any::jsonlite, any::knitr, any::rmarkdown
+          needs: check
+
+      - name: Cache GGUF weights
+        id: cache-weights
+        uses: actions/cache@v4
+        with:
+          path: .models/LFM2.5-8B-A1B-Q4_K_M.gguf
+          key: LFM2.5-8B-A1B-Q4_K_M.gguf-v1
+
+      - name: Download GGUF weights
+        if: steps.cache-weights.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p .models
+          curl -L --fail --retry 3 --retry-delay 5 \
+            -o "$BEBELM_WEIGHTS_FILE" \
+            "https://huggingface.co/LiquidAI/LFM2.5-8B-A1B-GGUF/resolve/main/LFM2.5-8B-A1B-Q4_K_M.gguf"
+          test -s "$BEBELM_WEIGHTS_FILE"
+
+      - name: Install package
+        run: make CARGO_BUILD_JOBS=2 dev-install
+
+      - name: Run tinytest with real model
+        run: Rscript -e 'tinytest::test_package("Rbebelm")'

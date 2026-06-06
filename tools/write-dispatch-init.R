@@ -53,6 +53,11 @@ writeLines(h, "src/rbebelm_backend.h")
 
 # Generate dispatcher typedefs, symbol loads, and forwarding wrappers in src/rbebelm_backend.c.
 c <- readLines("src/rbebelm_backend.c", warn = FALSE)
+if (!any(grepl('#include "rust/api.h"', c, fixed = TRUE))) {
+  inc <- which(c == '#include "rbebelm_backend.h"')
+  if (length(inc) != 1L) stop("cannot find rbebelm_backend.h include in rbebelm_backend.c")
+  c <- append(c, c('#ifdef __EMSCRIPTEN__', '#include "rust/api.h"', '#endif'), after = inc)
+}
 
 start <- grep("^typedef SEXP \\(\\*fn_", c)[1]
 end <- grep("^static int backend_loaded", c)[1] - 1L
@@ -64,7 +69,16 @@ typedefs <- unlist(Map(function(f, i) {
     sprintf("static fn_%03d p_%03d = NULL;", i, i)
   )
 }, ffis, seq_along(ffis)), use.names = FALSE)
-c <- c(c[seq_len(start - 1L)], typedefs, "", c[(end + 1L):length(c)])
+static_binds <- c(
+  "#ifdef __EMSCRIPTEN__",
+  "static void bind_static_backend_symbols(void) {",
+  vapply(seq_along(ffis), function(i) {
+    sprintf("    p_%03d = (fn_%03d)%s;", i, i, ffis[[i]]$sym)
+  }, character(1)),
+  "}",
+  "#endif"
+)
+c <- c(c[seq_len(start - 1L)], typedefs, "", static_binds, "", c[(end + 1L):length(c)])
 
 load_lines <- grep("^[[:space:]]*p_.*load_symbol\\(handle, \"savvy_", c)
 if (!length(load_lines)) stop("cannot find backend symbol load block")

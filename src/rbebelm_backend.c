@@ -3,6 +3,9 @@
 #include <Rinternals.h>
 
 #include "rbebelm_backend.h"
+#ifdef __EMSCRIPTEN__
+#include "rust/api.h"
+#endif
 
 #include <stdint.h>
 #include <stdio.h>
@@ -84,6 +87,32 @@ typedef SEXP (*fn_020)(SEXP);
 static fn_020 p_020 = NULL;
 typedef SEXP (*fn_021)(SEXP, SEXP);
 static fn_021 p_021 = NULL;
+
+#ifdef __EMSCRIPTEN__
+static void bind_static_backend_symbols(void) {
+    p_001 = (fn_001)savvy_bebel_event_types__ffi;
+    p_002 = (fn_002)savvy_bebel_token_ids__ffi;
+    p_003 = (fn_003)savvy_rbebelm_backend_features__ffi;
+    p_004 = (fn_004)savvy_BebelAgent_append__ffi;
+    p_005 = (fn_005)savvy_BebelAgent_append_tokens__ffi;
+    p_006 = (fn_006)savvy_BebelAgent_append_tool_result__ffi;
+    p_007 = (fn_007)savvy_BebelAgent_append_user__ffi;
+    p_008 = (fn_008)savvy_BebelAgent_assistant_turn__ffi;
+    p_009 = (fn_009)savvy_BebelAgent_clear__ffi;
+    p_010 = (fn_010)savvy_BebelAgent_configure__ffi;
+    p_011 = (fn_011)savvy_BebelAgent_generate__ffi;
+    p_012 = (fn_012)savvy_BebelAgent_history__ffi;
+    p_013 = (fn_013)savvy_BebelAgent_info__ffi;
+    p_014 = (fn_014)savvy_BebelAgent_new__ffi;
+    p_015 = (fn_015)savvy_BebelAgent_transcript__ffi;
+    p_016 = (fn_016)savvy_BebelModel_chat__ffi;
+    p_017 = (fn_017)savvy_BebelModel_decode__ffi;
+    p_018 = (fn_018)savvy_BebelModel_encode__ffi;
+    p_019 = (fn_019)savvy_BebelModel_generate__ffi;
+    p_020 = (fn_020)savvy_BebelModel_info__ffi;
+    p_021 = (fn_021)savvy_BebelModel_load__ffi;
+}
+#endif
 
 static int backend_loaded = 0;
 static char requested_backend[32] = "";
@@ -349,6 +378,11 @@ static int file_exists(const char *path) {
 static void refresh_backend_lists(void) {
     installed_backends[0] = '\0';
     supported_backends[0] = '\0';
+#ifdef __EMSCRIPTEN__
+    append_csv(installed_backends, sizeof(installed_backends), "wasm_simd128");
+    append_csv(supported_backends, sizeof(supported_backends), "wasm_simd128");
+    return;
+#endif
     for (size_t i = 0; i < RBEBELM_ARRAY_LEN(RBEBELM_BACKENDS); i++) {
         const char *b = RBEBELM_BACKENDS[i];
         if (!backend_in_this_build(b)) continue;
@@ -455,6 +489,16 @@ void Rbebelm_request_backend(const char *backend) {
 
 void Rbebelm_init_backend(void) {
     if (backend_loaded) return;
+#ifdef __EMSCRIPTEN__
+    refresh_backend_lists();
+    if (requested_backend[0] != '\0' && strcmp(requested_backend, "wasm_simd128") != 0) {
+        Rf_error("only the wasm_simd128 backend is available in webR/Emscripten builds");
+    }
+    bind_static_backend_symbols();
+    snprintf(selected_backend, sizeof(selected_backend), "%s", "wasm_simd128");
+    backend_loaded = 1;
+    return;
+#endif
     const char *env_backend = getenv("RBEBELM_BACKEND");
     if (requested_backend[0] == '\0' && env_backend != NULL && env_backend[0] != '\0') {
         Rbebelm_request_backend(env_backend);
@@ -497,6 +541,13 @@ SEXP Rbebelm_BebelModel_encode_ffi(SEXP self__, SEXP c_arg__text, SEXP c_arg__ad
 SEXP Rbebelm_BebelModel_generate_ffi(SEXP self__, SEXP c_arg__prompt, SEXP c_arg__greedy, SEXP c_arg__check_interrupt, SEXP c_arg__on_event, SEXP c_arg__max_gen, SEXP c_arg__max_context, SEXP c_arg__max_think, SEXP c_arg__temperature, SEXP c_arg__top_k, SEXP c_arg__repeat_penalty) { Rbebelm_init_backend(); return p_019(self__, c_arg__prompt, c_arg__greedy, c_arg__check_interrupt, c_arg__on_event, c_arg__max_gen, c_arg__max_context, c_arg__max_think, c_arg__temperature, c_arg__top_k, c_arg__repeat_penalty); }
 SEXP Rbebelm_BebelModel_info_ffi(SEXP self__) { Rbebelm_init_backend(); return p_020(self__); }
 SEXP Rbebelm_BebelModel_load_ffi(SEXP c_arg__path, SEXP c_arg__num_threads) { Rbebelm_init_backend(); return p_021(c_arg__path, c_arg__num_threads); }
+
+
+
+
+
+
+
 
 
 

@@ -34,7 +34,6 @@ reference:
       - bebel_tokenize
       - bebel_detokenize
       - bebel_token_ids
-      - live_console
       - bebel_live_console
       - BebelModel
       - BebelAgent

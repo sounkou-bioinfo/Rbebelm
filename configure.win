@@ -17,4 +17,5 @@ echo "using Rust compiler: '${RUSTC_VERSION}'"
 
 sed \
   -e "s|@RBEBELM_PKG_LIBS@||g" \
+  -e "s|@RBEBELM_WASM_OBJECTS@||g" \
   src/Makevars.in > src/Makevars.win

@@ -94,13 +94,36 @@ bebel_agent_info(agent)[c("history_tokens", "processed_tokens", "kv_tokens")]
 A `BebelAgent` owns the token transcript and decode caches while sharing the
 loaded model weights. Later turns only prefill newly appended tokens. Use
 `bebel_clear(agent)` to reset the transcript and caches without reloading the
-GGUF. For an ellmer-style terminal loop, call `live_console(agent)` or
-`live_console(model)` in an interactive R session.
+GGUF. For an ellmer-style terminal loop, call `bebel_live_console(agent)` or
+`bebel_live_console(model)` in an interactive R session.
 
-```{r live-console, eval=FALSE}
-live_console(agent)
-# or create a fresh agent from a model:
-live_console(model, max_gen = 256, max_think = 64)
+```{r live-console}
+#| eval: false
+
+chat <- bebel_agent(model, max_gen = 256, max_think = 64)
+bebel_live_console(chat)
+#> ╔══════════════════════════════════════════════════════╗
+#> ║  Entering BebeLM live console.                     ║
+#> ║  Type /quit or /exit to return to R.               ║
+#> ╚══════════════════════════════════════════════════════╝
+#> >>> What is BebeLM?
+#> <think>
+#> The user asks for a brief explanation of BebeLM.
+#> </think>
+#> BebeLM is a small, CPU-focused local language model runtime written in Rust.
+#>
+#> >>> Why use the R agent API?
+#> The R agent keeps the transcript and decode caches alive across turns while
+#> sharing the loaded GGUF weights.
+#>
+#> >>> /quit
+```
+
+You can also create the console directly from a model:
+
+```{r live-console-model}
+#| eval: false
+bebel_live_console(model, max_gen = 256, max_think = 64)
 ```
 
 One-shot helpers are still available for simple calls. `bebel_chat()` wraps a
@@ -156,7 +179,9 @@ RunContext-style use case where tools and observability hooks share thread/run
 metadata without exposing it in the prompt.
 
 ```{r tools, eval=FALSE}
-ctx <- list(thread_id = "thread-001", log = list())
+ctx <- new.env(parent = emptyenv())
+ctx$thread_id <- "thread-001"
+ctx$log <- character()
 
 tools <- list(
   lookup_capital = bebel_tool(
@@ -235,6 +260,17 @@ include the delimiter token `id` and `marker`; end events contain accumulated
 `content`. Console printing is just the default event handler. Use
 `on_event = NULL` for silent batch-style generation.
 
+## webR / wasm
+
+`Rbebelm` has a webR build path following the same explicit-compatibility style
+as `Ropendal`: the package loads in webR, backend diagnostics report the static
+`wasm_simd128` backend, and R-level helpers such as event types, token constants,
+tool definitions, and tool-call parsing are available. Full GGUF inference is
+not exposed in webR yet because upstream BebeLM currently uses mmap-based GGUF
+loading and the reference Q4_K_M model is a multi-GB artifact that is not
+browser-practical. In webR, model-loading and generation APIs fail explicitly
+rather than pretending to work.
+
 ## Runtime backend dispatch
 
 `Rbebelm` installs one small R shared library plus separate Rust backend
@@ -271,7 +307,7 @@ Core calls:
 - `bebel_agent(model, ...)`, `bebel_append_user(agent, message)`, `bebel_assistant_turn(agent, ...)`
 - `bebel_append(agent, text)`, `bebel_append_tokens(agent, ids)`, `bebel_agent_generate(agent, ...)`
 - `bebel_tokenize(model, text)`, `bebel_detokenize(model, ids)`, `bebel_token_ids()`
-- `live_console(model_or_agent)`, `bebel_live_console(model_or_agent)`
+- `bebel_live_console(model_or_agent)`
 - `bebel_event_types()`
 - `bebel_event_handler(text_delta = ..., thinking_delta = ..., tool_call_delta = ..., done = ..., default = ...)`
 - `bebel_generate(model, prompt, on_event = bebel_console_event(), check_interrupt = TRUE, ...)`

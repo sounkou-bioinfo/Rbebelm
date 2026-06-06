@@ -6,7 +6,7 @@ rust-version = "1.80"
 publish = false
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["staticlib", "cdylib"]
 
 [features]
 default = ["portable"]
