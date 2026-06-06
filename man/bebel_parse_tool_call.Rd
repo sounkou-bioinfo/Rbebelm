@@ -14,6 +14,7 @@ A list with \code{name}, \code{arguments}, and \code{raw}.
 }
 \description{
 The default parser accepts JSON objects such as \verb{\{\\"name\\": \\"tool\\", \\"arguments\\": \{...\}\}}
-when \code{jsonlite} is installed, or a simple \code{name({...})} form. Pass a custom
-parser to \code{bebel_agent_run()} for model- or prompt-specific formats.
+when \code{jsonlite} is installed, simple \code{name({...})} calls, and BebeLM-style
+bracketed calls such as \verb{[name(key=\\"value\\")]}. Pass a custom parser to
+\code{bebel_agent_run()} for model- or prompt-specific formats.
 }

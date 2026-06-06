@@ -89,8 +89,8 @@ turn1
 #> <BebeLM assistant turn>
 #>   stop: eos 
 #>   tokens: 26 generated; 19 prompt
-#>   prefill: 8.6 tok/s 
-#>   decode: 8.68 tok/s 
+#>   prefill: 8.8 tok/s 
+#>   decode: 8.60 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "What is the capital of France? Answer briefly."</think>
@@ -99,8 +99,8 @@ turn2
 #> <BebeLM assistant turn>
 #>   stop: eos 
 #>   tokens: 26 generated; 13 prompt
-#>   prefill: 9.0 tok/s 
-#>   decode: 8.61 tok/s 
+#>   prefill: 8.6 tok/s 
+#>   decode: 8.47 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "And Italy?" Possibly they are continuing a conversation</think>
@@ -171,8 +171,8 @@ result
 #> <BebeLM chat result>
 #>   stop: max_new 
 #>   tokens: 48 generated; 22 prompt
-#>   prefill: 8.7 tok/s 
-#>   decode: 8.85 tok/s 
+#>   prefill: 7.7 tok/s 
+#>   decode: 8.05 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "In one concise sentence, what does runtime SIMD</think>
@@ -196,8 +196,8 @@ raw_result
 #> <BebeLM generation result>
 #>   stop: max_new 
 #>   tokens: 24 generated; 8 prompt
-#>   prefill: 8.7 tok/s 
-#>   decode: 9.06 tok/s 
+#>   prefill: 9.0 tok/s 
+#>   decode: 9.17 tok/s 
 #>   text:
 #>  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However
 ```
@@ -224,7 +224,8 @@ Tools can be orchestrated with an Agent run loop. The `context` object
 is private to R tools and hooks; it is not sent to the model. A tool is
 dispatched only when the model emits a BebeLM tool-call block, so
 prompts should describe the available tools and the expected call
-format.
+format. The prompt below asks directly for the tool-call form so the
+example exercises the dispatch path.
 
 ``` r
 ctx <- new.env(parent = emptyenv())
@@ -252,17 +253,34 @@ hooks <- list(
 )
 
 tool_prompt <- paste(
-  "Available tool:",
-  "lookup_capital({\"country\": <country>}) returns a capital city.",
-  "When a tool is needed, emit a BebeLM tool-call block containing only the call.",
-  "Question: what is the capital of Italy?"
+  "Return exactly this tool call and no other text:",
+  "lookup_capital({\"country\":\"Italy\"})"
 )
 
-agent <- bebel_agent(model, max_gen = 128, max_think = 16)
+agent <- bebel_agent(model, greedy = TRUE, max_gen = 64, max_think = 0)
 bebel_append_user(agent, tool_prompt)
-run <- bebel_agent_run(agent, tools = tools, context = ctx, hooks = hooks)
+run <- bebel_agent_run(agent, tools = tools, context = ctx, hooks = hooks, max_steps = 2)
 run
+#> <bebelAgentRun>
+#>   turns: 2 
+#>   tool calls: 1 
+#> <BebeLM assistant turn>
+#>   stop: eos 
+#>   tokens: 34 generated; 31 prompt
+#>   prefill: 9.0 tok/s 
+#>   decode: 7.73 tok/s 
+#>   text:
+#> {
+#>   "tool_call": {
+#>     "name": "lookup_capital",
+#>     "parameters": {
+#>       "country": "Italy"
+#>     }
+#>   }
+#> }
 ctx$log
+#> [1] "request lookup_capital"     "tool lookup_capital Italy" 
+#> [3] "result lookup_capital Rome"
 ```
 
 The same event stream can be consumed programmatically. For example,

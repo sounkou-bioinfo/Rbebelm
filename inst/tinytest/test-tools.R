@@ -2,6 +2,11 @@ library(Rbebelm)
 
 call <- bebel_parse_tool_call('echo({"x": 1})')
 expect_equal(call$name, "echo")
+expect_equal(call$arguments$x, 1)
+
+call2 <- bebel_parse_tool_call('[lookup_capital(country="Italy")]')
+expect_equal(call2$name, "lookup_capital")
+expect_equal(call2$arguments$country, "Italy")
 
 ctx <- new.env(parent = emptyenv())
 ctx$log <- character()

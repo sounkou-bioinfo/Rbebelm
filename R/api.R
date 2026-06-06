@@ -298,11 +298,39 @@ normalize_bebel_tools <- function(tools) {
   out
 }
 
+parse_bebel_call_args <- function(args) {
+  args <- trimws(args)
+  if (!nzchar(args)) return(list())
+  if (requireNamespace("jsonlite", quietly = TRUE) && grepl("^\\s*\\{", args)) {
+    return(jsonlite::fromJSON(args, simplifyVector = FALSE))
+  }
+  parts <- strsplit(args, "\\s*,\\s*", perl = TRUE)[[1]]
+  out <- list()
+  for (part in parts) {
+    m <- regexec("^([A-Za-z_][A-Za-z0-9_.-]*)\\s*=\\s*(.*)$", trimws(part), perl = TRUE)
+    hit <- regmatches(part, m)[[1]]
+    if (!length(hit)) return(args)
+    value <- trimws(hit[3])
+    if (grepl('^".*"$', value) || grepl("^'.*'$", value)) {
+      value <- substr(value, 2L, nchar(value) - 1L)
+    } else if (grepl("^-?[0-9]+$", value)) {
+      value <- as.integer(value)
+    } else if (grepl("^-?[0-9]+\\.[0-9]+$", value)) {
+      value <- as.numeric(value)
+    } else if (identical(tolower(value), "true") || identical(tolower(value), "false")) {
+      value <- identical(tolower(value), "true")
+    }
+    out[[hit[2]]] <- value
+  }
+  out
+}
+
 #' Parse a BebeLM tool call block
 #'
 #' The default parser accepts JSON objects such as `{\"name\": \"tool\", \"arguments\": {...}}`
-#' when `jsonlite` is installed, or a simple `name({...})` form. Pass a custom
-#' parser to `bebel_agent_run()` for model- or prompt-specific formats.
+#' when `jsonlite` is installed, simple `name({...})` calls, and BebeLM-style
+#' bracketed calls such as `[name(key=\"value\")]`. Pass a custom parser to
+#' `bebel_agent_run()` for model- or prompt-specific formats.
 #'
 #' @param content Accumulated content between BebeLM tool-call delimiters.
 #' @return A list with `name`, `arguments`, and `raw`.
@@ -311,6 +339,7 @@ bebel_parse_tool_call <- function(content) {
   raw <- paste(content, collapse = "")
   x <- trimws(raw)
   if (!nzchar(x)) stop("empty tool call", call. = FALSE)
+  if (grepl("^\\[.*\\]$", x)) x <- trimws(substr(x, 2L, nchar(x) - 1L))
 
   if (requireNamespace("jsonlite", quietly = TRUE) && grepl("^\\s*\\{", x)) {
     obj <- jsonlite::fromJSON(x, simplifyVector = FALSE)
@@ -326,13 +355,7 @@ bebel_parse_tool_call <- function(content) {
   m <- regexec("^([A-Za-z_][A-Za-z0-9_.-]*)\\s*\\((.*)\\)$", x, perl = TRUE)
   hit <- regmatches(x, m)[[1]]
   if (length(hit)) {
-    args <- trimws(hit[3])
-    parsed <- list()
-    if (nzchar(args) && requireNamespace("jsonlite", quietly = TRUE)) {
-      parsed <- tryCatch(jsonlite::fromJSON(args, simplifyVector = FALSE), error = function(e) args)
-    } else if (nzchar(args)) {
-      parsed <- args
-    }
+    parsed <- parse_bebel_call_args(hit[3])
     return(list(name = hit[2], arguments = parsed, raw = raw))
   }
 
