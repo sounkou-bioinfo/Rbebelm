@@ -1,0 +1,47 @@
+# Streaming generation
+
+Generation is event-based. The Rust decode loop emits a finite event
+protocol reported by
+[`bebel_event_types()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_event_types.md):
+stream start, BebeLM thinking block events, answer text block events,
+tool-list/tool-call block events derived from special token ids, and
+final done. Console streaming is implemented as an event handler,
+[`bebel_console_event()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_console_event.md),
+not as a separate model primitive.
+
+``` r
+
+library(Rbebelm)
+weights <- Sys.getenv("BEBELM_WEIGHTS_FILE")
+if (nzchar(weights) && file.exists(weights)) {
+  model <- bebel_model_load(weights, num_threads = 2)
+  out <- bebel_generate(
+    model,
+    "The key benefit of runtime SIMD dispatch is",
+    max_gen = 48,
+    on_event = bebel_console_event(),
+    check_interrupt = TRUE
+  )
+  out[c("stop", "generated_tokens", "decode_tps")]
+} else {
+  message("Set BEBELM_WEIGHTS_FILE to run the streaming example.")
+}
+#> Set BEBELM_WEIGHTS_FILE to run the streaming example.
+```
+
+Use `on_event = NULL` for silent batch-style generation, or provide a
+callback to forward answer-text or thinking deltas to another system:
+
+``` r
+
+text <- character()
+thinking <- character()
+# bebel_generate(model, "prompt", on_event = bebel_event_handler(
+#   text_delta = function(event) text <<- c(text, event$delta),
+#   thinking_delta = function(event) thinking <<- c(thinking, event$delta)
+# ))
+```
+
+An SSE adapter would serialize the finite event stream and write it to
+the response; an `ellmer` adapter can consume `text_delta`,
+`thinking_delta`, and `tool_call_delta` events.
