@@ -58,17 +58,17 @@ to
 
 ## Quick start
 
-The examples below use the GGUF weights at
-`/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf`.
+Set `BEBELM_WEIGHTS_FILE` to the local GGUF path, or replace `weights`
+with an explicit file path.
 
 ``` r
 
 library(Rbebelm)
 
-weights <- "/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf"
+weights <- Sys.getenv("BEBELM_WEIGHTS_FILE")
 model <- bebel_model_load(weights, num_threads = 2)
 
-# Agent-first API: one loaded model can back several cheap conversations.
+# Agent-first API: one loaded model can back several conversations.
 agent <- bebel_agent(model, greedy = TRUE, max_gen = 48, max_think = 16)
 
 bebel_append_user(agent, "What is the capital of France? Answer briefly.")
@@ -78,34 +78,8 @@ bebel_append_user(agent, "And Italy?")
 turn2 <- bebel_assistant_turn(agent, on_event = NULL)
 
 turn1
-#> <BebeLM assistant turn>
-#>   stop: eos 
-#>   tokens: 26 generated; 19 prompt
-#>   prefill: 9.4 tok/s 
-#>   decode: 9.50 tok/s 
-#>   text:
-#> <think>
-#> The user asks: "What is the capital of France? Answer briefly."</think>
-#> The capital of France is Paris.
 turn2
-#> <BebeLM assistant turn>
-#>   stop: eos 
-#>   tokens: 26 generated; 13 prompt
-#>   prefill: 9.5 tok/s 
-#>   decode: 9.61 tok/s 
-#>   text:
-#> <think>
-#> The user asks: "And Italy?" Possibly they are continuing a conversation</think>
-#> The capital of Italy is Rome.
 bebel_agent_info(agent)[c("history_tokens", "processed_tokens", "kv_tokens")]
-#> $history_tokens
-#> [1] 86
-#> 
-#> $processed_tokens
-#> [1] 84
-#> 
-#> $kv_tokens
-#> [1] 84
 ```
 
 A `BebelAgent` owns the token transcript and decode caches while sharing
@@ -143,7 +117,7 @@ You can also create the console directly from a model:
 bebel_live_console(model, max_gen = 256, max_think = 64)
 ```
 
-One-shot helpers are still available for simple calls.
+Convenience helpers are still available for simple calls.
 [`bebel_chat()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_chat.md)
 wraps a single ChatML user/assistant turn:
 
@@ -159,23 +133,11 @@ result <- bebel_chat(
   on_event = bebel_console_event(),
   check_interrupt = TRUE
 )
-#> <think>
-#> The user asks: "In one concise sentence, what does runtime SIMD</think>
-#> Runtime SIMD dispatch dynamically selects and executes the most efficient instruction variant for the current hardware at execution time, allowing programs to adapt to varying processor
 
 result
-#> <BebeLM chat result>
-#>   stop: max_new 
-#>   tokens: 48 generated; 22 prompt
-#>   prefill: 9.7 tok/s 
-#>   decode: 9.80 tok/s 
-#>   text:
-#> <think>
-#> The user asks: "In one concise sentence, what does runtime SIMD</think>
-#> Runtime SIMD dispatch dynamically selects and executes the most efficient instruction variant for the current hardware at execution time, allowing programs to adapt to varying processor
 ```
 
-For one-shot non-chat completion, use
+For plain text completion, use
 [`bebel_generate()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_generate.md):
 
 ``` r
@@ -189,15 +151,7 @@ raw_result <- bebel_generate(
   on_event = bebel_console_event(),
   check_interrupt = TRUE
 )
-#>  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However
 raw_result
-#> <BebeLM generation result>
-#>   stop: max_new 
-#>   tokens: 24 generated; 8 prompt
-#>   prefill: 9.7 tok/s 
-#>   decode: 9.96 tok/s 
-#>   text:
-#>  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However
 ```
 
 Agents can also be driven at the lower level with raw text or token ids:
@@ -211,18 +165,15 @@ raw_turn <- bebel_agent_generate(raw_agent, on_event = NULL)
 ids <- bebel_tokenize(model, " and its airport code is", add_bos = FALSE)
 bebel_append_tokens(raw_agent, ids)
 bebel_history(raw_agent)[1:8]
-#> [1] 124894    597   5205    302   3980    355   4741     22
 bebel_token_ids()[c("TOKEN_THINK", "TOKEN_TOOL_CALL_START", "TOKEN_TOOL_CALL_END")]
-#>           TOKEN_THINK TOKEN_TOOL_CALL_START   TOKEN_TOOL_CALL_END 
-#>                124901                124905                124906
 raw_turn$text
-#> [1] " Paris. city name: france. name: france. city name: paris."
 ```
 
-Tools can be orchestrated with an Agent-first run loop. The `context`
-object is private to R tools and hooks; it is not sent to the model.
-This mirrors the RunContext-style use case where tools and observability
-hooks share thread/run metadata without exposing it in the prompt.
+Tools can be orchestrated with an Agent run loop. The `context` object
+is private to R tools and hooks; it is not sent to the model. A tool is
+dispatched only when the model emits a BebeLM tool-call block, so
+prompts should describe the available tools and the expected call
+format.
 
 ``` r
 
@@ -250,8 +201,15 @@ hooks <- list(
   }
 )
 
+tool_prompt <- paste(
+  "Available tool:",
+  "lookup_capital({\"country\": <country>}) returns a capital city.",
+  "When a tool is needed, emit a BebeLM tool-call block containing only the call.",
+  "Question: what is the capital of Italy?"
+)
+
 agent <- bebel_agent(model, max_gen = 128, max_think = 16)
-bebel_append_user(agent, "Use tools if needed: what is the capital of Italy?")
+bebel_append_user(agent, tool_prompt)
 run <- bebel_agent_run(agent, tools = tools, context = ctx, hooks = hooks)
 run
 ctx$log
@@ -274,7 +232,6 @@ invisible(bebel_generate(
   )
 ))
 paste0(deltas, collapse = "")
-#> [1] " be used to update a text field in a UI component."
 ```
 
 You can also pass a named list of event-specific handlers directly:
@@ -295,8 +252,6 @@ invisible(bebel_generate(
   )
 ))
 counts
-#>     text_delta thinking_delta           done 
-#>              4              0              1
 ```
 
 ## Interrupts and streaming
@@ -325,7 +280,7 @@ matmul runs serially. If you mount or download a GGUF into the webR
 virtual filesystem,
 [`bebel_model_load()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_model_load.md)
 will attempt to load it. Very large models can still exhaust
-browser/webR memory; that is a runtime/resource limit, not an API stub.
+browser/webR memory.
 
 ## Runtime backend dispatch
 
@@ -335,8 +290,8 @@ code lives in the selected backend library. The dispatcher checks CPU/OS
 support before loading SIMD backends, so a portable binary can avoid
 executing unsupported instructions.
 
-Backend loading is one-shot per R process. If you need to benchmark or
-debug a specific backend, call
+Backend selection happens once per R process. If you need to benchmark
+or debug a specific backend, call
 [`rbebelm_set_backend()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/rbebelm_set_backend.md)
 before the first native Rbebelm call in a fresh `Rscript` process:
 
@@ -350,108 +305,9 @@ Inspect the current CPU/runtime and selected backend:
 ``` r
 
 rbebelm_cpuid_info()
-#> $cpu_x86_64_v3
-#> [1] TRUE
-#> 
-#> $cpu_x86_64_v4
-#> [1] FALSE
-#> 
-#> $cpu_neon
-#> [1] FALSE
-#> 
-#> $cpu_wasm_simd128
-#> [1] FALSE
 rbebelm_backend_features()
-#> $backend
-#> [1] "avx2"
-#> 
-#> $target_arch
-#> [1] "x86_64"
-#> 
-#> $target_os
-#> [1] "linux"
-#> 
-#> $rust_package
-#> [1] "rbebelm_backend"
-#> 
-#> $rust_package_version
-#> [1] "0.0.0"
-#> 
-#> $native_simd_feature
-#> [1] TRUE
-#> 
-#> $compiled_avx2
-#> [1] TRUE
-#> 
-#> $compiled_avx512f
-#> [1] FALSE
-#> 
-#> $compiled_neon
-#> [1] FALSE
-#> 
-#> $compiled_wasm_simd128
-#> [1] FALSE
 rbebelm_backend_info()
-#> $dispatch_mode
-#> [1] "dynamic"
-#> 
-#> $requested_backend
-#> [1] "auto"
-#> 
-#> $selected_backend
-#> [1] "avx2"
-#> 
-#> $installed_backends
-#> [1] "scalar,avx2,avx512"
-#> 
-#> $supported_backends
-#> [1] "scalar,avx2"
-#> 
-#> $backend_loaded
-#> [1] TRUE
 ```
-
-## Exported API
-
-``` r
-
-ls("package:Rbebelm")
-#>  [1] "bebel_agent"              "bebel_agent_configure"   
-#>  [3] "bebel_agent_generate"     "bebel_agent_info"        
-#>  [5] "bebel_agent_run"          "bebel_append"            
-#>  [7] "bebel_append_tokens"      "bebel_append_tool_result"
-#>  [9] "bebel_append_user"        "bebel_assistant_turn"    
-#> [11] "bebel_chat"               "bebel_clear"             
-#> [13] "bebel_console_event"      "bebel_detokenize"        
-#> [15] "bebel_event_handler"      "bebel_event_types"       
-#> [17] "bebel_generate"           "bebel_history"           
-#> [19] "bebel_live_console"       "bebel_model_load"        
-#> [21] "bebel_parse_tool_call"    "bebel_token_ids"         
-#> [23] "bebel_tokenize"           "bebel_tool"              
-#> [25] "bebel_transcript"         "BebelAgent"              
-#> [27] "BebelModel"               "rbebelm_backend_features"
-#> [29] "rbebelm_backend_info"     "rbebelm_cpuid_info"      
-#> [31] "rbebelm_set_backend"
-```
-
-Core calls:
-
-- `bebel_model_load(path, num_threads = NULL)`
-- `bebel_agent(model, ...)`, `bebel_append_user(agent, message)`,
-  `bebel_assistant_turn(agent, ...)`
-- `bebel_append(agent, text)`, `bebel_append_tokens(agent, ids)`,
-  `bebel_agent_generate(agent, ...)`
-- `bebel_tokenize(model, text)`, `bebel_detokenize(model, ids)`,
-  [`bebel_token_ids()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_token_ids.md)
-- `bebel_live_console(model_or_agent)`
-- [`bebel_event_types()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_event_types.md)
-- `bebel_event_handler(text_delta = ..., thinking_delta = ..., tool_call_delta = ..., done = ..., default = ...)`
-- `bebel_generate(model, prompt, on_event = bebel_console_event(), check_interrupt = TRUE, ...)`
-- `bebel_chat(model, message, on_event = bebel_console_event(), check_interrupt = TRUE, ...)`
-- [`rbebelm_cpuid_info()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/rbebelm_cpuid_info.md)
-- [`rbebelm_backend_info()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/rbebelm_backend_info.md)
-- [`rbebelm_backend_features()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/rbebelm_backend_features.md)
-- `rbebelm_set_backend("auto" | "scalar" | "avx2" | "avx512" | "neon")`
 
 ## Development
 

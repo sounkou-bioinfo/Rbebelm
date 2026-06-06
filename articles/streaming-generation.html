@@ -100,10 +100,15 @@ another system:</p>
 <span><span class="co">#   text_delta = function(event) text &lt;&lt;- c(text, event$delta),</span></span>
 <span><span class="co">#   thinking_delta = function(event) thinking &lt;&lt;- c(thinking, event$delta)</span></span>
 <span><span class="co"># ))</span></span></code></pre></div>
-<p>An SSE adapter would serialize the finite event stream and write it
-to the response; an <code>ellmer</code> adapter can consume
-<code>text_delta</code>, <code>thinking_delta</code>, and
-<code>tool_call_delta</code> events.</p>
+<p>Adapters can forward the finite event stream to other interfaces. For
+example, an SSE endpoint can serialize each event as it arrives, and
+chat integrations can consume <code>text_delta</code>,
+<code>thinking_delta</code>, and <code>tool_call_delta</code>
+events.</p>
+<p>Tool dispatch is driven by <code>tool_call_end</code> events.
+<code><a href="../reference/bebel_agent_run.html">bebel_agent_run()</a></code> does not inspect ordinary answer text for
+tool calls; the model must emit a BebeLM tool-call block, or the caller
+must provide a custom parser/adapter for the model-specific format.</p>
   </main>
 </div>
 

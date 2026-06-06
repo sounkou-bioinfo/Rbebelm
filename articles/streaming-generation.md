@@ -42,6 +42,13 @@ thinking <- character()
 # ))
 ```
 
-An SSE adapter would serialize the finite event stream and write it to
-the response; an `ellmer` adapter can consume `text_delta`,
-`thinking_delta`, and `tool_call_delta` events.
+Adapters can forward the finite event stream to other interfaces. For
+example, an SSE endpoint can serialize each event as it arrives, and
+chat integrations can consume `text_delta`, `thinking_delta`, and
+`tool_call_delta` events.
+
+Tool dispatch is driven by `tool_call_end` events.
+[`bebel_agent_run()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_run.md)
+does not inspect ordinary answer text for tool calls; the model must
+emit a BebeLM tool-call block, or the caller must provide a custom
+parser/adapter for the model-specific format.

@@ -90,14 +90,14 @@
 <div class="section level2">
 <h2 id="quick-start">Quick start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
 </h2>
-<p>The examples below use the GGUF weights at <code>/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf</code>.</p>
+<p>Set <code>BEBELM_WEIGHTS_FILE</code> to the local GGUF path, or replace <code>weights</code> with an explicit file path.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/sounkou-bioinfo/Rbebelm" class="external-link">Rbebelm</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">weights</span> <span class="op">&lt;-</span> <span class="st">"/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf"</span></span>
+<span><span class="va">weights</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"BEBELM_WEIGHTS_FILE"</span><span class="op">)</span></span>
 <span><span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bebel_model_load.html">bebel_model_load</a></span><span class="op">(</span><span class="va">weights</span>, num_threads <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Agent-first API: one loaded model can back several cheap conversations.</span></span>
+<span><span class="co"># Agent-first API: one loaded model can back several conversations.</span></span>
 <span><span class="va">agent</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bebel_agent.html">bebel_agent</a></span><span class="op">(</span><span class="va">model</span>, greedy <span class="op">=</span> <span class="cn">TRUE</span>, max_gen <span class="op">=</span> <span class="fl">48</span>, max_think <span class="op">=</span> <span class="fl">16</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="reference/bebel_append_user.html">bebel_append_user</a></span><span class="op">(</span><span class="va">agent</span>, <span class="st">"What is the capital of France? Answer briefly."</span><span class="op">)</span></span>
@@ -107,34 +107,8 @@
 <span><span class="va">turn2</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bebel_assistant_turn.html">bebel_assistant_turn</a></span><span class="op">(</span><span class="va">agent</span>, on_event <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">turn1</span></span>
-<span><span class="co">#&gt; &lt;BebeLM assistant turn&gt;</span></span>
-<span><span class="co">#&gt;   stop: eos </span></span>
-<span><span class="co">#&gt;   tokens: 26 generated; 19 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 9.4 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 9.50 tok/s </span></span>
-<span><span class="co">#&gt;   text:</span></span>
-<span><span class="co">#&gt; &lt;think&gt;</span></span>
-<span><span class="co">#&gt; The user asks: "What is the capital of France? Answer briefly."&lt;/think&gt;</span></span>
-<span><span class="co">#&gt; The capital of France is Paris.</span></span>
 <span><span class="va">turn2</span></span>
-<span><span class="co">#&gt; &lt;BebeLM assistant turn&gt;</span></span>
-<span><span class="co">#&gt;   stop: eos </span></span>
-<span><span class="co">#&gt;   tokens: 26 generated; 13 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 9.5 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 9.61 tok/s </span></span>
-<span><span class="co">#&gt;   text:</span></span>
-<span><span class="co">#&gt; &lt;think&gt;</span></span>
-<span><span class="co">#&gt; The user asks: "And Italy?" Possibly they are continuing a conversation&lt;/think&gt;</span></span>
-<span><span class="co">#&gt; The capital of Italy is Rome.</span></span>
-<span><span class="fu"><a href="reference/bebel_agent_info.html">bebel_agent_info</a></span><span class="op">(</span><span class="va">agent</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"history_tokens"</span>, <span class="st">"processed_tokens"</span>, <span class="st">"kv_tokens"</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="co">#&gt; $history_tokens</span></span>
-<span><span class="co">#&gt; [1] 86</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $processed_tokens</span></span>
-<span><span class="co">#&gt; [1] 84</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $kv_tokens</span></span>
-<span><span class="co">#&gt; [1] 84</span></span></code></pre></div>
+<span><span class="fu"><a href="reference/bebel_agent_info.html">bebel_agent_info</a></span><span class="op">(</span><span class="va">agent</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"history_tokens"</span>, <span class="st">"processed_tokens"</span>, <span class="st">"kv_tokens"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
 <p>A <code>BebelAgent</code> owns the token transcript and decode caches while sharing the loaded model weights. Later turns only prefill newly appended tokens. Use <code>bebel_clear(agent)</code> to reset the transcript and caches without reloading the GGUF. For an ellmer-style terminal loop, call <code>bebel_live_console(agent)</code> or <code>bebel_live_console(model)</code> in an interactive R session.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">chat</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bebel_agent.html">bebel_agent</a></span><span class="op">(</span><span class="va">model</span>, max_gen <span class="op">=</span> <span class="fl">256</span>, max_think <span class="op">=</span> <span class="fl">64</span><span class="op">)</span></span>
@@ -157,7 +131,7 @@
 <p>You can also create the console directly from a model:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/bebel_live_console.html">bebel_live_console</a></span><span class="op">(</span><span class="va">model</span>, max_gen <span class="op">=</span> <span class="fl">256</span>, max_think <span class="op">=</span> <span class="fl">64</span><span class="op">)</span></span></code></pre></div>
-<p>One-shot helpers are still available for simple calls. <code><a href="reference/bebel_chat.html">bebel_chat()</a></code> wraps a single ChatML user/assistant turn:</p>
+<p>Convenience helpers are still available for simple calls. <code><a href="reference/bebel_chat.html">bebel_chat()</a></code> wraps a single ChatML user/assistant turn:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># on_event defaults to bebel_console_event(): thinking and text print live.</span></span>
 <span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bebel_chat.html">bebel_chat</a></span><span class="op">(</span></span>
@@ -169,21 +143,9 @@
 <span>  on_event <span class="op">=</span> <span class="fu"><a href="reference/bebel_console_event.html">bebel_console_event</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  check_interrupt <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>
-<span><span class="co">#&gt; &lt;think&gt;</span></span>
-<span><span class="co">#&gt; The user asks: "In one concise sentence, what does runtime SIMD&lt;/think&gt;</span></span>
-<span><span class="co">#&gt; Runtime SIMD dispatch dynamically selects and executes the most efficient instruction variant for the current hardware at execution time, allowing programs to adapt to varying processor</span></span>
 <span></span>
-<span><span class="va">result</span></span>
-<span><span class="co">#&gt; &lt;BebeLM chat result&gt;</span></span>
-<span><span class="co">#&gt;   stop: max_new </span></span>
-<span><span class="co">#&gt;   tokens: 48 generated; 22 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 9.7 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 9.80 tok/s </span></span>
-<span><span class="co">#&gt;   text:</span></span>
-<span><span class="co">#&gt; &lt;think&gt;</span></span>
-<span><span class="co">#&gt; The user asks: "In one concise sentence, what does runtime SIMD&lt;/think&gt;</span></span>
-<span><span class="co">#&gt; Runtime SIMD dispatch dynamically selects and executes the most efficient instruction variant for the current hardware at execution time, allowing programs to adapt to varying processor</span></span></code></pre></div>
-<p>For one-shot non-chat completion, use <code><a href="reference/bebel_generate.html">bebel_generate()</a></code>:</p>
+<span><span class="va">result</span></span></code></pre></div>
+<p>For plain text completion, use <code><a href="reference/bebel_generate.html">bebel_generate()</a></code>:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">raw_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bebel_generate.html">bebel_generate</a></span><span class="op">(</span></span>
 <span>  <span class="va">model</span>,</span>
@@ -194,15 +156,7 @@
 <span>  on_event <span class="op">=</span> <span class="fu"><a href="reference/bebel_console_event.html">bebel_console_event</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  check_interrupt <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>
-<span><span class="co">#&gt;  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However</span></span>
-<span><span class="va">raw_result</span></span>
-<span><span class="co">#&gt; &lt;BebeLM generation result&gt;</span></span>
-<span><span class="co">#&gt;   stop: max_new </span></span>
-<span><span class="co">#&gt;   tokens: 24 generated; 8 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 9.7 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 9.96 tok/s </span></span>
-<span><span class="co">#&gt;   text:</span></span>
-<span><span class="co">#&gt;  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However</span></span></code></pre></div>
+<span><span class="va">raw_result</span></span></code></pre></div>
 <p>Agents can also be driven at the lower level with raw text or token ids:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">raw_agent</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bebel_agent.html">bebel_agent</a></span><span class="op">(</span><span class="va">model</span>, greedy <span class="op">=</span> <span class="cn">TRUE</span>, max_gen <span class="op">=</span> <span class="fl">16</span>, max_think <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
@@ -212,13 +166,9 @@
 <span><span class="va">ids</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bebel_tokenize.html">bebel_tokenize</a></span><span class="op">(</span><span class="va">model</span>, <span class="st">" and its airport code is"</span>, add_bos <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/bebel_append_tokens.html">bebel_append_tokens</a></span><span class="op">(</span><span class="va">raw_agent</span>, <span class="va">ids</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/bebel_history.html">bebel_history</a></span><span class="op">(</span><span class="va">raw_agent</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">8</span><span class="op">]</span></span>
-<span><span class="co">#&gt; [1] 124894    597   5205    302   3980    355   4741     22</span></span>
 <span><span class="fu"><a href="reference/bebel_token_ids.html">bebel_token_ids</a></span><span class="op">(</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"TOKEN_THINK"</span>, <span class="st">"TOKEN_TOOL_CALL_START"</span>, <span class="st">"TOKEN_TOOL_CALL_END"</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="co">#&gt;           TOKEN_THINK TOKEN_TOOL_CALL_START   TOKEN_TOOL_CALL_END </span></span>
-<span><span class="co">#&gt;                124901                124905                124906</span></span>
-<span><span class="va">raw_turn</span><span class="op">$</span><span class="va">text</span></span>
-<span><span class="co">#&gt; [1] " Paris. city name: france. name: france. city name: paris."</span></span></code></pre></div>
-<p>Tools can be orchestrated with an Agent-first run loop. The <code>context</code> object is private to R tools and hooks; it is not sent to the model. This mirrors the RunContext-style use case where tools and observability hooks share thread/run metadata without exposing it in the prompt.</p>
+<span><span class="va">raw_turn</span><span class="op">$</span><span class="va">text</span></span></code></pre></div>
+<p>Tools can be orchestrated with an Agent run loop. The <code>context</code> object is private to R tools and hooks; it is not sent to the model. A tool is dispatched only when the model emits a BebeLM tool-call block, so prompts should describe the available tools and the expected call format.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ctx</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/environment.html" class="external-link">new.env</a></span><span class="op">(</span>parent <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/environment.html" class="external-link">emptyenv</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">ctx</span><span class="op">$</span><span class="va">thread_id</span> <span class="op">&lt;-</span> <span class="st">"thread-001"</span></span>
@@ -244,8 +194,15 @@
 <span>  <span class="op">}</span></span>
 <span><span class="op">)</span></span>
 <span></span>
+<span><span class="va">tool_prompt</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span></span>
+<span>  <span class="st">"Available tool:"</span>,</span>
+<span>  <span class="st">"lookup_capital({\"country\": &lt;country&gt;}) returns a capital city."</span>,</span>
+<span>  <span class="st">"When a tool is needed, emit a BebeLM tool-call block containing only the call."</span>,</span>
+<span>  <span class="st">"Question: what is the capital of Italy?"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
 <span><span class="va">agent</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bebel_agent.html">bebel_agent</a></span><span class="op">(</span><span class="va">model</span>, max_gen <span class="op">=</span> <span class="fl">128</span>, max_think <span class="op">=</span> <span class="fl">16</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/bebel_append_user.html">bebel_append_user</a></span><span class="op">(</span><span class="va">agent</span>, <span class="st">"Use tools if needed: what is the capital of Italy?"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/bebel_append_user.html">bebel_append_user</a></span><span class="op">(</span><span class="va">agent</span>, <span class="va">tool_prompt</span><span class="op">)</span></span>
 <span><span class="va">run</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bebel_agent_run.html">bebel_agent_run</a></span><span class="op">(</span><span class="va">agent</span>, tools <span class="op">=</span> <span class="va">tools</span>, context <span class="op">=</span> <span class="va">ctx</span>, hooks <span class="op">=</span> <span class="va">hooks</span><span class="op">)</span></span>
 <span><span class="va">run</span></span>
 <span><span class="va">ctx</span><span class="op">$</span><span class="va">log</span></span></code></pre></div>
@@ -262,8 +219,7 @@
 <span>    text_delta <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">event</span><span class="op">)</span> <span class="va">deltas</span> <span class="op">&lt;&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">deltas</span>, <span class="va">event</span><span class="op">$</span><span class="va">delta</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="va">deltas</span>, collapse <span class="op">=</span> <span class="st">""</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] " be used to update a text field in a UI component."</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="va">deltas</span>, collapse <span class="op">=</span> <span class="st">""</span><span class="op">)</span></span></code></pre></div>
 <p>You can also pass a named list of event-specific handlers directly:</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">counts</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>text_delta <span class="op">=</span> <span class="fl">0L</span>, thinking_delta <span class="op">=</span> <span class="fl">0L</span>, done <span class="op">=</span> <span class="fl">0L</span><span class="op">)</span></span>
@@ -279,9 +235,7 @@
 <span>    done <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">event</span><span class="op">)</span> <span class="va">counts</span><span class="op">[</span><span class="st">"done"</span><span class="op">]</span> <span class="op">&lt;&lt;-</span> <span class="va">counts</span><span class="op">[[</span><span class="st">"done"</span><span class="op">]</span><span class="op">]</span> <span class="op">+</span> <span class="fl">1L</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">counts</span></span>
-<span><span class="co">#&gt;     text_delta thinking_delta           done </span></span>
-<span><span class="co">#&gt;              4              0              1</span></span></code></pre></div>
+<span><span class="va">counts</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="interrupts-and-streaming">Interrupts and streaming<a class="anchor" aria-label="anchor" href="#interrupts-and-streaming"></a>
@@ -291,133 +245,32 @@
 <div class="section level2">
 <h2 id="webr--wasm">webR / wasm<a class="anchor" aria-label="anchor" href="#webr--wasm"></a>
 </h2>
-<p><code>Rbebelm</code> builds the real Rust/savvy backend for webR as a static <code>wasm_simd128</code> backend. The wasm build uses a patched local copy of upstream BebeLM that avoids native-only <code>mmap</code> and Rayon imports on Emscripten: GGUF files are read from the webR filesystem into memory and matmul runs serially. If you mount or download a GGUF into the webR virtual filesystem, <code><a href="reference/bebel_model_load.html">bebel_model_load()</a></code> will attempt to load it. Very large models can still exhaust browser/webR memory; that is a runtime/resource limit, not an API stub.</p>
+<p><code>Rbebelm</code> builds the real Rust/savvy backend for webR as a static <code>wasm_simd128</code> backend. The wasm build uses a patched local copy of upstream BebeLM that avoids native-only <code>mmap</code> and Rayon imports on Emscripten: GGUF files are read from the webR filesystem into memory and matmul runs serially. If you mount or download a GGUF into the webR virtual filesystem, <code><a href="reference/bebel_model_load.html">bebel_model_load()</a></code> will attempt to load it. Very large models can still exhaust browser/webR memory.</p>
 </div>
 <div class="section level2">
 <h2 id="runtime-backend-dispatch">Runtime backend dispatch<a class="anchor" aria-label="anchor" href="#runtime-backend-dispatch"></a>
 </h2>
 <p><code>Rbebelm</code> installs one small R shared library plus separate Rust backend libraries. The R shared library owns registration and dispatch; model code lives in the selected backend library. The dispatcher checks CPU/OS support before loading SIMD backends, so a portable binary can avoid executing unsupported instructions.</p>
-<p>Backend loading is one-shot per R process. If you need to benchmark or debug a specific backend, call <code><a href="reference/rbebelm_set_backend.html">rbebelm_set_backend()</a></code> before the first native Rbebelm call in a fresh <code>Rscript</code> process:</p>
+<p>Backend selection happens once per R process. If you need to benchmark or debug a specific backend, call <code><a href="reference/rbebelm_set_backend.html">rbebelm_set_backend()</a></code> before the first native Rbebelm call in a fresh <code>Rscript</code> process:</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/rbebelm_set_backend.html">rbebelm_set_backend</a></span><span class="op">(</span><span class="st">"auto"</span><span class="op">)</span></span></code></pre></div>
 <p>Inspect the current CPU/runtime and selected backend:</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/rbebelm_cpuid_info.html">rbebelm_cpuid_info</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; $cpu_x86_64_v3</span></span>
-<span><span class="co">#&gt; [1] TRUE</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $cpu_x86_64_v4</span></span>
-<span><span class="co">#&gt; [1] FALSE</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $cpu_neon</span></span>
-<span><span class="co">#&gt; [1] FALSE</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $cpu_wasm_simd128</span></span>
-<span><span class="co">#&gt; [1] FALSE</span></span>
 <span><span class="fu"><a href="reference/rbebelm_backend_features.html">rbebelm_backend_features</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; $backend</span></span>
-<span><span class="co">#&gt; [1] "avx2"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $target_arch</span></span>
-<span><span class="co">#&gt; [1] "x86_64"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $target_os</span></span>
-<span><span class="co">#&gt; [1] "linux"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $rust_package</span></span>
-<span><span class="co">#&gt; [1] "rbebelm_backend"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $rust_package_version</span></span>
-<span><span class="co">#&gt; [1] "0.0.0"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $native_simd_feature</span></span>
-<span><span class="co">#&gt; [1] TRUE</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $compiled_avx2</span></span>
-<span><span class="co">#&gt; [1] TRUE</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $compiled_avx512f</span></span>
-<span><span class="co">#&gt; [1] FALSE</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $compiled_neon</span></span>
-<span><span class="co">#&gt; [1] FALSE</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $compiled_wasm_simd128</span></span>
-<span><span class="co">#&gt; [1] FALSE</span></span>
-<span><span class="fu"><a href="reference/rbebelm_backend_info.html">rbebelm_backend_info</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; $dispatch_mode</span></span>
-<span><span class="co">#&gt; [1] "dynamic"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $requested_backend</span></span>
-<span><span class="co">#&gt; [1] "auto"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $selected_backend</span></span>
-<span><span class="co">#&gt; [1] "avx2"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $installed_backends</span></span>
-<span><span class="co">#&gt; [1] "scalar,avx2,avx512"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $supported_backends</span></span>
-<span><span class="co">#&gt; [1] "scalar,avx2"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $backend_loaded</span></span>
-<span><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="exported-api">Exported API<a class="anchor" aria-label="anchor" href="#exported-api"></a>
-</h2>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/ls.html" class="external-link">ls</a></span><span class="op">(</span><span class="st">"package:Rbebelm"</span><span class="op">)</span></span>
-<span><span class="co">#&gt;  [1] "bebel_agent"              "bebel_agent_configure"   </span></span>
-<span><span class="co">#&gt;  [3] "bebel_agent_generate"     "bebel_agent_info"        </span></span>
-<span><span class="co">#&gt;  [5] "bebel_agent_run"          "bebel_append"            </span></span>
-<span><span class="co">#&gt;  [7] "bebel_append_tokens"      "bebel_append_tool_result"</span></span>
-<span><span class="co">#&gt;  [9] "bebel_append_user"        "bebel_assistant_turn"    </span></span>
-<span><span class="co">#&gt; [11] "bebel_chat"               "bebel_clear"             </span></span>
-<span><span class="co">#&gt; [13] "bebel_console_event"      "bebel_detokenize"        </span></span>
-<span><span class="co">#&gt; [15] "bebel_event_handler"      "bebel_event_types"       </span></span>
-<span><span class="co">#&gt; [17] "bebel_generate"           "bebel_history"           </span></span>
-<span><span class="co">#&gt; [19] "bebel_live_console"       "bebel_model_load"        </span></span>
-<span><span class="co">#&gt; [21] "bebel_parse_tool_call"    "bebel_token_ids"         </span></span>
-<span><span class="co">#&gt; [23] "bebel_tokenize"           "bebel_tool"              </span></span>
-<span><span class="co">#&gt; [25] "bebel_transcript"         "BebelAgent"              </span></span>
-<span><span class="co">#&gt; [27] "BebelModel"               "rbebelm_backend_features"</span></span>
-<span><span class="co">#&gt; [29] "rbebelm_backend_info"     "rbebelm_cpuid_info"      </span></span>
-<span><span class="co">#&gt; [31] "rbebelm_set_backend"</span></span></code></pre></div>
-<p>Core calls:</p>
-<ul>
-<li><code>bebel_model_load(path, num_threads = NULL)</code></li>
-<li>
-<code>bebel_agent(model, ...)</code>, <code>bebel_append_user(agent, message)</code>, <code>bebel_assistant_turn(agent, ...)</code>
-</li>
-<li>
-<code>bebel_append(agent, text)</code>, <code>bebel_append_tokens(agent, ids)</code>, <code>bebel_agent_generate(agent, ...)</code>
-</li>
-<li>
-<code>bebel_tokenize(model, text)</code>, <code>bebel_detokenize(model, ids)</code>, <code><a href="reference/bebel_token_ids.html">bebel_token_ids()</a></code>
-</li>
-<li><code>bebel_live_console(model_or_agent)</code></li>
-<li><code><a href="reference/bebel_event_types.html">bebel_event_types()</a></code></li>
-<li><code>bebel_event_handler(text_delta = ..., thinking_delta = ..., tool_call_delta = ..., done = ..., default = ...)</code></li>
-<li><code>bebel_generate(model, prompt, on_event = bebel_console_event(), check_interrupt = TRUE, ...)</code></li>
-<li><code>bebel_chat(model, message, on_event = bebel_console_event(), check_interrupt = TRUE, ...)</code></li>
-<li><code><a href="reference/rbebelm_cpuid_info.html">rbebelm_cpuid_info()</a></code></li>
-<li><code><a href="reference/rbebelm_backend_info.html">rbebelm_backend_info()</a></code></li>
-<li><code><a href="reference/rbebelm_backend_features.html">rbebelm_backend_features()</a></code></li>
-<li><code>rbebelm_set_backend("auto" | "scalar" | "avx2" | "avx512" | "neon")</code></li>
-</ul>
+<span><span class="fu"><a href="reference/rbebelm_backend_info.html">rbebelm_backend_info</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="development">Development<a class="anchor" aria-label="anchor" href="#development"></a>
 </h2>
 <p>Common development commands from the repository root:</p>
-<div class="sourceCode" id="cb15"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a><span class="fu">make</span> rd           <span class="co"># regenerate savvy wrappers, dispatch init, NAMESPACE, and man/*.Rd</span></span>
-<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a><span class="fu">make</span> rdm          <span class="co"># regenerate README.md from evaluated README.Rmd</span></span>
-<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a><span class="fu">make</span> dev-install  <span class="co"># install the package locally from source</span></span>
-<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a><span class="fu">make</span> test         <span class="co"># run tinytest tests</span></span>
-<span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a><span class="fu">make</span> check        <span class="co"># build and run R CMD check --no-manual</span></span>
-<span id="cb15-6"><a href="#cb15-6" tabindex="-1"></a><span class="fu">make</span> site         <span class="co"># build the pkgdown site</span></span>
-<span id="cb15-7"><a href="#cb15-7" tabindex="-1"></a><span class="fu">make</span> clean        <span class="co"># remove generated build artifacts</span></span></code></pre></div>
+<div class="sourceCode" id="cb14"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="fu">make</span> rd           <span class="co"># regenerate savvy wrappers, dispatch init, NAMESPACE, and man/*.Rd</span></span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a><span class="fu">make</span> rdm          <span class="co"># regenerate README.md from evaluated README.Rmd</span></span>
+<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a><span class="fu">make</span> dev-install  <span class="co"># install the package locally from source</span></span>
+<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a><span class="fu">make</span> test         <span class="co"># run tinytest tests</span></span>
+<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a><span class="fu">make</span> check        <span class="co"># build and run R CMD check --no-manual</span></span>
+<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a><span class="fu">make</span> site         <span class="co"># build the pkgdown site</span></span>
+<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a><span class="fu">make</span> clean        <span class="co"># remove generated build artifacts</span></span></code></pre></div>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">
