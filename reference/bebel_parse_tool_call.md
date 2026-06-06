@@ -2,7 +2,8 @@
 
 The default parser accepts JSON objects such as
 `{\"name\": \"tool\", \"arguments\": {...}}` when `jsonlite` is
-installed, or a simple `name({...})` form. Pass a custom parser to
+installed, simple `name({...})` calls, and BebeLM-style bracketed calls
+such as `[name(key=\"value\")]`. Pass a custom parser to
 [`bebel_agent_run()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_run.md)
 for model- or prompt-specific formats.
 

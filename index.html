@@ -110,8 +110,8 @@
 <span><span class="co">#&gt; &lt;BebeLM assistant turn&gt;</span></span>
 <span><span class="co">#&gt;   stop: eos </span></span>
 <span><span class="co">#&gt;   tokens: 26 generated; 19 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 8.6 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 8.68 tok/s </span></span>
+<span><span class="co">#&gt;   prefill: 8.8 tok/s </span></span>
+<span><span class="co">#&gt;   decode: 8.60 tok/s </span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; &lt;think&gt;</span></span>
 <span><span class="co">#&gt; The user asks: "What is the capital of France? Answer briefly."&lt;/think&gt;</span></span>
@@ -120,8 +120,8 @@
 <span><span class="co">#&gt; &lt;BebeLM assistant turn&gt;</span></span>
 <span><span class="co">#&gt;   stop: eos </span></span>
 <span><span class="co">#&gt;   tokens: 26 generated; 13 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 9.0 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 8.61 tok/s </span></span>
+<span><span class="co">#&gt;   prefill: 8.6 tok/s </span></span>
+<span><span class="co">#&gt;   decode: 8.47 tok/s </span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; &lt;think&gt;</span></span>
 <span><span class="co">#&gt; The user asks: "And Italy?" Possibly they are continuing a conversation&lt;/think&gt;</span></span>
@@ -177,8 +177,8 @@
 <span><span class="co">#&gt; &lt;BebeLM chat result&gt;</span></span>
 <span><span class="co">#&gt;   stop: max_new </span></span>
 <span><span class="co">#&gt;   tokens: 48 generated; 22 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 8.7 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 8.85 tok/s </span></span>
+<span><span class="co">#&gt;   prefill: 7.7 tok/s </span></span>
+<span><span class="co">#&gt;   decode: 8.05 tok/s </span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; &lt;think&gt;</span></span>
 <span><span class="co">#&gt; The user asks: "In one concise sentence, what does runtime SIMD&lt;/think&gt;</span></span>
@@ -199,8 +199,8 @@
 <span><span class="co">#&gt; &lt;BebeLM generation result&gt;</span></span>
 <span><span class="co">#&gt;   stop: max_new </span></span>
 <span><span class="co">#&gt;   tokens: 24 generated; 8 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 8.7 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 9.06 tok/s </span></span>
+<span><span class="co">#&gt;   prefill: 9.0 tok/s </span></span>
+<span><span class="co">#&gt;   decode: 9.17 tok/s </span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt;  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However</span></span></code></pre></div>
 <p>Agents can also be driven at the lower level with raw text or token ids:</p>
@@ -218,7 +218,7 @@
 <span><span class="co">#&gt;                124901                124905                124906</span></span>
 <span><span class="va">raw_turn</span><span class="op">$</span><span class="va">text</span></span>
 <span><span class="co">#&gt; [1] " Paris. city name: france. name: france. city name: paris."</span></span></code></pre></div>
-<p>Tools can be orchestrated with an Agent run loop. The <code>context</code> object is private to R tools and hooks; it is not sent to the model. A tool is dispatched only when the model emits a BebeLM tool-call block, so prompts should describe the available tools and the expected call format.</p>
+<p>Tools can be orchestrated with an Agent run loop. The <code>context</code> object is private to R tools and hooks; it is not sent to the model. A tool is dispatched only when the model emits a BebeLM tool-call block, so prompts should describe the available tools and the expected call format. The prompt below asks directly for the tool-call form so the example exercises the dispatch path.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ctx</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/environment.html" class="external-link">new.env</a></span><span class="op">(</span>parent <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/environment.html" class="external-link">emptyenv</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">ctx</span><span class="op">$</span><span class="va">thread_id</span> <span class="op">&lt;-</span> <span class="st">"thread-001"</span></span>
@@ -245,17 +245,34 @@
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">tool_prompt</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span></span>
-<span>  <span class="st">"Available tool:"</span>,</span>
-<span>  <span class="st">"lookup_capital({\"country\": &lt;country&gt;}) returns a capital city."</span>,</span>
-<span>  <span class="st">"When a tool is needed, emit a BebeLM tool-call block containing only the call."</span>,</span>
-<span>  <span class="st">"Question: what is the capital of Italy?"</span></span>
+<span>  <span class="st">"Return exactly this tool call and no other text:"</span>,</span>
+<span>  <span class="st">"lookup_capital({\"country\":\"Italy\"})"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">agent</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bebel_agent.html">bebel_agent</a></span><span class="op">(</span><span class="va">model</span>, max_gen <span class="op">=</span> <span class="fl">128</span>, max_think <span class="op">=</span> <span class="fl">16</span><span class="op">)</span></span>
+<span><span class="va">agent</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bebel_agent.html">bebel_agent</a></span><span class="op">(</span><span class="va">model</span>, greedy <span class="op">=</span> <span class="cn">TRUE</span>, max_gen <span class="op">=</span> <span class="fl">64</span>, max_think <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/bebel_append_user.html">bebel_append_user</a></span><span class="op">(</span><span class="va">agent</span>, <span class="va">tool_prompt</span><span class="op">)</span></span>
-<span><span class="va">run</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bebel_agent_run.html">bebel_agent_run</a></span><span class="op">(</span><span class="va">agent</span>, tools <span class="op">=</span> <span class="va">tools</span>, context <span class="op">=</span> <span class="va">ctx</span>, hooks <span class="op">=</span> <span class="va">hooks</span><span class="op">)</span></span>
+<span><span class="va">run</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bebel_agent_run.html">bebel_agent_run</a></span><span class="op">(</span><span class="va">agent</span>, tools <span class="op">=</span> <span class="va">tools</span>, context <span class="op">=</span> <span class="va">ctx</span>, hooks <span class="op">=</span> <span class="va">hooks</span>, max_steps <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
 <span><span class="va">run</span></span>
-<span><span class="va">ctx</span><span class="op">$</span><span class="va">log</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;bebelAgentRun&gt;</span></span>
+<span><span class="co">#&gt;   turns: 2 </span></span>
+<span><span class="co">#&gt;   tool calls: 1 </span></span>
+<span><span class="co">#&gt; &lt;BebeLM assistant turn&gt;</span></span>
+<span><span class="co">#&gt;   stop: eos </span></span>
+<span><span class="co">#&gt;   tokens: 34 generated; 31 prompt</span></span>
+<span><span class="co">#&gt;   prefill: 9.0 tok/s </span></span>
+<span><span class="co">#&gt;   decode: 7.73 tok/s </span></span>
+<span><span class="co">#&gt;   text:</span></span>
+<span><span class="co">#&gt; {</span></span>
+<span><span class="co">#&gt;   "tool_call": {</span></span>
+<span><span class="co">#&gt;     "name": "lookup_capital",</span></span>
+<span><span class="co">#&gt;     "parameters": {</span></span>
+<span><span class="co">#&gt;       "country": "Italy"</span></span>
+<span><span class="co">#&gt;     }</span></span>
+<span><span class="co">#&gt;   }</span></span>
+<span><span class="co">#&gt; }</span></span>
+<span><span class="va">ctx</span><span class="op">$</span><span class="va">log</span></span>
+<span><span class="co">#&gt; [1] "request lookup_capital"     "tool lookup_capital Italy" </span></span>
+<span><span class="co">#&gt; [3] "result lookup_capital Rome"</span></span></code></pre></div>
 <p>The same event stream can be consumed programmatically. For example, collect only answer-text deltas while suppressing console output:</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">deltas</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span></span>
