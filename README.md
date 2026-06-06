@@ -88,8 +88,8 @@ turn1
 #> <BebeLM assistant turn>
 #>   stop: eos 
 #>   tokens: 26 generated; 19 prompt
-#>   prefill: 7.8 tok/s 
-#>   decode: 9.61 tok/s 
+#>   prefill: 9.4 tok/s 
+#>   decode: 9.50 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "What is the capital of France? Answer briefly."</think>
@@ -99,7 +99,7 @@ turn2
 #>   stop: eos 
 #>   tokens: 26 generated; 13 prompt
 #>   prefill: 9.5 tok/s 
-#>   decode: 9.40 tok/s 
+#>   decode: 9.61 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "And Italy?" Possibly they are continuing a conversation</think>
@@ -170,8 +170,8 @@ result
 #> <BebeLM chat result>
 #>   stop: max_new 
 #>   tokens: 48 generated; 22 prompt
-#>   prefill: 9.4 tok/s 
-#>   decode: 9.70 tok/s 
+#>   prefill: 9.7 tok/s 
+#>   decode: 9.80 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "In one concise sentence, what does runtime SIMD</think>
@@ -195,8 +195,8 @@ raw_result
 #> <BebeLM generation result>
 #>   stop: max_new 
 #>   tokens: 24 generated; 8 prompt
-#>   prefill: 9.8 tok/s 
-#>   decode: 9.90 tok/s 
+#>   prefill: 9.7 tok/s 
+#>   decode: 9.96 tok/s 
 #>   text:
 #>  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However
 ```
@@ -312,15 +312,14 @@ handler. Use `on_event = NULL` for silent batch-style generation.
 
 ## webR / wasm
 
-`Rbebelm` has a webR build path following the same
-explicit-compatibility style as `Ropendal`: the package loads in webR,
-backend diagnostics report the static `wasm_simd128` backend, and
-R-level helpers such as event types, token constants, tool definitions,
-and tool-call parsing are available. Full GGUF inference is not exposed
-in webR yet because upstream BebeLM currently uses mmap-based GGUF
-loading and the reference Q4_K_M model is a multi-GB artifact that is
-not browser-practical. In webR, model-loading and generation APIs fail
-explicitly rather than pretending to work.
+`Rbebelm` builds the real Rust/savvy backend for webR as a static
+`wasm_simd128` backend. The wasm build uses a patched local copy of
+upstream BebeLM that avoids native-only `mmap` and Rayon imports on
+Emscripten: GGUF files are read from the webR filesystem into memory and
+matmul runs serially. If you mount or download a GGUF into the webR
+virtual filesystem, `bebel_model_load()` will attempt to load it. Very
+large models can still exhaust browser/webR memory; that is a
+runtime/resource limit, not an API stub.
 
 ## Runtime backend dispatch
 

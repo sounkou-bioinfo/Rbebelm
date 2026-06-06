@@ -16,11 +16,11 @@ echo "using Rust package manager: '${CARGO_VERSION}'"
 echo "using Rust compiler: '${RUSTC_VERSION}'"
 
 RBEBELM_PKG_LIBS=""
-RBEBELM_WASM_OBJECTS=""
+RBEBELM_EMSCRIPTEN_OBJECTS=""
 cc_for_check=${CC:-cc}
 if "$cc_for_check" --version 2>/dev/null | grep -qi emscripten; then
-  RBEBELM_PKG_LIBS=''
-  RBEBELM_WASM_OBJECTS='wasm_stubs.o'
+  RBEBELM_PKG_LIBS='-L./rust/target/release -lrbebelm_backend'
+  RBEBELM_EMSCRIPTEN_OBJECTS='emscripten_invoke.o'
 else
   case "$(uname -s 2>/dev/null || echo unknown)" in
     Linux*) RBEBELM_PKG_LIBS="-ldl" ;;
@@ -31,5 +31,5 @@ fi
 
 sed \
   -e "s|@RBEBELM_PKG_LIBS@|${RBEBELM_PKG_LIBS}|g" \
-  -e "s|@RBEBELM_WASM_OBJECTS@|${RBEBELM_WASM_OBJECTS}|g" \
+  -e "s|@RBEBELM_EMSCRIPTEN_OBJECTS@|${RBEBELM_EMSCRIPTEN_OBJECTS}|g" \
   src/Makevars.in > src/Makevars

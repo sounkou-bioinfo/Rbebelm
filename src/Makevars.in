@@ -4,7 +4,7 @@ WASM_STATLIB = $(LIBDIR)/librbebelm_backend.a
 BACKEND_DIR = rbebelm-backends
 RUST_STAMP = $(TARGET_DIR)/rbebelm-build.stamp
 PKG_LIBS = @RBEBELM_PKG_LIBS@
-OBJECTS = init.o rbebelm_backend.o @RBEBELM_WASM_OBJECTS@
+OBJECTS = init.o rbebelm_backend.o @RBEBELM_EMSCRIPTEN_OBJECTS@
 
 all: $(SHLIB)
 
@@ -31,16 +31,17 @@ $(RUST_STAMP):
 	RUSTFLAGS_BASE="$(RUSTFLAGS)"; \
 	RUSTFLAGS_ENV="CARGO_TARGET_$$(printf '%s' "$$RUST_TARGET" | tr '[:lower:]-' '[:upper:]_')_RUSTFLAGS"; \
 	DYLIB_EXT=".so"; \
+	DYLIB_RUSTFLAGS=""; \
 	case "$$(uname -s 2>/dev/null || echo unknown)" in \
-		Darwin*) DYLIB_EXT=".dylib";; \
-		MINGW*|MSYS*|CYGWIN*) DYLIB_EXT=".dll";; \
+		Darwin*) DYLIB_EXT=".dylib"; DYLIB_RUSTFLAGS="-Clink-arg=-undefined -Clink-arg=dynamic_lookup";; \
+		MINGW*|MSYS*|CYGWIN*) DYLIB_EXT=".dll"; R_HOME_RUST="$${R_HOME:-}"; if command -v cygpath >/dev/null 2>&1 && [ -n "$$R_HOME_RUST" ]; then R_HOME_RUST="$$(cygpath -m -s "$$R_HOME_RUST")"; fi; if [ -n "$$R_HOME_RUST" ]; then DYLIB_RUSTFLAGS="-Lnative=$$R_HOME_RUST/bin/x64 -ldylib=R"; fi;; \
 	esac; \
 	BUILD_BACKENDS=""; \
 	if $(CC) --version 2>/dev/null | grep -qi emscripten; then \
-		echo "=== webR/Emscripten build: using C stub backend; GGUF inference is unsupported ==="; \
-		mkdir -p "$(TARGET_DIR)"; \
-		touch "$(RUST_STAMP)"; \
-		exit 0; \
+		RUST_TARGET="wasm32-unknown-emscripten"; \
+		CARGO_TARGET_FLAG="--target=$$RUST_TARGET"; \
+		RUSTFLAGS_ENV="CARGO_TARGET_$$(printf '%s' "$$RUST_TARGET" | tr '[:lower:]-' '[:upper:]_')_RUSTFLAGS"; \
+		BUILD_BACKENDS="wasm_simd128"; \
 	else \
 		case "$$RUST_HOST" in \
 			x86_64-*) BUILD_BACKENDS="scalar,avx2,avx512";; \
@@ -55,9 +56,9 @@ $(RUST_STAMP):
 		feature_args="--no-default-features --features $$features"; \
 		echo "=== Building Rbebelm Rust backend: $$backend ($$features $$rustflags_extra) ==="; \
 		if [ "$$RUST_TARGET" = "wasm32-unknown-emscripten" ]; then \
-			env "$$RUSTFLAGS_ENV=$$RUSTFLAGS_BASE $$rustflags_extra -C relocation-model=pic" CFLAGS_wasm32_unknown_emscripten="$$CFLAGS -fPIC" cargo rustc $$CARGO_FLAGS $$feature_args $$CARGO_TARGET_FLAG --lib --release --manifest-path=./rust/Cargo.toml --target-dir="$$target_dir" -- --crate-type staticlib; \
+			env CARGO_PROFILE_RELEASE_PANIC="abort" "$$RUSTFLAGS_ENV=$$RUSTFLAGS_BASE $$rustflags_extra -C relocation-model=pic -Zdefault-visibility=hidden" CFLAGS_wasm32_unknown_emscripten="$$CFLAGS -fPIC" cargo +nightly rustc $$CARGO_FLAGS $$feature_args $$CARGO_TARGET_FLAG --lib --release --manifest-path=./rust/Cargo.toml --target-dir="$$target_dir" -Zbuild-std=panic_abort,std -- --crate-type staticlib; \
 		else \
-			env "$$RUSTFLAGS_ENV=$$RUSTFLAGS_BASE $$rustflags_extra" cargo build $$CARGO_FLAGS $$feature_args $$CARGO_TARGET_FLAG --lib --release --manifest-path=./rust/Cargo.toml --target-dir="$$target_dir"; \
+			env "$$RUSTFLAGS_ENV=$$RUSTFLAGS_BASE $$rustflags_extra $$DYLIB_RUSTFLAGS" cargo build $$CARGO_FLAGS $$feature_args $$CARGO_TARGET_FLAG --lib --release --manifest-path=./rust/Cargo.toml --target-dir="$$target_dir"; \
 		fi; \
 		rel="$$target_dir/$$RUST_TARGET/release"; \
 		if [ "$$RUST_TARGET" = "wasm32-unknown-emscripten" ] && [ -f "$$rel/librbebelm_backend.a" ]; then cp "$$rel/librbebelm_backend.a" "$(WASM_STATLIB)"; fi; \
@@ -73,7 +74,7 @@ $(RUST_STAMP):
 			avx2) build_backend avx2 native-simd "-C target-cpu=x86-64-v3";; \
 			avx512) build_backend avx512 native-simd "-C target-cpu=x86-64-v4";; \
 			neon) build_backend neon native-simd "";; \
-			wasm_simd128) build_backend wasm_simd128 portable "";; \
+			wasm_simd128) build_backend wasm_simd128 portable "-C target-feature=+simd128";; \
 			*) echo "ERROR: unknown Rbebelm backend '$$backend'" >&2; exit 1;; \
 		esac; \
 		IFS=','; \

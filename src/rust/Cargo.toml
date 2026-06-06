@@ -15,7 +15,9 @@ native-simd = []
 
 [dependencies]
 savvy = "0.10.2"
-bebelm = "0.2.0"
+bebelm = { path = "bebelm" }
+
+[target.'cfg(not(target_os = "emscripten"))'.dependencies]
 rayon = "1"
 
 [profile.release]

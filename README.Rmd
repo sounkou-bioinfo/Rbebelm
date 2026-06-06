@@ -262,14 +262,13 @@ include the delimiter token `id` and `marker`; end events contain accumulated
 
 ## webR / wasm
 
-`Rbebelm` has a webR build path following the same explicit-compatibility style
-as `Ropendal`: the package loads in webR, backend diagnostics report the static
-`wasm_simd128` backend, and R-level helpers such as event types, token constants,
-tool definitions, and tool-call parsing are available. Full GGUF inference is
-not exposed in webR yet because upstream BebeLM currently uses mmap-based GGUF
-loading and the reference Q4_K_M model is a multi-GB artifact that is not
-browser-practical. In webR, model-loading and generation APIs fail explicitly
-rather than pretending to work.
+`Rbebelm` builds the real Rust/savvy backend for webR as a static
+`wasm_simd128` backend. The wasm build uses a patched local copy of upstream
+BebeLM that avoids native-only `mmap` and Rayon imports on Emscripten: GGUF files
+are read from the webR filesystem into memory and matmul runs serially. If you
+mount or download a GGUF into the webR virtual filesystem, `bebel_model_load()`
+will attempt to load it. Very large models can still exhaust browser/webR memory;
+that is a runtime/resource limit, not an API stub.
 
 ## Runtime backend dispatch
 
