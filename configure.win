@@ -15,6 +15,9 @@ RUSTC_VERSION="$(rustc --version || true)"
 echo "using Rust package manager: '${CARGO_VERSION}'"
 echo "using Rust compiler: '${RUSTC_VERSION}'"
 
-rustup target add x86_64-pc-windows-gnu >/dev/null 2>&1 || true
+if command -v rustup >/dev/null 2>&1; then
+  rustup toolchain install stable-x86_64-pc-windows-gnu >/dev/null 2>&1 || true
+  rustup target add --toolchain stable-x86_64-pc-windows-gnu x86_64-pc-windows-gnu >/dev/null 2>&1 || true
+fi
 
 cp src/Makevars.win.in src/Makevars.win

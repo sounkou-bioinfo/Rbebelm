@@ -6,6 +6,7 @@ PKG_LIBS =
 OBJECTS = init.o rbebelm_backend.o
 
 TARGET = x86_64-pc-windows-gnu
+CARGO = cargo +stable-x86_64-pc-windows-gnu
 CARGO_LINKER = x86_64-w64-mingw32.static.posix-gcc.exe
 
 all: $(SHLIB)
@@ -38,13 +39,13 @@ $(RUST_STAMP):
 		target_dir="$(TARGET_DIR)/$$backend"; \
 		feature_args="--no-default-features --features $$features"; \
 		echo "=== Building Rbebelm Rust backend: $$backend ($$features $$rustflags_extra) for $$RUST_TARGET ==="; \
-		mkdir -p "$$target_dir/$$RUST_TARGET/release/libgcc_mock"; \
-		touch "$$target_dir/$$RUST_TARGET/release/libgcc_mock/libgcc_eh.a"; \
+		mkdir -p "$$target_dir/release/libgcc_mock" "$$target_dir/$$RUST_TARGET/release/libgcc_mock"; \
+		touch "$$target_dir/release/libgcc_mock/libgcc_eh.a" "$$target_dir/$$RUST_TARGET/release/libgcc_mock/libgcc_eh.a"; \
 		export CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER="$(CARGO_LINKER)"; \
-		export LIBRARY_PATH="$${LIBRARY_PATH};$$target_dir/$$RUST_TARGET/release/libgcc_mock"; \
+		export LIBRARY_PATH="$${LIBRARY_PATH};$$target_dir/release/libgcc_mock;$$target_dir/$$RUST_TARGET/release/libgcc_mock"; \
 		export CC="$(CC)"; \
 		export CFLAGS="$(CFLAGS)"; \
-		env "$$RUSTFLAGS_ENV=$(RUSTFLAGS) $$rustflags_extra" cargo build $$CARGO_FLAGS $$feature_args $$CARGO_TARGET_FLAG --lib --release --manifest-path=./rust/Cargo.toml --target-dir="$$target_dir"; \
+		env "$$RUSTFLAGS_ENV=$(RUSTFLAGS) $$rustflags_extra" $(CARGO) build $$CARGO_FLAGS $$feature_args $$CARGO_TARGET_FLAG --lib --release --manifest-path=./rust/Cargo.toml --target-dir="$$target_dir"; \
 		rel="$$target_dir/$$RUST_TARGET/release"; \
 		for dylib in "$$rel/rbebelm_backend$$DYLIB_EXT" "$$rel/librbebelm_backend$$DYLIB_EXT"; do \
 			if [ -f "$$dylib" ]; then cp "$$dylib" "$(BACKEND_DIR)/rbebelm_backend_$$backend$$DYLIB_EXT"; break; fi; \
