@@ -4,8 +4,7 @@
 [`maximecb/bebelm`](https://github.com/maximecb/bebelm), a pure-Rust
 CPU-only implementation of Liquid AI LFM2.5-8B-A1B inference. The R
 package uses [`savvy`](https://github.com/yutannihilation/savvy) for the
-R/Rust boundary and an Rsassy-style runtime backend layout for portable
-SIMD dispatch.
+R/Rust boundary and a runtime backend layout for portable SIMD dispatch.
 
 The package is designed for interactive LLM use: generation streams
 tokens to the R console as soon as they are decoded, while the function
@@ -82,8 +81,8 @@ turn1
 #> <BebeLM assistant turn>
 #>   stop: eos 
 #>   tokens: 26 generated; 19 prompt
-#>   prefill: 9.6 tok/s 
-#>   decode: 9.67 tok/s 
+#>   prefill: 9.7 tok/s 
+#>   decode: 9.52 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "What is the capital of France? Answer briefly."</think>
@@ -92,8 +91,8 @@ turn2
 #> <BebeLM assistant turn>
 #>   stop: eos 
 #>   tokens: 26 generated; 13 prompt
-#>   prefill: 9.8 tok/s 
-#>   decode: 9.80 tok/s 
+#>   prefill: 9.6 tok/s 
+#>   decode: 9.48 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "And Italy?" Possibly they are continuing a conversation</think>
@@ -111,10 +110,33 @@ bebel_agent_info(agent)[c("history_tokens", "processed_tokens", "kv_tokens")]
 
 A `BebelAgent` owns the token transcript and decode caches while sharing
 the loaded model weights. Later turns only prefill newly appended
-tokens. Use `bebel_clear(agent)` to reset the transcript and caches
-without reloading the GGUF. For an ellmer-style terminal loop, call
-`bebel_live_console(agent)` or `bebel_live_console(model)` in an
-interactive R session.
+tokens. The direct methods `agent$history()`, `agent$transcript()`, and
+`agent$clear()` expose the same operations as `bebel_history(agent)`,
+`bebel_transcript(agent)`, and `bebel_clear(agent)`.
+
+``` r
+
+length(agent$history())
+#> [1] 86
+substr(agent$transcript(), 1, 80)
+#> [1] "<|startoftext|><|im_start|>user\nWhat is the capital of France? Answer briefly.<|"
+identical(agent$history(), bebel_history(agent))
+#> [1] TRUE
+
+reset_info <- agent$clear()
+reset_info[c("history_tokens", "processed_tokens", "kv_tokens")]
+#> $history_tokens
+#> [1] 0
+#> 
+#> $processed_tokens
+#> [1] 0
+#> 
+#> $kv_tokens
+#> [1] 0
+```
+
+For an interactive terminal loop, call `bebel_live_console(agent)` or
+`bebel_live_console(model)` in an R session.
 
 ``` r
 
@@ -168,8 +190,8 @@ result
 #> <BebeLM chat result>
 #>   stop: max_new 
 #>   tokens: 48 generated; 22 prompt
-#>   prefill: 9.7 tok/s 
-#>   decode: 9.80 tok/s 
+#>   prefill: 9.8 tok/s 
+#>   decode: 9.88 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "In one concise sentence, what does runtime SIMD</think>
@@ -195,8 +217,8 @@ raw_result
 #> <BebeLM generation result>
 #>   stop: max_new 
 #>   tokens: 24 generated; 8 prompt
-#>   prefill: 9.7 tok/s 
-#>   decode: 10.15 tok/s 
+#>   prefill: 10.0 tok/s 
+#>   decode: 10.29 tok/s 
 #>   text:
 #>  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However
 ```
@@ -268,8 +290,8 @@ run
 #> <BebeLM assistant turn>
 #>   stop: eos 
 #>   tokens: 34 generated; 31 prompt
-#>   prefill: 9.9 tok/s 
-#>   decode: 9.77 tok/s 
+#>   prefill: 9.7 tok/s 
+#>   decode: 9.53 tok/s 
 #>   text:
 #> {
 #>   "tool_call": {
@@ -340,7 +362,7 @@ tool-list blocks, tool-call blocks, and `done`. Delta events contain
 `delta`, `id`, and `index`; control start/end events include the
 delimiter token `id` and `marker`; end events contain accumulated
 `content`. Console printing is just the default event handler. Use
-`on_event = NULL` for silent batch-style generation.
+`on_event = NULL` for silent batch generation.
 
 ## webR / wasm
 
