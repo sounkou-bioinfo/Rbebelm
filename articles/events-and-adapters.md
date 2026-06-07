@@ -90,7 +90,9 @@ framework.
 sse_handler <- function(response) {
   bebel_event_handler(
     default = function(event) {
-      payload <- jsonlite::toJSON(event, auto_unbox = TRUE, null = "null")
+      payload <- event$delta
+      if (is.null(payload)) payload <- event$content
+      if (is.null(payload)) payload <- ""
       response$write(paste0("event: ", event$type, "\n"))
       response$write(paste0("data: ", payload, "\n\n"))
       response$flush()
