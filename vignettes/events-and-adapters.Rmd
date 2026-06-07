@@ -59,15 +59,12 @@ turn <- bebel_generate(
 
 paste0(text, collapse = "")
 #> [1] " be used to update a text field in a UI component."
-turn[c("stop", "generated_tokens", "decode_tps")]
+turn[c("stop", "generated_tokens")]
 #> $stop
 #> [1] "max_new"
 #> 
 #> $generated_tokens
 #> [1] 12
-#> 
-#> $decode_tps
-#> [1] 10.56027
 ```
 
 ## Handler lists

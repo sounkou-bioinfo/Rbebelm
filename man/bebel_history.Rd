@@ -13,5 +13,6 @@ bebel_history(agent)
 Integer token ids.
 }
 \description{
-Return a BebeLM agent token transcript
+Returns the full token transcript currently held by the agent. This is the
+helper form of \code{agent$history()}.
 }

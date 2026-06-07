@@ -12,10 +12,11 @@ rbebelm_set_backend <- function(backend = "auto") {
 
 #' Inspect Rbebelm backend dispatch state
 #'
-#' @return A named list describing installed, supported, requested, and selected backends.
+#' @return A named list describing installed, supported, requested, and selected backends,
+#'   with class `rbebelmBackendInfo`.
 #' @export
 rbebelm_backend_info <- function() {
-  .Call(Rbebelm_backend_info_impl)
+  structure(.Call(Rbebelm_backend_info_impl), class = c("rbebelmBackendInfo", "list"))
 }
 
 #' Inspect CPU SIMD support used by backend dispatch
@@ -34,6 +35,18 @@ rbebelm_backend_features <- function() {
 
 format_bebel_yes_no <- function(x) {
   ifelse(isTRUE(x), "yes", "no")
+}
+
+#' @export
+print.rbebelmBackendInfo <- function(x, ...) {
+  cat("<Rbebelm backend dispatch>\n")
+  cat("  mode:", x$dispatch_mode, "\n")
+  cat("  requested:", x$requested_backend, "\n")
+  cat("  selected:", x$selected_backend, "\n")
+  cat("  loaded:", format_bebel_yes_no(x$backend_loaded), "\n")
+  cat("  installed:", x$installed_backends, "\n")
+  cat("  supported:", x$supported_backends, "\n")
+  invisible(x)
 }
 
 #' @export
@@ -242,6 +255,9 @@ bebel_assistant_turn <- function(agent, on_event = bebel_console_event(), check_
 
 #' Clear a BebeLM agent transcript and caches
 #'
+#' Clears the conversation state while keeping the loaded model weights and the
+#' agent's generation configuration. This is the helper form of `agent$clear()`.
+#'
 #' @param agent A `BebelAgent` object.
 #' @return Updated agent info.
 #' @export
@@ -252,6 +268,9 @@ bebel_clear <- function(agent) {
 
 #' Return a BebeLM agent token transcript
 #'
+#' Returns the full token transcript currently held by the agent. This is the
+#' helper form of `agent$history()`.
+#'
 #' @param agent A `BebelAgent` object.
 #' @return Integer token ids.
 #' @export
@@ -261,6 +280,9 @@ bebel_history <- function(agent) {
 }
 
 #' Decode a BebeLM agent transcript
+#'
+#' Decodes the agent's full token transcript. This is the helper form of
+#' `agent$transcript()`.
 #'
 #' @param agent A `BebelAgent` object.
 #' @return Transcript text.

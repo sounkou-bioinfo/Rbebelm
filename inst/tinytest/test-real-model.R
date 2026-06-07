@@ -29,6 +29,15 @@ if (!nzchar(weights) || !file.exists(weights)) {
   info <- bebel_agent_info(agent)
   expect_true(info$history_tokens > 0L)
   expect_true(info$processed_tokens > 0L)
+  expect_equal(bebel_history(agent), agent$history())
+  expect_true(length(agent$history()) > 0L)
+  expect_true(nzchar(agent$transcript()))
+  expect_equal(bebel_transcript(agent), agent$transcript())
+
+  reset <- agent$clear()
+  expect_equal(reset$history_tokens, 0L)
+  expect_equal(length(bebel_history(agent)), 0L)
+  expect_identical(bebel_clear(agent)$history_tokens, 0L)
 
   bebel_append_user(agent, "And Italy?")
   turn2 <- bebel_assistant_turn(agent, on_event = NULL)

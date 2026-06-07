@@ -13,5 +13,6 @@ bebel_transcript(agent)
 Transcript text.
 }
 \description{
-Decode a BebeLM agent transcript
+Decodes the agent's full token transcript. This is the helper form of
+\code{agent$transcript()}.
 }

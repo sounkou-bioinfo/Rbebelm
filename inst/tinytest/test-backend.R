@@ -1,6 +1,8 @@
 info <- rbebelm_backend_info()
+expect_true(inherits(info, "rbebelmBackendInfo"))
 expect_true(is.list(info))
 expect_true("selected_backend" %in% names(info))
+expect_true(grepl("Rbebelm backend dispatch", paste(capture.output(print(info)), collapse = "\n")))
 
 cpu <- rbebelm_cpuid_info()
 expect_true(inherits(cpu, "rbebelmCpuidInfo"))

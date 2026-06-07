@@ -7,7 +7,8 @@
 rbebelm_backend_info()
 }
 \value{
-A named list describing installed, supported, requested, and selected backends.
+A named list describing installed, supported, requested, and selected backends,
+with class \code{rbebelmBackendInfo}.
 }
 \description{
 Inspect Rbebelm backend dispatch state

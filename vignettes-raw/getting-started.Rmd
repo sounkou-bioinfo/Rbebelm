@@ -51,8 +51,8 @@ turn1 <- bebel_assistant_turn(agent, on_event = NULL)
 bebel_append_user(agent, "And Italy?")
 turn2 <- bebel_assistant_turn(agent, on_event = NULL)
 
-turn1
-turn2
+turn1$text
+turn2$text
 bebel_agent_info(agent)[c("history_tokens", "processed_tokens", "kv_tokens")]
 ```
 
@@ -65,7 +65,7 @@ For simple calls, `bebel_chat()` creates a single ChatML user/assistant turn.
 For raw prompt completion, use `bebel_generate()`.
 
 ```{r, eval=has_weights}
-bebel_chat(
+chat <- bebel_chat(
   model,
   "In one concise sentence, what does runtime backend dispatch do?",
   greedy = TRUE,
@@ -73,6 +73,7 @@ bebel_chat(
   max_think = 16,
   on_event = NULL
 )
+chat$text
 ```
 
 ## Token helpers

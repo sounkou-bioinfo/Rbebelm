@@ -48,7 +48,7 @@ turn <- bebel_generate(
 )
 
 paste0(text, collapse = "")
-turn[c("stop", "generated_tokens", "decode_tps")]
+turn[c("stop", "generated_tokens")]
 ```
 
 ## Handler lists
