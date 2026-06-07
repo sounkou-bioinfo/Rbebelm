@@ -31,6 +31,10 @@ $(RUST_STAMP):
 	RUST_TARGET="$(TARGET)"; \
 	CARGO_TARGET_FLAG="--target=$$RUST_TARGET"; \
 	RUSTFLAGS_ENV="CARGO_TARGET_$$(printf '%s' "$$RUST_TARGET" | tr '[:lower:]-' '[:upper:]_')_RUSTFLAGS"; \
+	R_HOME_RUST="$${R_HOME:-}"; \
+	if command -v cygpath >/dev/null 2>&1 && [ -n "$$R_HOME_RUST" ]; then R_HOME_RUST="$$(cygpath -m -s "$$R_HOME_RUST")"; fi; \
+	DYLIB_RUSTFLAGS=""; \
+	if [ -n "$$R_HOME_RUST" ]; then DYLIB_RUSTFLAGS="-Lnative=$$R_HOME_RUST/bin/x64 -ldylib=R"; fi; \
 	DYLIB_EXT=".dll"; \
 	BUILD_BACKENDS="scalar,avx2,avx512"; \
 	mkdir -p "$(BACKEND_DIR)" "$(TARGET_DIR)" "$(LIBDIR)"; \
@@ -46,7 +50,7 @@ $(RUST_STAMP):
 		export LIBRARY_PATH="$$mock_dir$${LIBRARY_PATH:+;$$LIBRARY_PATH}"; \
 		export CC="$(CC)"; \
 		export CFLAGS="$(CFLAGS)"; \
-		env "$$RUSTFLAGS_ENV=$(RUSTFLAGS) $$rustflags_extra -Lnative=$$mock_dir -Clink-arg=-L$$mock_dir" $(CARGO) build $$CARGO_FLAGS $$feature_args $$CARGO_TARGET_FLAG --lib --release --manifest-path=./rust/Cargo.toml --target-dir="$$target_dir"; \
+		env "$$RUSTFLAGS_ENV=$(RUSTFLAGS) $$rustflags_extra $$DYLIB_RUSTFLAGS -Lnative=$$mock_dir -Clink-arg=-L$$mock_dir" $(CARGO) build $$CARGO_FLAGS $$feature_args $$CARGO_TARGET_FLAG --lib --release --manifest-path=./rust/Cargo.toml --target-dir="$$target_dir"; \
 		rel="$$target_dir/$$RUST_TARGET/release"; \
 		for dylib in "$$rel/rbebelm_backend$$DYLIB_EXT" "$$rel/librbebelm_backend$$DYLIB_EXT"; do \
 			if [ -f "$$dylib" ]; then cp "$$dylib" "$(BACKEND_DIR)/rbebelm_backend_$$backend$$DYLIB_EXT"; break; fi; \
