@@ -5,7 +5,12 @@ Start an interactive Rbebelm console agent
 ## Usage
 
 ``` r
-bebel_r_agent_console(session, prompt = "bebel> ", max_steps = 4L)
+bebel_r_agent_console(
+  session,
+  prompt = "bebel> ",
+  max_steps = 4L,
+  show_stats = TRUE
+)
 ```
 
 ## Arguments
@@ -21,6 +26,10 @@ bebel_r_agent_console(session, prompt = "bebel> ", max_steps = 4L)
 - max_steps:
 
   Maximum assistant/tool iterations per user prompt.
+
+- show_stats:
+
+  Whether to print token/timing stats after each turn.
 
 ## Value
 

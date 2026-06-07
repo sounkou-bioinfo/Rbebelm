@@ -131,13 +131,26 @@ created with <code>allow_eval = TRUE</code>.</p>
 <p>For interactive use, start the console loop:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/bebel_r_agent_console.html">bebel_r_agent_console</a></span><span class="op">(</span><span class="va">agent</span><span class="op">)</span></span></code></pre></div>
+<p>Or use the one-call launcher, which loads the model and then enters
+the console:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/bebel_r_agent_start.html">bebel_r_agent_start</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"BEBELM_WEIGHTS_FILE"</span>, <span class="st">"LFM2.5-8B-A1B-Q4_K_M.gguf"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>The package also installs a small helper script in
+<code>inst/bin</code>:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">agent_bin</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"bin/rbebelm-agent"</span>, package <span class="op">=</span> <span class="st">"Rbebelm"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/system2.html" class="external-link">system2</a></span><span class="op">(</span><span class="va">agent_bin</span>, <span class="st">"--help"</span><span class="op">)</span></span></code></pre></div>
 <p>Console commands include <code>/tools</code>, <code>/r</code>,
 <code>/transcript</code>, <code>/clear</code>, and <code>/quit</code>.
 The <code>/r</code> command evaluates R directly in the same environment
 used by the agent’s R tools. For example, <code>/r x &lt;- mtcars</code>
-creates an object that <code>r_objects()</code> can later see. The
-<code>r_eval</code> tool is only advertised to the model when the
-session is created with <code>allow_eval = TRUE</code>.</p>
+creates an object that <code>r_objects()</code> can later see. Visible
+<code>/r</code> output is capped so large objects do not flood the chat
+prompt; assign objects or use summaries such as <code>/r str(x)</code>
+for inspection. The <code>r_eval</code> tool is only advertised to the
+model when the session is created with <code>allow_eval = TRUE</code>.
+The console prints a compact token/timing stats line after each user
+turn.</p>
 </div>
 <div class="section level2">
 <h2 id="json-rpc-sdk-surface">JSON-RPC SDK surface<a class="anchor" aria-label="anchor" href="#json-rpc-sdk-surface"></a>
@@ -146,7 +159,7 @@ session is created with <code>allow_eval = TRUE</code>.</p>
 is not an OpenAI-compatible API; it is an SDK surface for controlling
 the R-native agent. <code>nanonext</code> and <code>jsonlite</code> are
 optional dependencies used only by this server.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">server</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bebel_r_agent_rpc_server.html">bebel_r_agent_rpc_server</a></span><span class="op">(</span><span class="va">agent</span>, url <span class="op">=</span> <span class="st">"http://127.0.0.1:8080"</span><span class="op">)</span></span>
 <span><span class="va">server</span><span class="op">$</span><span class="fu">start</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co"># ... handle requests ...</span></span>
@@ -160,7 +173,7 @@ optional dependencies used only by this server.</p>
 <li><code>turn</code></li>
 </ul>
 <p>Example request body for <code>POST /rpc</code>:</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">{</span><span class="dt">"jsonrpc"</span><span class="fu">:</span><span class="st">"2.0"</span><span class="fu">,</span><span class="dt">"id"</span><span class="fu">:</span><span class="dv">1</span><span class="fu">,</span><span class="dt">"method"</span><span class="fu">:</span><span class="st">"turn"</span><span class="fu">,</span><span class="dt">"params"</span><span class="fu">:{</span><span class="dt">"prompt"</span><span class="fu">:</span><span class="st">"List objects in the R session."</span><span class="fu">}}</span></span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="fu">{</span><span class="dt">"jsonrpc"</span><span class="fu">:</span><span class="st">"2.0"</span><span class="fu">,</span><span class="dt">"id"</span><span class="fu">:</span><span class="dv">1</span><span class="fu">,</span><span class="dt">"method"</span><span class="fu">:</span><span class="st">"turn"</span><span class="fu">,</span><span class="dt">"params"</span><span class="fu">:{</span><span class="dt">"prompt"</span><span class="fu">:</span><span class="st">"List objects in the R session."</span><span class="fu">}}</span></span></code></pre></div>
 <p>The console and RPC layers share the same session, transcript, tool
 catalog, and BebeLM agent state.</p>
 </div>

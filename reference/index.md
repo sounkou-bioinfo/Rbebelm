@@ -68,6 +68,8 @@
   : Run one user turn through an Rbebelm R agent
 - [`bebel_r_agent_console()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_r_agent_console.md)
   : Start an interactive Rbebelm console agent
+- [`bebel_r_agent_start()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_r_agent_start.md)
+  : Launch an R-native Rbebelm console from weights
 - [`bebel_r_agent_rpc_server()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_r_agent_rpc_server.md)
   : Serve an Rbebelm R agent over JSON-RPC
 - [`bebel_r_agent_clear()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_r_agent_clear.md)
