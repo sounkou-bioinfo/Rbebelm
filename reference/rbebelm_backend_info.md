@@ -11,4 +11,4 @@ rbebelm_backend_info()
 ## Value
 
 A named list describing installed, supported, requested, and selected
-backends.
+backends, with class `rbebelmBackendInfo`.

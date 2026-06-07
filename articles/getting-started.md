@@ -9,23 +9,13 @@ local GGUF path before running the model examples.
 
 library(Rbebelm)
 rbebelm_backend_info()
-#> $dispatch_mode
-#> [1] "dynamic"
-#> 
-#> $requested_backend
-#> [1] "auto"
-#> 
-#> $selected_backend
-#> [1] "avx2"
-#> 
-#> $installed_backends
-#> [1] "scalar,avx2,avx512"
-#> 
-#> $supported_backends
-#> [1] "scalar,avx2"
-#> 
-#> $backend_loaded
-#> [1] TRUE
+#> <Rbebelm backend dispatch>
+#>   mode: dynamic 
+#>   requested: auto 
+#>   selected: avx2 
+#>   loaded: yes 
+#>   installed: scalar,avx2,avx512 
+#>   supported: scalar,avx2
 ```
 
 ## Load a model
@@ -67,26 +57,10 @@ turn1 <- bebel_assistant_turn(agent, on_event = NULL)
 bebel_append_user(agent, "And Italy?")
 turn2 <- bebel_assistant_turn(agent, on_event = NULL)
 
-turn1
-#> <BebeLM assistant turn>
-#>   stop: eos 
-#>   tokens: 26 generated; 19 prompt
-#>   prefill: 9.6 tok/s 
-#>   decode: 9.86 tok/s 
-#>   text:
-#> <think>
-#> The user asks: "What is the capital of France? Answer briefly."</think>
-#> The capital of France is Paris.
-turn2
-#> <BebeLM assistant turn>
-#>   stop: eos 
-#>   tokens: 26 generated; 13 prompt
-#>   prefill: 9.9 tok/s 
-#>   decode: 9.85 tok/s 
-#>   text:
-#> <think>
-#> The user asks: "And Italy?" Possibly they are continuing a conversation</think>
-#> The capital of Italy is Rome.
+turn1$text
+#> [1] "<think>\nThe user asks: \"What is the capital of France? Answer briefly.\"</think>\nThe capital of France is Paris."
+turn2$text
+#> [1] "<think>\nThe user asks: \"And Italy?\" Possibly they are continuing a conversation</think>\nThe capital of Italy is Rome."
 bebel_agent_info(agent)[c("history_tokens", "processed_tokens", "kv_tokens")]
 #> $history_tokens
 #> [1] 86
@@ -111,7 +85,7 @@ use
 
 ``` r
 
-bebel_chat(
+chat <- bebel_chat(
   model,
   "In one concise sentence, what does runtime backend dispatch do?",
   greedy = TRUE,
@@ -119,15 +93,8 @@ bebel_chat(
   max_think = 16,
   on_event = NULL
 )
-#> <BebeLM chat result>
-#>   stop: max_new 
-#>   tokens: 48 generated; 21 prompt
-#>   prefill: 9.8 tok/s 
-#>   decode: 9.98 tok/s 
-#>   text:
-#> <think>
-#> The user asks: "In one concise sentence, what does runtime backend dispatch</think>
-#> Runtime backend dispatch assigns incoming requests to the appropriate service or function based on dynamic criteria at execution time. That's one sentence. But they want "
+chat$text
+#> [1] "<think>\nThe user asks: \"In one concise sentence, what does runtime backend dispatch</think>\nRuntime backend dispatch assigns incoming requests to the appropriate service or function based on dynamic criteria at execution time. That's one sentence. But they want \""
 ```
 
 ## Token helpers

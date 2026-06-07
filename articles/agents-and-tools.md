@@ -29,6 +29,29 @@ bebel_agent_info(agent)[c("history_tokens", "processed_tokens", "kv_tokens")]
 #> 
 #> $kv_tokens
 #> [1] 80
+
+# Direct methods are available on the agent object.
+length(agent$history())
+#> [1] 82
+substr(agent$transcript(), 1, 80)
+#> [1] "<|startoftext|><|im_start|>user\nSay exactly: Paris noted.<|im_end|>\n<|im_start|>"
+
+# Helper functions provide the same operations.
+length(bebel_history(agent))
+#> [1] 82
+substr(bebel_transcript(agent), 1, 80)
+#> [1] "<|startoftext|><|im_start|>user\nSay exactly: Paris noted.<|im_end|>\n<|im_start|>"
+
+# Reset the conversation while keeping the loaded weights and generation settings.
+agent$clear()[c("history_tokens", "processed_tokens", "kv_tokens")]
+#> $history_tokens
+#> [1] 0
+#> 
+#> $processed_tokens
+#> [1] 0
+#> 
+#> $kv_tokens
+#> [1] 0
 ```
 
 Agents can also be driven with raw text and token ids.
@@ -146,24 +169,8 @@ agent <- bebel_agent(model, greedy = TRUE, max_gen = 64, max_think = 0)
 bebel_append_user(agent, tool_prompt)
 run <- bebel_agent_run(agent, tools = tools, context = ctx, hooks = hooks, max_steps = 2)
 
-run
-#> <bebelAgentRun>
-#>   turns: 2 
-#>   tool calls: 1 
-#> <BebeLM assistant turn>
-#>   stop: eos 
-#>   tokens: 34 generated; 31 prompt
-#>   prefill: 9.6 tok/s 
-#>   decode: 9.68 tok/s 
-#>   text:
-#> {
-#>   "tool_call": {
-#>     "name": "lookup_capital",
-#>     "parameters": {
-#>       "country": "Italy"
-#>     }
-#>   }
-#> }
+length(run$tool_calls)
+#> [1] 1
 ctx$log
 #> [1] "request lookup_capital"     "tool lookup_capital Italy" 
 #> [3] "result lookup_capital Rome"

@@ -14,23 +14,13 @@ rbebelm_cpuid_info()
 #>   NEON: no 
 #>   wasm simd128: no
 rbebelm_backend_info()
-#> $dispatch_mode
-#> [1] "dynamic"
-#> 
-#> $requested_backend
-#> [1] "auto"
-#> 
-#> $selected_backend
-#> [1] "avx2"
-#> 
-#> $installed_backends
-#> [1] "scalar,avx2,avx512"
-#> 
-#> $supported_backends
-#> [1] "scalar,avx2"
-#> 
-#> $backend_loaded
-#> [1] TRUE
+#> <Rbebelm backend dispatch>
+#>   mode: dynamic 
+#>   requested: auto 
+#>   selected: avx2 
+#>   loaded: yes 
+#>   installed: scalar,avx2,avx512 
+#>   supported: scalar,avx2
 ```
 
 ## Backend selection
@@ -57,23 +47,13 @@ rbebelm_backend_features()
 #>     NEON: no 
 #>     wasm simd128: no
 rbebelm_backend_info()
-#> $dispatch_mode
-#> [1] "dynamic"
-#> 
-#> $requested_backend
-#> [1] "auto"
-#> 
-#> $selected_backend
-#> [1] "avx2"
-#> 
-#> $installed_backends
-#> [1] "scalar,avx2,avx512"
-#> 
-#> $supported_backends
-#> [1] "scalar,avx2"
-#> 
-#> $backend_loaded
-#> [1] TRUE
+#> <Rbebelm backend dispatch>
+#>   mode: dynamic 
+#>   requested: auto 
+#>   selected: avx2 
+#>   loaded: yes 
+#>   installed: scalar,avx2,avx512 
+#>   supported: scalar,avx2
 ```
 
 Supported backend names depend on the platform. Typical native builds

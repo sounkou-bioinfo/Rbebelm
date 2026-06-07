@@ -82,8 +82,8 @@ turn1
 #> <BebeLM assistant turn>
 #>   stop: eos 
 #>   tokens: 26 generated; 19 prompt
-#>   prefill: 9.5 tok/s 
-#>   decode: 9.77 tok/s 
+#>   prefill: 9.6 tok/s 
+#>   decode: 9.67 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "What is the capital of France? Answer briefly."</think>
@@ -92,8 +92,8 @@ turn2
 #> <BebeLM assistant turn>
 #>   stop: eos 
 #>   tokens: 26 generated; 13 prompt
-#>   prefill: 9.7 tok/s 
-#>   decode: 9.73 tok/s 
+#>   prefill: 9.8 tok/s 
+#>   decode: 9.80 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "And Italy?" Possibly they are continuing a conversation</think>
@@ -168,8 +168,8 @@ result
 #> <BebeLM chat result>
 #>   stop: max_new 
 #>   tokens: 48 generated; 22 prompt
-#>   prefill: 9.9 tok/s 
-#>   decode: 9.97 tok/s 
+#>   prefill: 9.7 tok/s 
+#>   decode: 9.80 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "In one concise sentence, what does runtime SIMD</think>
@@ -195,8 +195,8 @@ raw_result
 #> <BebeLM generation result>
 #>   stop: max_new 
 #>   tokens: 24 generated; 8 prompt
-#>   prefill: 10.1 tok/s 
-#>   decode: 10.08 tok/s 
+#>   prefill: 9.7 tok/s 
+#>   decode: 10.15 tok/s 
 #>   text:
 #>  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However
 ```
@@ -268,8 +268,8 @@ run
 #> <BebeLM assistant turn>
 #>   stop: eos 
 #>   tokens: 34 generated; 31 prompt
-#>   prefill: 9.8 tok/s 
-#>   decode: 9.71 tok/s 
+#>   prefill: 9.9 tok/s 
+#>   decode: 9.77 tok/s 
 #>   text:
 #> {
 #>   "tool_call": {
@@ -394,23 +394,13 @@ rbebelm_backend_features()
 #>     NEON: no 
 #>     wasm simd128: no
 rbebelm_backend_info()
-#> $dispatch_mode
-#> [1] "dynamic"
-#> 
-#> $requested_backend
-#> [1] "auto"
-#> 
-#> $selected_backend
-#> [1] "avx2"
-#> 
-#> $installed_backends
-#> [1] "scalar,avx2,avx512"
-#> 
-#> $supported_backends
-#> [1] "scalar,avx2"
-#> 
-#> $backend_loaded
-#> [1] TRUE
+#> <Rbebelm backend dispatch>
+#>   mode: dynamic 
+#>   requested: auto 
+#>   selected: avx2 
+#>   loaded: yes 
+#>   installed: scalar,avx2,avx512 
+#>   supported: scalar,avx2
 ```
 
 ## Development

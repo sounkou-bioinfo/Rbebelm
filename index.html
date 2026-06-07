@@ -111,8 +111,8 @@
 <span><span class="co">#&gt; &lt;BebeLM assistant turn&gt;</span></span>
 <span><span class="co">#&gt;   stop: eos </span></span>
 <span><span class="co">#&gt;   tokens: 26 generated; 19 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 9.5 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 9.77 tok/s </span></span>
+<span><span class="co">#&gt;   prefill: 9.6 tok/s </span></span>
+<span><span class="co">#&gt;   decode: 9.67 tok/s </span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; &lt;think&gt;</span></span>
 <span><span class="co">#&gt; The user asks: "What is the capital of France? Answer briefly."&lt;/think&gt;</span></span>
@@ -121,8 +121,8 @@
 <span><span class="co">#&gt; &lt;BebeLM assistant turn&gt;</span></span>
 <span><span class="co">#&gt;   stop: eos </span></span>
 <span><span class="co">#&gt;   tokens: 26 generated; 13 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 9.7 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 9.73 tok/s </span></span>
+<span><span class="co">#&gt;   prefill: 9.8 tok/s </span></span>
+<span><span class="co">#&gt;   decode: 9.80 tok/s </span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; &lt;think&gt;</span></span>
 <span><span class="co">#&gt; The user asks: "And Italy?" Possibly they are continuing a conversation&lt;/think&gt;</span></span>
@@ -178,8 +178,8 @@
 <span><span class="co">#&gt; &lt;BebeLM chat result&gt;</span></span>
 <span><span class="co">#&gt;   stop: max_new </span></span>
 <span><span class="co">#&gt;   tokens: 48 generated; 22 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 9.9 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 9.97 tok/s </span></span>
+<span><span class="co">#&gt;   prefill: 9.7 tok/s </span></span>
+<span><span class="co">#&gt;   decode: 9.80 tok/s </span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; &lt;think&gt;</span></span>
 <span><span class="co">#&gt; The user asks: "In one concise sentence, what does runtime SIMD&lt;/think&gt;</span></span>
@@ -200,8 +200,8 @@
 <span><span class="co">#&gt; &lt;BebeLM generation result&gt;</span></span>
 <span><span class="co">#&gt;   stop: max_new </span></span>
 <span><span class="co">#&gt;   tokens: 24 generated; 8 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 10.1 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 10.08 tok/s </span></span>
+<span><span class="co">#&gt;   prefill: 9.7 tok/s </span></span>
+<span><span class="co">#&gt;   decode: 10.15 tok/s </span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt;  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However</span></span></code></pre></div>
 <p>Agents can also be driven at the lower level with raw text or token ids:</p>
@@ -260,8 +260,8 @@
 <span><span class="co">#&gt; &lt;BebeLM assistant turn&gt;</span></span>
 <span><span class="co">#&gt;   stop: eos </span></span>
 <span><span class="co">#&gt;   tokens: 34 generated; 31 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 9.8 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 9.71 tok/s </span></span>
+<span><span class="co">#&gt;   prefill: 9.9 tok/s </span></span>
+<span><span class="co">#&gt;   decode: 9.77 tok/s </span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; {</span></span>
 <span><span class="co">#&gt;   "tool_call": {</span></span>
@@ -345,23 +345,13 @@
 <span><span class="co">#&gt;     NEON: no </span></span>
 <span><span class="co">#&gt;     wasm simd128: no</span></span>
 <span><span class="fu"><a href="reference/rbebelm_backend_info.html">rbebelm_backend_info</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; $dispatch_mode</span></span>
-<span><span class="co">#&gt; [1] "dynamic"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $requested_backend</span></span>
-<span><span class="co">#&gt; [1] "auto"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $selected_backend</span></span>
-<span><span class="co">#&gt; [1] "avx2"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $installed_backends</span></span>
-<span><span class="co">#&gt; [1] "scalar,avx2,avx512"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $supported_backends</span></span>
-<span><span class="co">#&gt; [1] "scalar,avx2"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $backend_loaded</span></span>
-<span><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;Rbebelm backend dispatch&gt;</span></span>
+<span><span class="co">#&gt;   mode: dynamic </span></span>
+<span><span class="co">#&gt;   requested: auto </span></span>
+<span><span class="co">#&gt;   selected: avx2 </span></span>
+<span><span class="co">#&gt;   loaded: yes </span></span>
+<span><span class="co">#&gt;   installed: scalar,avx2,avx512 </span></span>
+<span><span class="co">#&gt;   supported: scalar,avx2</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="development">Development<a class="anchor" aria-label="anchor" href="#development"></a>

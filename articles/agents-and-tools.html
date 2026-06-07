@@ -102,7 +102,30 @@ generation.</p>
 <span><span class="co">#&gt; [1] 80</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $kv_tokens</span></span>
-<span><span class="co">#&gt; [1] 80</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 80</span></span>
+<span></span>
+<span><span class="co"># Direct methods are available on the agent object.</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">agent</span><span class="op">$</span><span class="fu">history</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] 82</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/substr.html" class="external-link">substr</a></span><span class="op">(</span><span class="va">agent</span><span class="op">$</span><span class="fu">transcript</span><span class="op">(</span><span class="op">)</span>, <span class="fl">1</span>, <span class="fl">80</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] "&lt;|startoftext|&gt;&lt;|im_start|&gt;user\nSay exactly: Paris noted.&lt;|im_end|&gt;\n&lt;|im_start|&gt;"</span></span>
+<span></span>
+<span><span class="co"># Helper functions provide the same operations.</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="fu"><a href="../reference/bebel_history.html">bebel_history</a></span><span class="op">(</span><span class="va">agent</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] 82</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/substr.html" class="external-link">substr</a></span><span class="op">(</span><span class="fu"><a href="../reference/bebel_transcript.html">bebel_transcript</a></span><span class="op">(</span><span class="va">agent</span><span class="op">)</span>, <span class="fl">1</span>, <span class="fl">80</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] "&lt;|startoftext|&gt;&lt;|im_start|&gt;user\nSay exactly: Paris noted.&lt;|im_end|&gt;\n&lt;|im_start|&gt;"</span></span>
+<span></span>
+<span><span class="co"># Reset the conversation while keeping the loaded weights and generation settings.</span></span>
+<span><span class="va">agent</span><span class="op">$</span><span class="fu">clear</span><span class="op">(</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"history_tokens"</span>, <span class="st">"processed_tokens"</span>, <span class="st">"kv_tokens"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt; $history_tokens</span></span>
+<span><span class="co">#&gt; [1] 0</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $processed_tokens</span></span>
+<span><span class="co">#&gt; [1] 0</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $kv_tokens</span></span>
+<span><span class="co">#&gt; [1] 0</span></span></code></pre></div>
 <p>Agents can also be driven with raw text and token ids.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">raw_agent</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bebel_agent.html">bebel_agent</a></span><span class="op">(</span><span class="va">model</span>, greedy <span class="op">=</span> <span class="cn">TRUE</span>, max_gen <span class="op">=</span> <span class="fl">16</span>, max_think <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
@@ -209,24 +232,8 @@ path.</p>
 <span><span class="fu"><a href="../reference/bebel_append_user.html">bebel_append_user</a></span><span class="op">(</span><span class="va">agent</span>, <span class="va">tool_prompt</span><span class="op">)</span></span>
 <span><span class="va">run</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bebel_agent_run.html">bebel_agent_run</a></span><span class="op">(</span><span class="va">agent</span>, tools <span class="op">=</span> <span class="va">tools</span>, context <span class="op">=</span> <span class="va">ctx</span>, hooks <span class="op">=</span> <span class="va">hooks</span>, max_steps <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">run</span></span>
-<span><span class="co">#&gt; &lt;bebelAgentRun&gt;</span></span>
-<span><span class="co">#&gt;   turns: 2 </span></span>
-<span><span class="co">#&gt;   tool calls: 1 </span></span>
-<span><span class="co">#&gt; &lt;BebeLM assistant turn&gt;</span></span>
-<span><span class="co">#&gt;   stop: eos </span></span>
-<span><span class="co">#&gt;   tokens: 34 generated; 31 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 9.6 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 9.68 tok/s </span></span>
-<span><span class="co">#&gt;   text:</span></span>
-<span><span class="co">#&gt; {</span></span>
-<span><span class="co">#&gt;   "tool_call": {</span></span>
-<span><span class="co">#&gt;     "name": "lookup_capital",</span></span>
-<span><span class="co">#&gt;     "parameters": {</span></span>
-<span><span class="co">#&gt;       "country": "Italy"</span></span>
-<span><span class="co">#&gt;     }</span></span>
-<span><span class="co">#&gt;   }</span></span>
-<span><span class="co">#&gt; }</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">run</span><span class="op">$</span><span class="va">tool_calls</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] 1</span></span>
 <span><span class="va">ctx</span><span class="op">$</span><span class="va">log</span></span>
 <span><span class="co">#&gt; [1] "request lookup_capital"     "tool lookup_capital Italy" </span></span>
 <span><span class="co">#&gt; [3] "result lookup_capital Rome"</span></span></code></pre></div>

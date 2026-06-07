@@ -1,6 +1,7 @@
 # Decode a BebeLM agent transcript
 
-Decode a BebeLM agent transcript
+Decodes the agent's full token transcript. This is the helper form of
+`agent$transcript()`.
 
 ## Usage
 
