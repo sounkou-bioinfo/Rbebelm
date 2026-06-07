@@ -12,7 +12,7 @@ tools and `/r` command share `env`.
 ``` r
 bebel_r_agent_start(
   weights = Sys.getenv("BEBELM_WEIGHTS_FILE", "LFM2.5-8B-A1B-Q4_K_M.gguf"),
-  num_threads = as.integer(Sys.getenv("BEBELM_NUM_THREADS", "2")),
+  num_threads = as.numeric(Sys.getenv("BEBELM_NUM_THREADS", "2")),
   env = .GlobalEnv,
   cwd = getwd(),
   allow_eval = TRUE,
