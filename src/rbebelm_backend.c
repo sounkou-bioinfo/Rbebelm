@@ -560,6 +560,7 @@ SEXP Rbebelm_BebelModel_load_ffi(SEXP c_arg__path, SEXP c_arg__num_threads) { Rb
 
 
 
+
 SEXP Rbebelm_set_backend_impl(SEXP backend_s) {
     if (TYPEOF(backend_s) != STRSXP || XLENGTH(backend_s) != 1 || STRING_ELT(backend_s, 0) == NA_STRING) {
         Rf_error("backend must be a single non-NA string");

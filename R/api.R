@@ -385,8 +385,8 @@ parse_bebel_call_args <- function(args) {
 #' Parse a BebeLM tool call block
 #'
 #' The default parser accepts JSON objects such as `{\"name\": \"tool\", \"arguments\": {...}}`
-#' when `jsonlite` is installed, simple `name({...})` calls, and BebeLM-style
-#' bracketed calls such as `[name(key=\"value\")]`. Pass a custom parser to
+#' when `jsonlite` is installed, simple `name({...})` calls, and bracketed
+#' BebeLM calls such as `[name(key=\"value\")]`. Pass a custom parser to
 #' `bebel_agent_run()` for model- or prompt-specific formats.
 #'
 #' @param content Accumulated content between BebeLM tool-call delimiters.

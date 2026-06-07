@@ -22,7 +22,7 @@ has_weights <- nzchar(weights_file) && file.exists(weights_file)
 [`maximecb/bebelm`](https://github.com/maximecb/bebelm), a pure-Rust CPU-only
 implementation of Liquid AI LFM2.5-8B-A1B inference. The R package uses
 [`savvy`](https://github.com/yutannihilation/savvy) for the R/Rust boundary and
-an Rsassy-style runtime backend layout for portable SIMD dispatch.
+a runtime backend layout for portable SIMD dispatch.
 
 The package is designed for interactive LLM use: generation streams tokens to the
 R console as soon as they are decoded, while the function still returns the final
@@ -95,10 +95,22 @@ bebel_agent_info(agent)[c("history_tokens", "processed_tokens", "kv_tokens")]
 ```
 
 A `BebelAgent` owns the token transcript and decode caches while sharing the
-loaded model weights. Later turns only prefill newly appended tokens. Use
-`bebel_clear(agent)` to reset the transcript and caches without reloading the
-GGUF. For an ellmer-style terminal loop, call `bebel_live_console(agent)` or
-`bebel_live_console(model)` in an interactive R session.
+loaded model weights. Later turns only prefill newly appended tokens. The direct
+methods `agent$history()`, `agent$transcript()`, and `agent$clear()` expose the
+same operations as `bebel_history(agent)`, `bebel_transcript(agent)`, and
+`bebel_clear(agent)`.
+
+```{r agent-state, eval=has_weights}
+length(agent$history())
+substr(agent$transcript(), 1, 80)
+identical(agent$history(), bebel_history(agent))
+
+reset_info <- agent$clear()
+reset_info[c("history_tokens", "processed_tokens", "kv_tokens")]
+```
+
+For an interactive terminal loop, call `bebel_live_console(agent)` or
+`bebel_live_console(model)` in an R session.
 
 ```{r live-console}
 #| eval: false
@@ -267,7 +279,7 @@ thinking blocks, answer text blocks, tool-list blocks, tool-call blocks, and
 `done`. Delta events contain `delta`, `id`, and `index`; control start/end events
 include the delimiter token `id` and `marker`; end events contain accumulated
 `content`. Console printing is just the default event handler. Use
-`on_event = NULL` for silent batch-style generation.
+`on_event = NULL` for silent batch generation.
 
 ## webR / wasm
 
