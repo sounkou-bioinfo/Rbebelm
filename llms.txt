@@ -353,8 +353,10 @@ the same environment used by the agent’s R tools; for example
 `/r x <- mtcars` creates an object that `r_objects()` can later see.
 Visible `/r` output is capped so large objects do not flood the chat
 prompt; assign objects or use summaries such as `/r str(x)` for
-inspection. The `r_eval` tool is only advertised to the model when
-`allow_eval = TRUE`.
+inspection. For plots in an `Rscript` terminal, use `/rplot`,
+e.g. `/rplot plot(mpg ~ cyl, mtcars)`, which saves a PNG under
+`rbebelm-plots/`. The `r_eval` and `r_plot` tools are only advertised to
+the model when `allow_eval = TRUE`.
 
 ``` r
 

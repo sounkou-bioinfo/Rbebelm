@@ -5,7 +5,7 @@ Convenience wrapper for loading a model, creating a
 and entering
 [`bebel_r_agent_console()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_r_agent_console.md).
 This keeps the loaded model object local to the launcher while the agent
-tools and `/r` command share `env`.
+tools, `/r`, and `/rplot` commands share `env`.
 
 ## Usage
 
@@ -45,15 +45,17 @@ bebel_r_agent_start(
 
 - env:
 
-  Environment shared by `/r`, `r_objects`, and optional `r_eval`.
+  Environment shared by `/r`, `/rplot`, `r_objects`, and optional
+  code-evaluation tools.
 
 - cwd:
 
-  Working directory for file tools.
+  Working directory for file tools and `/rplot` output.
 
 - allow_eval:
 
-  Whether to include an `r_eval` tool that the model can call.
+  Whether to include `r_eval` and `r_plot` tools that the model can
+  call.
 
 - greedy, max_gen, max_context, max_think, temperature, top_k,
   repeat_penalty:

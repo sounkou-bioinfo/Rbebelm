@@ -1,8 +1,9 @@
 # Built-in R session tools for the Rbebelm agent layer
 
 The default catalog is intentionally small. It exposes read-only file
-and R session inspection tools plus optional R evaluation. These are
-ordinary R functions and run in the current R process.
+and R session inspection tools plus optional R evaluation and plot
+rendering. These are ordinary R functions and run in the current R
+process.
 
 ## Usage
 
@@ -19,16 +20,16 @@ bebel_default_r_tools(
 
 - env:
 
-  Environment used by `r_objects` and `r_eval`.
+  Environment used by `r_objects`, `r_eval`, and `r_plot`.
 
 - cwd:
 
-  Working directory for file tools.
+  Working directory for file and plot tools.
 
 - allow_eval:
 
-  Whether to include the `r_eval` tool. If `FALSE`, `r_eval` is not
-  advertised to the model.
+  Whether to include the `r_eval` and `r_plot` tools. If `FALSE`,
+  code-evaluation tools are not advertised to the model.
 
 - max_chars:
 

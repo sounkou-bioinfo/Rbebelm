@@ -141,16 +141,19 @@ the console:</p>
 <code class="sourceCode R"><span><span class="va">agent_bin</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"bin/rbebelm-agent"</span>, package <span class="op">=</span> <span class="st">"Rbebelm"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/system2.html" class="external-link">system2</a></span><span class="op">(</span><span class="va">agent_bin</span>, <span class="st">"--help"</span><span class="op">)</span></span></code></pre></div>
 <p>Console commands include <code>/tools</code>, <code>/r</code>,
-<code>/transcript</code>, <code>/clear</code>, and <code>/quit</code>.
-The <code>/r</code> command evaluates R directly in the same environment
-used by the agent’s R tools. For example, <code>/r x &lt;- mtcars</code>
-creates an object that <code>r_objects()</code> can later see. Visible
-<code>/r</code> output is capped so large objects do not flood the chat
-prompt; assign objects or use summaries such as <code>/r str(x)</code>
-for inspection. The <code>r_eval</code> tool is only advertised to the
-model when the session is created with <code>allow_eval = TRUE</code>.
-The console prints a compact token/timing stats line after each user
-turn.</p>
+<code>/rplot</code>, <code>/transcript</code>, <code>/clear</code>, and
+<code>/quit</code>. The <code>/r</code> command evaluates R directly in
+the same environment used by the agent’s R tools. For example,
+<code>/r x &lt;- mtcars</code> creates an object that
+<code>r_objects()</code> can later see. Visible <code>/r</code> output
+is capped so large objects do not flood the chat prompt; assign objects
+or use summaries such as <code>/r str(x)</code> for inspection. In an
+<code>Rscript</code> terminal, use
+<code>/rplot plot(mpg ~ cyl, mtcars)</code> to save graphics as PNG
+files under <code>rbebelm-plots/</code>. The <code>r_eval</code> and
+<code>r_plot</code> tools are only advertised to the model when the
+session is created with <code>allow_eval = TRUE</code>. The console
+prints a compact token/timing stats line after each user turn.</p>
 </div>
 <div class="section level2">
 <h2 id="json-rpc-sdk-surface">JSON-RPC SDK surface<a class="anchor" aria-label="anchor" href="#json-rpc-sdk-surface"></a>
