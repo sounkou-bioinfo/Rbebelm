@@ -11,6 +11,7 @@
 ^README\.html$
 ^docs$
 ^\.github$
+^vignettes-raw$
 
 ^src/rust/\.cargo$
 ^src/Makevars$

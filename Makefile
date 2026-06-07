@@ -12,6 +12,7 @@ help:
 	  '  make test        run tinytest package tests' \
 	  '  make build       build source tarball' \
 	  '  make check       run R CMD check --no-manual' \
+	  '  make vignettes   precompile vignettes-raw/ into vignettes/' \
 	  '  make site        build pkgdown site' \
 	  '  make clean       remove build artifacts'
 
@@ -46,6 +47,9 @@ test: dev-install
 cargo-check:
 	cd src/rust && cargo check --features portable
 
+vignettes:
+	R -e 'if (requireNamespace("rawvignette", quietly = TRUE)) { rawvignette::precompile_raw_vignettes() } else { stop("rawvignette is required; install with remotes::install_github(\"matthewkling/rawvignette\")") }'
+
 site:
 	R -e 'if (requireNamespace("pkgdown", quietly = TRUE)) { pkgdown::build_site() } else { stop("pkgdown is required") }'
 
@@ -53,4 +57,4 @@ clean:
 	@rm -rf $(PKGNAME)_$(PKGVERS).tar.gz $(PKGNAME).Rcheck
 	@rm -rf src/rust/target src/rbebelm-backends src/backends src/vendor src/.cargo
 
-.PHONY: all help rd rdm build check install_deps dev-install install test cargo-check site clean
+.PHONY: all help rd rdm build check install_deps dev-install install test cargo-check vignettes site clean

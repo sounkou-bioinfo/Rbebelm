@@ -304,7 +304,10 @@ rbebelm_backend_info()
 
 ## Development
 
-Common development commands from the repository root:
+Common development commands from the repository root. The `make vignettes`
+target uses `rawvignette`; install it with
+`remotes::install_github("matthewkling/rawvignette")` when editing
+`vignettes-raw/`.
 
 ```sh
 make rd           # regenerate savvy wrappers, dispatch init, NAMESPACE, and man/*.Rd
@@ -312,6 +315,7 @@ make rdm          # regenerate README.md from evaluated README.Rmd
 make dev-install  # install the package locally from source
 make test         # run tinytest tests
 make check        # build and run R CMD check --no-manual
+make vignettes    # precompile vignettes-raw/ into vignettes/ with rawvignette
 make site         # build the pkgdown site
 make clean        # remove generated build artifacts
 ```

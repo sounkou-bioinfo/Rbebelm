@@ -90,7 +90,7 @@ turn1
 #>   stop: eos 
 #>   tokens: 26 generated; 19 prompt
 #>   prefill: 9.3 tok/s 
-#>   decode: 9.55 tok/s 
+#>   decode: 9.70 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "What is the capital of France? Answer briefly."</think>
@@ -99,7 +99,7 @@ turn2
 #> <BebeLM assistant turn>
 #>   stop: eos 
 #>   tokens: 26 generated; 13 prompt
-#>   prefill: 9.8 tok/s 
+#>   prefill: 9.7 tok/s 
 #>   decode: 9.67 tok/s 
 #>   text:
 #> <think>
@@ -171,8 +171,8 @@ result
 #> <BebeLM chat result>
 #>   stop: max_new 
 #>   tokens: 48 generated; 22 prompt
-#>   prefill: 9.5 tok/s 
-#>   decode: 9.90 tok/s 
+#>   prefill: 9.7 tok/s 
+#>   decode: 9.75 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "In one concise sentence, what does runtime SIMD</think>
@@ -196,8 +196,8 @@ raw_result
 #> <BebeLM generation result>
 #>   stop: max_new 
 #>   tokens: 24 generated; 8 prompt
-#>   prefill: 9.5 tok/s 
-#>   decode: 10.16 tok/s 
+#>   prefill: 9.6 tok/s 
+#>   decode: 10.11 tok/s 
 #>   text:
 #>  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However
 ```
@@ -268,7 +268,7 @@ run
 #>   stop: eos 
 #>   tokens: 34 generated; 31 prompt
 #>   prefill: 9.8 tok/s 
-#>   decode: 9.56 tok/s 
+#>   decode: 9.58 tok/s 
 #>   text:
 #> {
 #>   "tool_call": {
@@ -430,7 +430,10 @@ rbebelm_backend_info()
 
 ## Development
 
-Common development commands from the repository root:
+Common development commands from the repository root. The
+`make vignettes` target uses `rawvignette`; install it with
+`remotes::install_github("matthewkling/rawvignette")` when editing
+`vignettes-raw/`.
 
 ``` sh
 make rd           # regenerate savvy wrappers, dispatch init, NAMESPACE, and man/*.Rd
@@ -438,6 +441,7 @@ make rdm          # regenerate README.md from evaluated README.Rmd
 make dev-install  # install the package locally from source
 make test         # run tinytest tests
 make check        # build and run R CMD check --no-manual
+make vignettes    # precompile vignettes-raw/ into vignettes/ with rawvignette
 make site         # build the pkgdown site
 make clean        # remove generated build artifacts
 ```
