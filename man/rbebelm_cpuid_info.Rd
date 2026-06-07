@@ -7,7 +7,7 @@
 rbebelm_cpuid_info()
 }
 \value{
-A named list of logical CPU feature checks.
+A named list of logical CPU feature checks with class \code{rbebelmCpuidInfo}.
 }
 \description{
 Inspect CPU SIMD support used by backend dispatch

@@ -20,10 +20,45 @@ rbebelm_backend_info <- function() {
 
 #' Inspect CPU SIMD support used by backend dispatch
 #'
-#' @return A named list of logical CPU feature checks.
+#' @return A named list of logical CPU feature checks with class `rbebelmCpuidInfo`.
 #' @export
 rbebelm_cpuid_info <- function() {
-  .Call(Rbebelm_cpuid_info_impl)
+  structure(.Call(Rbebelm_cpuid_info_impl), class = c("rbebelmCpuidInfo", "list"))
+}
+
+# Keep this wrapper in R/api.R so the generated savvy function gets a package
+# class and a readable print method without editing R/000-wrappers.R.
+rbebelm_backend_features <- function() {
+  structure(.Call(savvy_rbebelm_backend_features__impl), class = c("rbebelmBackendFeatures", "list"))
+}
+
+format_bebel_yes_no <- function(x) {
+  ifelse(isTRUE(x), "yes", "no")
+}
+
+#' @export
+print.rbebelmCpuidInfo <- function(x, ...) {
+  cat("<Rbebelm CPU features>\n")
+  cat("  x86_64-v3:", format_bebel_yes_no(x$cpu_x86_64_v3), "\n")
+  cat("  x86_64-v4:", format_bebel_yes_no(x$cpu_x86_64_v4), "\n")
+  cat("  NEON:", format_bebel_yes_no(x$cpu_neon), "\n")
+  cat("  wasm simd128:", format_bebel_yes_no(x$cpu_wasm_simd128), "\n")
+  invisible(x)
+}
+
+#' @export
+print.rbebelmBackendFeatures <- function(x, ...) {
+  cat("<Rbebelm backend features>\n")
+  cat("  backend:", x$backend, "\n")
+  cat("  target:", paste0(x$target_arch, "-", x$target_os), "\n")
+  cat("  Rust crate:", paste0(x$rust_package, " ", x$rust_package_version), "\n")
+  cat("  native SIMD feature:", format_bebel_yes_no(x$native_simd_feature), "\n")
+  cat("  compiled features:\n")
+  cat("    AVX2:", format_bebel_yes_no(x$compiled_avx2), "\n")
+  cat("    AVX-512F:", format_bebel_yes_no(x$compiled_avx512f), "\n")
+  cat("    NEON:", format_bebel_yes_no(x$compiled_neon), "\n")
+  cat("    wasm simd128:", format_bebel_yes_no(x$compiled_wasm_simd128), "\n")
+  invisible(x)
 }
 
 #' Load a BebeLM GGUF model

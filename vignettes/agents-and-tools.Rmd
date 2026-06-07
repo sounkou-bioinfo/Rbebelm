@@ -169,7 +169,7 @@ run
 #>   stop: eos 
 #>   tokens: 34 generated; 31 prompt
 #>   prefill: 9.6 tok/s 
-#>   decode: 9.40 tok/s 
+#>   decode: 9.68 tok/s 
 #>   text:
 #> {
 #>   "tool_call": {
