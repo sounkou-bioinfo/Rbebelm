@@ -76,6 +76,18 @@ expect_true("1" %in% cap_out)
 expect_true("2" %in% cap_out)
 expect_true(!"5" %in% cap_out)
 
+line_con <- textConnection("hello\n", open = "r")
+line_out <- capture.output(line <- Rbebelm:::bebel_console_read_line("test> ", input_con = line_con))
+close(line_con)
+expect_equal(line, "hello")
+expect_true(any(grepl("test> ", line_out, fixed = TRUE)))
+
+r_con <- textConnection(c("1 +", "1"), open = "r")
+r_out <- capture.output(exprs <- Rbebelm:::bebel_console_read_r(input_con = r_con))
+close(r_con)
+expect_equal(eval(exprs), 2)
+expect_true(any(grepl("R> ", r_out, fixed = TRUE)))
+
 resp <- Rbebelm:::bebel_rpc_response(1L, result = list(ok = TRUE))
 expect_equal(resp$jsonrpc, "2.0")
 expect_true(resp$result$ok)
@@ -102,7 +114,8 @@ expect_equal(Rbebelm:::bebel_numeric_or_null(300L), 300)
 
 agent_bin <- system.file("bin/rbebelm-agent", package = "Rbebelm")
 expect_true(file.exists(agent_bin))
-help_out <- system2(agent_bin, "--help", stdout = TRUE)
+rscript <- file.path(R.home("bin"), if (.Platform$OS.type == "windows") "Rscript.exe" else "Rscript")
+help_out <- system2(rscript, c(agent_bin, "--help"), stdout = TRUE, stderr = TRUE)
 expect_true(any(grepl("Usage: rbebelm-agent", help_out, fixed = TRUE)))
 
 unlink(td, recursive = TRUE)

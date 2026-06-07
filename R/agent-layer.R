@@ -512,12 +512,32 @@ bebel_console_input_complete <- function(text) {
   })
 }
 
-bebel_console_read_r <- function(seed = "") {
+bebel_console_open_input <- function() {
+  if (interactive()) NULL else file("stdin", open = "r")
+}
+
+bebel_console_close_input <- function(con) {
+  if (!is.null(con)) close(con)
+  invisible(NULL)
+}
+
+bebel_console_read_line <- function(prompt = "", input_con = NULL) {
+  if (is.null(input_con)) {
+    readline(prompt)
+  } else {
+    cat(prompt)
+    utils::flush.console()
+    line <- readLines(input_con, n = 1L, warn = FALSE)
+    if (!length(line)) character() else line[[1L]]
+  }
+}
+
+bebel_console_read_r <- function(seed = "", input_con = NULL) {
   lines <- character()
   if (nzchar(seed)) lines <- seed
   repeat {
     if (length(lines) && bebel_console_input_complete(lines)) return(parse(text = lines, srcfile = NULL))
-    line <- readline(if (length(lines)) "R+ " else "R> ")
+    line <- bebel_console_read_line(if (length(lines)) "R+ " else "R> ", input_con = input_con)
     if (!length(line)) return(NULL)
     lines <- c(lines, line)
   }
@@ -613,12 +633,14 @@ bebel_r_agent_console <- function(session, prompt = "bebel> ", max_steps = 4L, s
   if (is.na(blank_limit) || blank_limit < 1) blank_limit <- 10
   cat("RbebelM R agent. Commands: /help, /tools, /r, /transcript, /clear, /quit\n")
   cat("Type a message and press Enter; blank lines are ignored.\n")
+  input_con <- bebel_console_open_input()
+  on.exit(bebel_console_close_input(input_con), add = TRUE)
   blank_count <- 0L
   repeat {
     quit <- FALSE
     interrupted <- FALSE
     tryCatch({
-      line <- readline(prompt)
+      line <- bebel_console_read_line(prompt, input_con = input_con)
       if (!length(line)) {
         quit <- TRUE
       } else {
@@ -645,7 +667,7 @@ bebel_r_agent_console <- function(session, prompt = "bebel> ", max_steps = 4L, s
               print(bebel_agent_tool_catalog(session$tools))
             } else if (cmd == "/r") {
               code <- trimws(sub("^/r\\s*", "", line_trim))
-              exprs <- tryCatch(bebel_console_read_r(code), error = function(e) {
+              exprs <- tryCatch(bebel_console_read_r(code, input_con = input_con), error = function(e) {
                 message("R parse error: ", conditionMessage(e))
                 NULL
               })
