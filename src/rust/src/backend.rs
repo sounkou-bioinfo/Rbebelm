@@ -7,6 +7,8 @@ pub fn backend_name() -> &'static str {
         "avx512"
     } else if cfg!(target_feature = "avx2") {
         "avx2"
+    } else if cfg!(target_feature = "dotprod") {
+        "dotprod"
     } else if cfg!(target_feature = "neon") {
         "neon"
     } else if cfg!(target_feature = "simd128") {
@@ -20,7 +22,7 @@ pub fn backend_name() -> &'static str {
 /// @export
 #[savvy]
 pub fn rbebelm_backend_features() -> savvy::Result<savvy::Sexp> {
-    let mut out = OwnedListSexp::new(10, true)?;
+    let mut out = OwnedListSexp::new(11, true)?;
     out.set_name_and_value(0, "backend", str_scalar(backend_name())?)?;
     out.set_name_and_value(1, "target_arch", str_scalar(std::env::consts::ARCH)?)?;
     out.set_name_and_value(2, "target_os", str_scalar(std::env::consts::OS)?)?;
@@ -30,6 +32,7 @@ pub fn rbebelm_backend_features() -> savvy::Result<savvy::Sexp> {
     out.set_name_and_value(6, "compiled_avx2", bool_scalar(cfg!(target_feature = "avx2"))?)?;
     out.set_name_and_value(7, "compiled_avx512f", bool_scalar(cfg!(target_feature = "avx512f"))?)?;
     out.set_name_and_value(8, "compiled_neon", bool_scalar(cfg!(target_feature = "neon"))?)?;
-    out.set_name_and_value(9, "compiled_wasm_simd128", bool_scalar(cfg!(target_feature = "simd128"))?)?;
+    out.set_name_and_value(9, "compiled_dotprod", bool_scalar(cfg!(target_feature = "dotprod"))?)?;
+    out.set_name_and_value(10, "compiled_wasm_simd128", bool_scalar(cfg!(target_feature = "simd128"))?)?;
     out.into()
 }

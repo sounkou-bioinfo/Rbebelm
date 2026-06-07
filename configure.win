@@ -15,7 +15,6 @@ RUSTC_VERSION="$(rustc --version || true)"
 echo "using Rust package manager: '${CARGO_VERSION}'"
 echo "using Rust compiler: '${RUSTC_VERSION}'"
 
-sed \
-  -e "s|@RBEBELM_PKG_LIBS@||g" \
-  -e "s|@RBEBELM_EMSCRIPTEN_OBJECTS@||g" \
-  src/Makevars.in > src/Makevars.win
+rustup target add x86_64-pc-windows-gnu >/dev/null 2>&1 || true
+
+cp src/Makevars.win.in src/Makevars.win

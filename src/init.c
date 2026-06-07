@@ -54,6 +54,16 @@ SEXP savvy_rbebelm_backend_features__impl(void) {
     return handle_result(res);
 }
 
+SEXP savvy_rbebelm_json_parse__impl(SEXP c_arg__text) {
+    SEXP res = Rbebelm_json_parse_ffi(c_arg__text);
+    return handle_result(res);
+}
+
+SEXP savvy_rbebelm_json_tool_result__impl(SEXP c_arg__tool, SEXP c_arg__ok, SEXP c_arg__result, SEXP c_arg__error) {
+    SEXP res = Rbebelm_json_tool_result_ffi(c_arg__tool, c_arg__ok, c_arg__result, c_arg__error);
+    return handle_result(res);
+}
+
 SEXP savvy_BebelAgent_append__impl(SEXP self__, SEXP c_arg__text) {
     SEXP res = Rbebelm_BebelAgent_append_ffi(self__, c_arg__text);
     return handle_result(res);
@@ -149,6 +159,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"savvy_bebel_event_types__impl", (DL_FUNC) &savvy_bebel_event_types__impl, 0},
     {"savvy_bebel_token_ids__impl", (DL_FUNC) &savvy_bebel_token_ids__impl, 0},
     {"savvy_rbebelm_backend_features__impl", (DL_FUNC) &savvy_rbebelm_backend_features__impl, 0},
+    {"savvy_rbebelm_json_parse__impl", (DL_FUNC) &savvy_rbebelm_json_parse__impl, 1},
+    {"savvy_rbebelm_json_tool_result__impl", (DL_FUNC) &savvy_rbebelm_json_tool_result__impl, 4},
     {"savvy_BebelAgent_append__impl", (DL_FUNC) &savvy_BebelAgent_append__impl, 2},
     {"savvy_BebelAgent_append_tokens__impl", (DL_FUNC) &savvy_BebelAgent_append_tokens__impl, 2},
     {"savvy_BebelAgent_append_tool_result__impl", (DL_FUNC) &savvy_BebelAgent_append_tool_result__impl, 2},

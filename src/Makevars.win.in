@@ -1,0 +1,68 @@
+TARGET_DIR = ./rust/target
+LIBDIR = $(TARGET_DIR)/release
+BACKEND_DIR = rbebelm-backends
+RUST_STAMP = $(TARGET_DIR)/rbebelm-build.stamp
+PKG_LIBS =
+OBJECTS = init.o rbebelm_backend.o
+
+TARGET = x86_64-pc-windows-gnu
+CARGO_LINKER = x86_64-w64-mingw32.static.posix-gcc.exe
+
+all: $(SHLIB)
+
+$(SHLIB): $(RUST_STAMP)
+
+.PHONY: $(RUST_STAMP)
+
+$(RUST_STAMP):
+	set -e; \
+	export PATH="$(PATH):$(HOME)/.cargo/bin"; \
+	CARGO_JOBS="$${CARGO_BUILD_JOBS:-2}"; \
+	CARGO_FLAGS="-j $$CARGO_JOBS"; \
+	if [ -f ./rust/vendor.tar.xz ]; then \
+		rm -rf ./vendor; \
+		tar xf ./rust/vendor.tar.xz; \
+		mkdir -p ./.cargo; \
+		cp rust/vendor-config.toml ./.cargo/config.toml; \
+		export CARGO_HOME="$(CURDIR)/.cargo"; \
+		CARGO_FLAGS="$$CARGO_FLAGS --offline"; \
+	fi; \
+	RUST_TARGET="$(TARGET)"; \
+	CARGO_TARGET_FLAG="--target=$$RUST_TARGET"; \
+	RUSTFLAGS_ENV="CARGO_TARGET_$$(printf '%s' "$$RUST_TARGET" | tr '[:lower:]-' '[:upper:]_')_RUSTFLAGS"; \
+	DYLIB_EXT=".dll"; \
+	BUILD_BACKENDS="scalar,avx2,avx512"; \
+	mkdir -p "$(BACKEND_DIR)" "$(TARGET_DIR)" "$(LIBDIR)"; \
+	build_backend() { \
+		backend="$$1"; features="$$2"; rustflags_extra="$$3"; \
+		target_dir="$(TARGET_DIR)/$$backend"; \
+		feature_args="--no-default-features --features $$features"; \
+		echo "=== Building Rbebelm Rust backend: $$backend ($$features $$rustflags_extra) for $$RUST_TARGET ==="; \
+		mkdir -p "$$target_dir/$$RUST_TARGET/release/libgcc_mock"; \
+		touch "$$target_dir/$$RUST_TARGET/release/libgcc_mock/libgcc_eh.a"; \
+		export CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER="$(CARGO_LINKER)"; \
+		export LIBRARY_PATH="$${LIBRARY_PATH};$$target_dir/$$RUST_TARGET/release/libgcc_mock"; \
+		export CC="$(CC)"; \
+		export CFLAGS="$(CFLAGS)"; \
+		env "$$RUSTFLAGS_ENV=$(RUSTFLAGS) $$rustflags_extra" cargo build $$CARGO_FLAGS $$feature_args $$CARGO_TARGET_FLAG --lib --release --manifest-path=./rust/Cargo.toml --target-dir="$$target_dir"; \
+		rel="$$target_dir/$$RUST_TARGET/release"; \
+		for dylib in "$$rel/rbebelm_backend$$DYLIB_EXT" "$$rel/librbebelm_backend$$DYLIB_EXT"; do \
+			if [ -f "$$dylib" ]; then cp "$$dylib" "$(BACKEND_DIR)/rbebelm_backend_$$backend$$DYLIB_EXT"; break; fi; \
+		done; \
+	}; \
+	old_ifs="$$IFS"; IFS=','; \
+	for backend in $$BUILD_BACKENDS; do \
+		IFS="$$old_ifs"; \
+		case "$$backend" in \
+			scalar) build_backend scalar portable "-C target-cpu=x86-64";; \
+			avx2) build_backend avx2 native-simd "-C target-cpu=x86-64-v3";; \
+			avx512) build_backend avx512 native-simd "-C target-cpu=x86-64-v4";; \
+			*) echo "ERROR: unknown Rbebelm backend '$$backend'" >&2; exit 1;; \
+		esac; \
+		IFS=','; \
+	done; \
+	IFS="$$old_ifs"; \
+	touch "$(RUST_STAMP)"
+
+clean:
+	rm -Rf $(SHLIB) $(OBJECTS) $(RUST_STAMP) $(BACKEND_DIR) $(TARGET_DIR) .cargo vendor

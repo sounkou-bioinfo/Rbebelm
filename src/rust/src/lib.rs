@@ -3,6 +3,7 @@ mod backend;
 mod chatml;
 mod events;
 mod generation;
+mod json;
 mod model;
 mod options;
 mod tokens;

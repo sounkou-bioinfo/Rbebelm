@@ -15,6 +15,7 @@ native-simd = []
 
 [dependencies]
 savvy = "0.10.2"
+serde_json = "1"
 bebelm = { path = "bebelm" }
 
 [target.'cfg(not(target_os = "emscripten"))'.dependencies]

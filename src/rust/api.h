@@ -1,6 +1,8 @@
 SEXP savvy_bebel_event_types__ffi(void);
 SEXP savvy_bebel_token_ids__ffi(void);
 SEXP savvy_rbebelm_backend_features__ffi(void);
+SEXP savvy_rbebelm_json_parse__ffi(SEXP c_arg__text);
+SEXP savvy_rbebelm_json_tool_result__ffi(SEXP c_arg__tool, SEXP c_arg__ok, SEXP c_arg__result, SEXP c_arg__error);
 
 // methods and associated functions for BebelAgent
 SEXP savvy_BebelAgent_append__ffi(SEXP self__, SEXP c_arg__text);

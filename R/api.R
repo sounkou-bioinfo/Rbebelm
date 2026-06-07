@@ -55,6 +55,7 @@ print.rbebelmCpuidInfo <- function(x, ...) {
   cat("  x86_64-v3:", format_bebel_yes_no(x$cpu_x86_64_v3), "\n")
   cat("  x86_64-v4:", format_bebel_yes_no(x$cpu_x86_64_v4), "\n")
   cat("  NEON:", format_bebel_yes_no(x$cpu_neon), "\n")
+  cat("  ARM dotprod:", format_bebel_yes_no(x$cpu_dotprod), "\n")
   cat("  wasm simd128:", format_bebel_yes_no(x$cpu_wasm_simd128), "\n")
   invisible(x)
 }
@@ -70,6 +71,7 @@ print.rbebelmBackendFeatures <- function(x, ...) {
   cat("    AVX2:", format_bebel_yes_no(x$compiled_avx2), "\n")
   cat("    AVX-512F:", format_bebel_yes_no(x$compiled_avx512f), "\n")
   cat("    NEON:", format_bebel_yes_no(x$compiled_neon), "\n")
+  cat("    ARM dotprod:", format_bebel_yes_no(x$compiled_dotprod), "\n")
   cat("    wasm simd128:", format_bebel_yes_no(x$compiled_wasm_simd128), "\n")
   invisible(x)
 }
@@ -360,7 +362,7 @@ parse_bebel_call_args <- function(args) {
   args <- trimws(args)
   if (!nzchar(args)) return(list())
   if (grepl("^\\s*\\{", args)) {
-    return(jsonlite::fromJSON(args, simplifyVector = FALSE))
+    return(rbebelm_json_parse(args))
   }
   parts <- strsplit(args, "\\s*,\\s*", perl = TRUE)[[1]]
   out <- list()
@@ -386,8 +388,8 @@ parse_bebel_call_args <- function(args) {
 #' Parse a BebeLM tool call block
 #'
 #' The default parser accepts JSON objects such as `{\"name\": \"tool\", \"arguments\": {...}}`,
-#' simple `name({...})` calls, and bracketed
-#' BebeLM calls such as `[name(key=\"value\")]`. Pass a custom parser to
+#' simple `name({...})` calls, and bracketed BebeLM calls such as
+#' `[name(key=\"value\")]`. Pass a custom parser to
 #' `bebel_agent_run()` for model- or prompt-specific formats.
 #'
 #' @param content Accumulated content between BebeLM tool-call delimiters.
@@ -400,11 +402,11 @@ bebel_parse_tool_call <- function(content) {
   if (grepl("^\\[.*\\]$", x)) x <- trimws(substr(x, 2L, nchar(x) - 1L))
 
   if (grepl("^\\s*\\{", x)) {
-    obj <- jsonlite::fromJSON(x, simplifyVector = FALSE)
+    obj <- rbebelm_json_parse(x)
     name <- obj$name %||% obj$tool %||% (obj[["function"]] %||% list())$name
     args <- obj$arguments %||% obj$args %||% obj$input %||% list()
     if (is.character(args) && length(args) == 1L && grepl("^\\s*\\{", args)) {
-      args <- tryCatch(jsonlite::fromJSON(args, simplifyVector = FALSE), error = function(e) args)
+      args <- tryCatch(rbebelm_json_parse(args), error = function(e) args)
     }
     if (is.null(name) || !nzchar(name)) stop("JSON tool call has no name/tool/function.name", call. = FALSE)
     return(list(name = name, arguments = args, raw = raw))
@@ -445,13 +447,12 @@ invoke_bebel_tool <- function(tool, call, context) {
 }
 
 format_bebel_tool_result <- function(call, result, error = NULL) {
-  payload <- list(
-    tool = call$name,
-    ok = is.null(error),
-    result = if (is.null(error)) result else NULL,
-    error = if (!is.null(error)) conditionMessage(error) else NULL
+  rbebelm_json_tool_result(
+    call$name,
+    is.null(error),
+    if (is.null(error) && !is.null(result)) paste(result, collapse = "\n") else NULL,
+    if (!is.null(error)) conditionMessage(error) else NULL
   )
-  jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null")
 }
 
 #' Run a BebeLM agent with R tool dispatch

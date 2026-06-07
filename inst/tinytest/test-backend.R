@@ -7,6 +7,7 @@ expect_true(grepl("Rbebelm backend dispatch", paste(capture.output(print(info)),
 cpu <- rbebelm_cpuid_info()
 expect_true(inherits(cpu, "rbebelmCpuidInfo"))
 expect_true(is.list(cpu))
+expect_true("cpu_dotprod" %in% names(cpu))
 expect_true(grepl("Rbebelm CPU features", paste(capture.output(print(cpu)), collapse = "\n")))
 
 features <- rbebelm_backend_features()

@@ -45,7 +45,7 @@ $(RUST_STAMP):
 	else \
 		case "$$RUST_HOST" in \
 			x86_64-*) BUILD_BACKENDS="scalar,avx2,avx512";; \
-			aarch64-*) BUILD_BACKENDS="scalar,neon";; \
+			aarch64-*) BUILD_BACKENDS="scalar,neon,dotprod";; \
 			*) BUILD_BACKENDS="scalar";; \
 		esac; \
 	fi; \
@@ -74,6 +74,7 @@ $(RUST_STAMP):
 			avx2) build_backend avx2 native-simd "-C target-cpu=x86-64-v3";; \
 			avx512) build_backend avx512 native-simd "-C target-cpu=x86-64-v4";; \
 			neon) build_backend neon native-simd "";; \
+			dotprod) build_backend dotprod native-simd "-C target-feature=+dotprod";; \
 			wasm_simd128) build_backend wasm_simd128 portable "-C target-feature=+simd128";; \
 			*) echo "ERROR: unknown Rbebelm backend '$$backend'" >&2; exit 1;; \
 		esac; \

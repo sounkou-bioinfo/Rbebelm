@@ -55,6 +55,18 @@ NULL
   .Call(savvy_rbebelm_backend_features__impl)
 }
 
+#' Parse JSON into base R vectors/lists.
+#' @keywords internal
+`rbebelm_json_parse` <- function(`text`) {
+  .Call(savvy_rbebelm_json_parse__impl, `text`)
+}
+
+#' Format a tool-result object as JSON.
+#' @keywords internal
+`rbebelm_json_tool_result` <- function(`tool`, `ok`, `result` = NULL, `error` = NULL) {
+  .Call(savvy_rbebelm_json_tool_result__impl, `tool`, `ok`, `result`, `error`)
+}
+
 ### wrapper functions for BebelAgent
 
 `BebelAgent_append` <- function(self) {

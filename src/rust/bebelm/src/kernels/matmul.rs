@@ -164,15 +164,15 @@ fn quantize_q8(x: &[f32]) -> Q8Vec {
 /// and `qx` are 32 int8 activations. The only arch-specific kernel: aarch64 uses the `sdot`
 /// int8 dot-product instruction; elsewhere `wide` widens to i16 and uses `i16x16::dot`
 /// (`pmaddwd` on x86/AVX2). `#[inline(always)]` so it folds into the per-block loop.
-#[cfg(target_arch = "aarch64")]
+#[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
 #[inline(always)]
 fn nibble_idot32(q: &[u8], qx: &[i8], high: bool) -> i32 {
     use core::arch::aarch64::*;
     use core::arch::asm;
-    // SAFETY: aarch64 implies NEON; `dotprod` is in this target's features (default on Apple
-    // Silicon) so `sdot` is valid. Callers always pass ≥ 32 bytes of `q` and `qx`. The `sdot`
-    // *intrinsic* (`vdotq_s32`) is still nightly-gated (`stdarch_neon_dotprod`), so we emit the
-    // instruction with stable inline asm; the load/mask use stable NEON intrinsics.
+    // SAFETY: this implementation is compiled only when `dotprod` is in this target's
+    // features, so `sdot` is valid. Callers always pass ≥ 32 bytes of `q` and `qx`. The
+    // `sdot` intrinsic (`vdotq_s32`) is still nightly-gated (`stdarch_neon_dotprod`), so we
+    // emit the instruction with stable inline asm; the load/mask use stable NEON intrinsics.
     unsafe {
         let mut acc = vdupq_n_s32(0);
         for c in 0..2 {
@@ -192,7 +192,7 @@ fn nibble_idot32(q: &[u8], qx: &[i8], high: bool) -> i32 {
     }
 }
 
-#[cfg(not(target_arch = "aarch64"))]
+#[cfg(not(all(target_arch = "aarch64", target_feature = "dotprod")))]
 #[inline(always)]
 fn nibble_idot32(q: &[u8], qx: &[i8], high: bool) -> i32 {
     use wide::{i16x16, i32x8, i8x16, u8x16};
