@@ -43,11 +43,16 @@ as_int <- function(x, default) {
   if (is.na(out)) default else out
 }
 
+as_num <- function(x, default) {
+  out <- suppressWarnings(as.numeric(x))
+  if (is.na(out)) default else out
+}
+
 suppressPackageStartupMessages(library(Rbebelm))
 
 Rbebelm::bebel_r_agent_start(
   weights = weights,
-  num_threads = as_int(value("--threads", Sys.getenv("BEBELM_NUM_THREADS", "2")), 2L),
+  num_threads = as_num(value("--threads", Sys.getenv("BEBELM_NUM_THREADS", "2")), 2),
   allow_eval = !flag("--no-eval"),
   greedy = !flag("--sample"),
   max_gen = as_int(value("--max-gen", Sys.getenv("BEBELM_AGENT_MAX_GEN", "256")), 256L),

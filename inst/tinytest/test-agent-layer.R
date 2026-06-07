@@ -80,6 +80,13 @@ resp <- Rbebelm:::bebel_rpc_response(1L, result = list(ok = TRUE))
 expect_equal(resp$jsonrpc, "2.0")
 expect_true(resp$result$ok)
 
+old_threads <- Sys.getenv("BEBELM_NUM_THREADS", unset = NA_character_)
+Sys.setenv(BEBELM_NUM_THREADS = "2")
+threads_default <- eval(formals(bebel_r_agent_start)$num_threads)
+if (is.na(old_threads)) Sys.unsetenv("BEBELM_NUM_THREADS") else Sys.setenv(BEBELM_NUM_THREADS = old_threads)
+expect_true(is.double(threads_default))
+expect_equal(threads_default, 2)
+
 agent_bin <- system.file("bin/rbebelm-agent", package = "Rbebelm")
 expect_true(file.exists(agent_bin))
 help_out <- system2(agent_bin, "--help", stdout = TRUE)
