@@ -608,62 +608,73 @@ bebel_r_agent_console <- function(session, prompt = "bebel> ", max_steps = 4L, s
   bebel_agent_layer_stopif(inherits(session, "bebelRAgent"), "session must be a bebelRAgent")
   if (!interactive() && !isatty(stdin())) stop("bebel_r_agent_console() requires an interactive terminal", call. = FALSE)
   cat("RbebelM R agent. Commands: /help, /tools, /r, /transcript, /clear, /quit\n")
+  blank_count <- 0L
   repeat {
-    line <- readline(prompt)
-    if (!length(line)) break
-    line_trim <- trimws(line)
-    if (!nzchar(line_trim)) next
-    if (startsWith(line_trim, "/")) {
-      cmd <- tolower(strsplit(line_trim, "\\s+")[[1]][1])
-      if (cmd %in% c("/q", "/quit", "/exit")) break
-      if (cmd == "/help") {
-        cat("Commands: /help /tools /r /transcript /clear /quit\n")
-        cat("Use /r <code> to evaluate R directly in the configured environment.\n")
-        cat("Large /r output is truncated; assign objects with /r x <- value.\n")
-        next
-      }
-      if (cmd == "/tools") {
-        print(bebel_agent_tool_catalog(session$tools))
-        next
-      }
-      if (cmd == "/r") {
-        code <- trimws(sub("^/r\\s*", "", line_trim))
-        exprs <- tryCatch(bebel_console_read_r(code), error = function(e) {
-          message("R parse error: ", conditionMessage(e))
-          NULL
-        })
-        if (!is.null(exprs)) {
-          tryCatch(bebel_console_eval_r(exprs, session$context$env), error = function(e) {
-            message("R error: ", conditionMessage(e))
-          })
+    quit <- FALSE
+    interrupted <- FALSE
+    tryCatch({
+      line <- readline(prompt)
+      if (!length(line)) {
+        quit <- TRUE
+      } else {
+        line_trim <- trimws(line)
+        if (!nzchar(line_trim)) {
+          blank_count <- blank_count + 1L
+          if (blank_count %% 5L == 0L) cat("[blank input ignored; type /quit to exit]\n")
+        } else {
+          blank_count <- 0L
+          if (startsWith(line_trim, "/")) {
+            cmd <- tolower(strsplit(line_trim, "\\s+")[[1]][1])
+            if (cmd %in% c("/q", "/quit", "/exit")) {
+              quit <- TRUE
+            } else if (cmd == "/help") {
+              cat("Commands: /help /tools /r /transcript /clear /quit\n")
+              cat("Use /r <code> to evaluate R directly in the configured environment.\n")
+              cat("Large /r output is truncated; assign objects with /r x <- value.\n")
+            } else if (cmd == "/tools") {
+              print(bebel_agent_tool_catalog(session$tools))
+            } else if (cmd == "/r") {
+              code <- trimws(sub("^/r\\s*", "", line_trim))
+              exprs <- tryCatch(bebel_console_read_r(code), error = function(e) {
+                message("R parse error: ", conditionMessage(e))
+                NULL
+              })
+              if (!is.null(exprs)) {
+                tryCatch(bebel_console_eval_r(exprs, session$context$env), error = function(e) {
+                  message("R error: ", conditionMessage(e))
+                })
+              }
+            } else if (cmd == "/transcript") {
+              cat(bebel_transcript(session$agent), "\n", sep = "")
+            } else if (cmd == "/clear") {
+              bebel_r_agent_clear(session)
+              cat("Cleared.\n")
+            } else {
+              cat("Unknown command. Use /help.\n")
+            }
+          } else {
+            hooks <- list(
+              tool_request = function(call, ...) cat(sprintf("\n[tool] %s\n", call$name)),
+              tool_result = function(call, result, ...) cat(sprintf("[tool result] %s\n", bebel_agent_tool_text(result))),
+              tool_error = function(call, error, ...) cat(sprintf("[tool error] %s: %s\n", call$name, conditionMessage(error)))
+            )
+            cat("[generating]\n")
+            turn <- bebel_r_agent_turn(session, line, max_steps = max_steps, on_event = bebel_console_event(), hooks = hooks)
+            last_turn <- if (length(turn$run$turns)) turn$run$turns[[length(turn$run$turns)]] else NULL
+            if (isTRUE(show_stats)) cat("\n", bebel_format_agent_run_stats(turn$run), "\n", sep = "")
+            if (!is.null(last_turn) && identical(last_turn$stop, "max_new")) {
+              cat("[stopped at max_gen; recreate the agent with a larger max_gen for longer replies]\n")
+            }
+            cat("\n")
+          }
         }
-        next
       }
-      if (cmd == "/transcript") {
-        cat(bebel_transcript(session$agent), "\n", sep = "")
-        next
-      }
-      if (cmd == "/clear") {
-        bebel_r_agent_clear(session)
-        cat("Cleared.\n")
-        next
-      }
-      cat("Unknown command. Use /help.\n")
-      next
-    }
-    hooks <- list(
-      tool_request = function(call, ...) cat(sprintf("\n[tool] %s\n", call$name)),
-      tool_result = function(call, result, ...) cat(sprintf("[tool result] %s\n", bebel_agent_tool_text(result))),
-      tool_error = function(call, error, ...) cat(sprintf("[tool error] %s: %s\n", call$name, conditionMessage(error)))
-    )
-    cat("[generating]\n")
-    turn <- bebel_r_agent_turn(session, line, max_steps = max_steps, on_event = bebel_console_event(), hooks = hooks)
-    last_turn <- if (length(turn$run$turns)) turn$run$turns[[length(turn$run$turns)]] else NULL
-    if (isTRUE(show_stats)) cat("\n", bebel_format_agent_run_stats(turn$run), "\n", sep = "")
-    if (!is.null(last_turn) && identical(last_turn$stop, "max_new")) {
-      cat("[stopped at max_gen; recreate the agent with a larger max_gen for longer replies]\n")
-    }
-    cat("\n")
+    }, interrupt = function(e) {
+      interrupted <<- TRUE
+      cat("\n[interrupted; type /quit to exit]\n")
+    })
+    if (quit) break
+    if (interrupted) next
   }
   invisible(session)
 }
