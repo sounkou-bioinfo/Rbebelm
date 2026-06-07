@@ -113,8 +113,8 @@
 <span><span class="co">#&gt; &lt;BebeLM assistant turn&gt;</span></span>
 <span><span class="co">#&gt;   stop: eos </span></span>
 <span><span class="co">#&gt;   tokens: 27 generated; 19 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 9.1 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 9.62 tok/s </span></span>
+<span><span class="co">#&gt;   prefill: 9.4 tok/s </span></span>
+<span><span class="co">#&gt;   decode: 9.72 tok/s </span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; &lt;think&gt;</span></span>
 <span><span class="co">#&gt; The user asks: "What is the capital of Mali? Answer briefly."&lt;/think&gt;</span></span>
@@ -123,8 +123,8 @@
 <span><span class="co">#&gt; &lt;BebeLM assistant turn&gt;</span></span>
 <span><span class="co">#&gt;   stop: eos </span></span>
 <span><span class="co">#&gt;   tokens: 26 generated; 14 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 9.6 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 9.69 tok/s </span></span>
+<span><span class="co">#&gt;   prefill: 9.7 tok/s </span></span>
+<span><span class="co">#&gt;   decode: 9.57 tok/s </span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; &lt;think&gt;</span></span>
 <span><span class="co">#&gt; The user asks: "What about Italy? Answer briefly." Likely they&lt;/think&gt;</span></span>
@@ -199,8 +199,8 @@
 <span><span class="co">#&gt; &lt;BebeLM chat result&gt;</span></span>
 <span><span class="co">#&gt;   stop: max_new </span></span>
 <span><span class="co">#&gt;   tokens: 48 generated; 22 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 9.8 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 10.03 tok/s </span></span>
+<span><span class="co">#&gt;   prefill: 9.9 tok/s </span></span>
+<span><span class="co">#&gt;   decode: 9.95 tok/s </span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; &lt;think&gt;</span></span>
 <span><span class="co">#&gt; The user asks: "In one concise sentence, what does runtime SIMD&lt;/think&gt;</span></span>
@@ -221,8 +221,8 @@
 <span><span class="co">#&gt; &lt;BebeLM generation result&gt;</span></span>
 <span><span class="co">#&gt;   stop: max_new </span></span>
 <span><span class="co">#&gt;   tokens: 24 generated; 8 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 9.8 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 10.18 tok/s </span></span>
+<span><span class="co">#&gt;   prefill: 10.0 tok/s </span></span>
+<span><span class="co">#&gt;   decode: 10.17 tok/s </span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt;  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However</span></span></code></pre></div>
 <p>Use <code><a href="reference/bebel_append_system.html">bebel_append_system()</a></code> for a ChatML system-role instruction. Raw appends do not add user framing, so the low-level <code><a href="reference/bebel_append.html">bebel_append()</a></code> form below is equivalent apart from being more explicit about the tokens.</p>
@@ -293,7 +293,7 @@
 <span><span class="co">#&gt;   stop: eos </span></span>
 <span><span class="co">#&gt;   tokens: 7 generated; 31 prompt</span></span>
 <span><span class="co">#&gt;   prefill: 9.6 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 9.54 tok/s </span></span>
+<span><span class="co">#&gt;   decode: 9.81 tok/s </span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; The capital of Italy is Rome.</span></span>
 <span><span class="va">ctx</span><span class="op">$</span><span class="va">log</span></span>
@@ -327,7 +327,7 @@
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/eval.html" class="external-link">local</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/sounkou-bioinfo/Rbebelm" class="external-link">Rbebelm</a></span><span class="op">)</span></span>
 <span>  <span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bebel_model_load.html">bebel_model_load</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"BEBELM_WEIGHTS_FILE"</span>, <span class="st">"LFM2.5-8B-A1B-Q4_K_M.gguf"</span><span class="op">)</span>, num_threads <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="reference/bebel_r_agent_console.html">bebel_r_agent_console</a></span><span class="op">(</span><span class="fu"><a href="reference/bebel_r_agent.html">bebel_r_agent</a></span><span class="op">(</span><span class="va">model</span>, allow_eval <span class="op">=</span> <span class="cn">TRUE</span>, greedy <span class="op">=</span> <span class="cn">TRUE</span>, max_gen <span class="op">=</span> <span class="fl">96</span>, max_think <span class="op">=</span> <span class="fl">8</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="reference/bebel_r_agent_console.html">bebel_r_agent_console</a></span><span class="op">(</span><span class="fu"><a href="reference/bebel_r_agent.html">bebel_r_agent</a></span><span class="op">(</span><span class="va">model</span>, allow_eval <span class="op">=</span> <span class="cn">TRUE</span>, greedy <span class="op">=</span> <span class="cn">TRUE</span>, max_gen <span class="op">=</span> <span class="fl">256</span>, max_think <span class="op">=</span> <span class="fl">48</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <p>Optional RPC server, using <code>nanonext</code> and <code>jsonlite</code> only when requested:</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">

@@ -83,8 +83,8 @@ turn1
 #> <BebeLM assistant turn>
 #>   stop: eos 
 #>   tokens: 27 generated; 19 prompt
-#>   prefill: 9.1 tok/s 
-#>   decode: 9.62 tok/s 
+#>   prefill: 9.4 tok/s 
+#>   decode: 9.72 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "What is the capital of Mali? Answer briefly."</think>
@@ -93,8 +93,8 @@ turn2
 #> <BebeLM assistant turn>
 #>   stop: eos 
 #>   tokens: 26 generated; 14 prompt
-#>   prefill: 9.6 tok/s 
-#>   decode: 9.69 tok/s 
+#>   prefill: 9.7 tok/s 
+#>   decode: 9.57 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "What about Italy? Answer briefly." Likely they</think>
@@ -192,8 +192,8 @@ result
 #> <BebeLM chat result>
 #>   stop: max_new 
 #>   tokens: 48 generated; 22 prompt
-#>   prefill: 9.8 tok/s 
-#>   decode: 10.03 tok/s 
+#>   prefill: 9.9 tok/s 
+#>   decode: 9.95 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "In one concise sentence, what does runtime SIMD</think>
@@ -219,8 +219,8 @@ raw_result
 #> <BebeLM generation result>
 #>   stop: max_new 
 #>   tokens: 24 generated; 8 prompt
-#>   prefill: 9.8 tok/s 
-#>   decode: 10.18 tok/s 
+#>   prefill: 10.0 tok/s 
+#>   decode: 10.17 tok/s 
 #>   text:
 #>  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However
 ```
@@ -314,7 +314,7 @@ run
 #>   stop: eos 
 #>   tokens: 7 generated; 31 prompt
 #>   prefill: 9.6 tok/s 
-#>   decode: 9.54 tok/s 
+#>   decode: 9.81 tok/s 
 #>   text:
 #> The capital of Italy is Rome.
 ctx$log
@@ -367,7 +367,7 @@ R tools:
 local({
   library(Rbebelm)
   model <- bebel_model_load(Sys.getenv("BEBELM_WEIGHTS_FILE", "LFM2.5-8B-A1B-Q4_K_M.gguf"), num_threads = 2)
-  bebel_r_agent_console(bebel_r_agent(model, allow_eval = TRUE, greedy = TRUE, max_gen = 96, max_think = 8))
+  bebel_r_agent_console(bebel_r_agent(model, allow_eval = TRUE, greedy = TRUE, max_gen = 256, max_think = 48))
 })
 ```
 
