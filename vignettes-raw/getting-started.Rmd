@@ -14,7 +14,7 @@ has_weights <- nzchar(weights_file) && file.exists(weights_file)
 ```
 
 `Rbebelm` provides `R` bindings to `BebeLM`, a Rust implementation of local
-`CPU` inference for Liquid AI LFM2.5-8B-A1B GGUF weights. Model weights are not
+`CPU` inference for [Liquid AI LFM2.5-8B-A1B](https://www.liquid.ai/blog/lfm2-5-8b-a1b) GGUF weights. Model weights are not
 bundled with the package. Set `BEBELM_WEIGHTS_FILE` to a local GGUF path before
 running the model examples.
 

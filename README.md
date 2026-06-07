@@ -13,9 +13,11 @@ experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](h
 
 `Rbebelm` provides experimental R bindings for upstream
 [`maximecb/bebelm`](https://github.com/maximecb/bebelm), a pure-Rust
-CPU-only implementation of Liquid AI LFM2.5-8B-A1B inference. The R
-package uses [`savvy`](https://github.com/yutannihilation/savvy) for the
-R/Rust boundary and a runtime backend layout for portable SIMD dispatch.
+CPU-only implementation of [Liquid AI
+LFM2.5-8B-A1B](https://www.liquid.ai/blog/lfm2-5-8b-a1b) inference. The
+R package uses [`savvy`](https://github.com/yutannihilation/savvy) for
+the R/Rust boundary and a runtime backend layout for portable SIMD
+dispatch.
 
 The package is designed for interactive LLM use: generation streams
 tokens to the R console as soon as they are decoded, while the function
@@ -88,8 +90,8 @@ turn1
 #> <BebeLM assistant turn>
 #>   stop: eos 
 #>   tokens: 26 generated; 19 prompt
-#>   prefill: 9.5 tok/s 
-#>   decode: 9.50 tok/s 
+#>   prefill: 9.3 tok/s 
+#>   decode: 9.59 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "What is the capital of France? Answer briefly."</think>
@@ -99,7 +101,7 @@ turn2
 #>   stop: eos 
 #>   tokens: 26 generated; 13 prompt
 #>   prefill: 9.8 tok/s 
-#>   decode: 9.63 tok/s 
+#>   decode: 9.76 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "And Italy?" Possibly they are continuing a conversation</think>
@@ -193,7 +195,7 @@ result
 #>   stop: max_new 
 #>   tokens: 48 generated; 22 prompt
 #>   prefill: 9.8 tok/s 
-#>   decode: 9.95 tok/s 
+#>   decode: 10.05 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "In one concise sentence, what does runtime SIMD</think>
@@ -217,8 +219,8 @@ raw_result
 #> <BebeLM generation result>
 #>   stop: max_new 
 #>   tokens: 24 generated; 8 prompt
-#>   prefill: 9.6 tok/s 
-#>   decode: 9.98 tok/s 
+#>   prefill: 9.9 tok/s 
+#>   decode: 10.24 tok/s 
 #>   text:
 #>  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However
 ```
@@ -288,8 +290,8 @@ run
 #> <BebeLM assistant turn>
 #>   stop: eos 
 #>   tokens: 7 generated; 31 prompt
-#>   prefill: 9.6 tok/s 
-#>   decode: 9.75 tok/s 
+#>   prefill: 9.9 tok/s 
+#>   decode: 9.81 tok/s 
 #>   text:
 #> The capital of Italy is Rome.
 ctx$log
@@ -385,6 +387,7 @@ rbebelm_cpuid_info()
 #>   x86_64-v3: yes 
 #>   x86_64-v4: no 
 #>   NEON: no 
+#>   ARM dotprod: no 
 #>   wasm simd128: no
 rbebelm_backend_features()
 #> <Rbebelm backend features>
@@ -396,6 +399,7 @@ rbebelm_backend_features()
 #>     AVX2: yes 
 #>     AVX-512F: no 
 #>     NEON: no 
+#>     ARM dotprod: no 
 #>     wasm simd128: no
 rbebelm_backend_info()
 #> <Rbebelm backend dispatch>
