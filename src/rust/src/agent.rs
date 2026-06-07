@@ -6,7 +6,7 @@ use bebelm::sampler::Sampler;
 use bebelm::tokenizer::{Tokenizer, TOKEN_IM_END};
 use savvy::{savvy, FunctionSexp, IntegerSexp, OwnedListSexp};
 
-use crate::chatml::{tool_turn, user_turn, ASSISTANT_OPEN};
+use crate::chatml::{system_turn, tool_turn, user_turn, ASSISTANT_OPEN};
 use crate::generation::{run_state, turn_to_list};
 use crate::model::BebelModel;
 use crate::options::{maybe_update_sampler, GenerationOptions};
@@ -105,6 +105,12 @@ impl BebelAgent {
         let ids = self.tok.encode(text, add_bos);
         self.history.extend(ids);
         self.info()
+    }
+
+    /// Append a ChatML system turn to the transcript.
+    /// @export
+    fn append_system(&mut self, message: &str) -> savvy::Result<savvy::Sexp> {
+        self.append(&system_turn(message))
     }
 
     /// Append a ChatML user turn to the transcript.

@@ -22,6 +22,7 @@ SEXP Rbebelm_backend_features_ffi(void);
 SEXP Rbebelm_json_parse_ffi(SEXP c_arg__text);
 SEXP Rbebelm_json_tool_result_ffi(SEXP c_arg__tool, SEXP c_arg__ok, SEXP c_arg__result, SEXP c_arg__error);
 SEXP Rbebelm_BebelAgent_append_ffi(SEXP self__, SEXP c_arg__text);
+SEXP Rbebelm_BebelAgent_append_system_ffi(SEXP self__, SEXP c_arg__message);
 SEXP Rbebelm_BebelAgent_append_tokens_ffi(SEXP self__, SEXP c_arg__ids);
 SEXP Rbebelm_BebelAgent_append_tool_result_ffi(SEXP self__, SEXP c_arg__content);
 SEXP Rbebelm_BebelAgent_append_user_ffi(SEXP self__, SEXP c_arg__message);

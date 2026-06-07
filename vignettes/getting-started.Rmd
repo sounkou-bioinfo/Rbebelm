@@ -68,25 +68,25 @@ caches while sharing the loaded model weights.
 ``` r
 agent <- bebel_agent(model, greedy = TRUE, max_gen = 48, max_think = 16)
 
-bebel_append_user(agent, "What is the capital of France? Answer briefly.")
+bebel_append_user(agent, "What is the capital of Mali? Answer briefly.")
 turn1 <- bebel_assistant_turn(agent, on_event = NULL)
 
-bebel_append_user(agent, "And Italy?")
+bebel_append_user(agent, "What about Italy?")
 turn2 <- bebel_assistant_turn(agent, on_event = NULL)
 
 turn1$text
-#> [1] "<think>\nThe user asks: \"What is the capital of France? Answer briefly.\"</think>\nThe capital of France is Paris."
+#> [1] "<think>\nThe user asks: \"What is the capital of Mali? Answer briefly.\"</think>\nThe capital of Mali is Bamako."
 turn2$text
-#> [1] "<think>\nThe user asks: \"And Italy?\" Possibly they are continuing a conversation</think>\nThe capital of Italy is Rome."
+#> [1] "<think>\nThe user asks: \"What about Italy? Answer briefly.\" Likely they</think>\nThe capital of Italy is Rome."
 bebel_agent_info(agent)[c("history_tokens", "processed_tokens", "kv_tokens")]
 #> $history_tokens
-#> [1] 86
+#> [1] 88
 #> 
 #> $processed_tokens
-#> [1] 84
+#> [1] 86
 #> 
 #> $kv_tokens
-#> [1] 84
+#> [1] 86
 ```
 
 Use `bebel_clear(agent)` to reset transcript and caches without reloading the

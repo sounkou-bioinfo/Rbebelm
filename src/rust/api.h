@@ -6,6 +6,7 @@ SEXP savvy_rbebelm_json_tool_result__ffi(SEXP c_arg__tool, SEXP c_arg__ok, SEXP 
 
 // methods and associated functions for BebelAgent
 SEXP savvy_BebelAgent_append__ffi(SEXP self__, SEXP c_arg__text);
+SEXP savvy_BebelAgent_append_system__ffi(SEXP self__, SEXP c_arg__message);
 SEXP savvy_BebelAgent_append_tokens__ffi(SEXP self__, SEXP c_arg__ids);
 SEXP savvy_BebelAgent_append_tool_result__ffi(SEXP self__, SEXP c_arg__content);
 SEXP savvy_BebelAgent_append_user__ffi(SEXP self__, SEXP c_arg__message);

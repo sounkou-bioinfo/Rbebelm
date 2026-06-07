@@ -203,6 +203,23 @@ bebel_append <- function(agent, text) {
   invisible(agent)
 }
 
+#' Append a ChatML system turn to a BebeLM agent transcript
+#'
+#' Appends `<|im_start|>system\n...<|im_end|>` framing. BebeLM upstream does
+#' not expose a separate system-prompt channel; this helper provides the ChatML
+#' system-role form for users who want to place an instruction before user
+#' turns.
+#'
+#' @param agent A `BebelAgent` object.
+#' @param message System instruction text.
+#' @return Invisibly returns `agent`.
+#' @export
+bebel_append_system <- function(agent, message) {
+  check_bebel_agent(agent)
+  agent$append_system(message)
+  invisible(agent)
+}
+
 #' Append a ChatML user turn to a BebeLM agent transcript
 #'
 #' @param agent A `BebelAgent` object.

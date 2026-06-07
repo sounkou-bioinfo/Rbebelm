@@ -15,6 +15,7 @@ reference:
       - bebel_chat
       - bebel_agent
       - bebel_append
+      - bebel_append_system
       - bebel_append_user
       - bebel_append_tokens
       - bebel_append_tool_result

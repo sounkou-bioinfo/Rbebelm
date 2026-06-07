@@ -22,6 +22,13 @@ if (!nzchar(weights) || !file.exists(weights)) {
   expect_true("text_delta" %in% events)
   expect_true("done" %in% events)
 
+  system_agent <- bebel_agent(model)
+  bebel_append_system(system_agent, "You are concise.")
+  raw_system_agent <- bebel_agent(model)
+  bebel_append(raw_system_agent, "<|im_start|>system\nYou are concise.<|im_end|>\n")
+  expect_equal(bebel_transcript(system_agent), bebel_transcript(raw_system_agent))
+  expect_true(grepl("<\\|im_start\\|>system", bebel_transcript(system_agent)))
+
   agent <- bebel_agent(model, greedy = TRUE, max_gen = 8, max_think = 0)
   bebel_append(agent, "The capital of France is")
   turn <- bebel_agent_generate(agent, on_event = NULL)

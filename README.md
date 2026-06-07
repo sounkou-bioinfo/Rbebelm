@@ -83,15 +83,15 @@ agent <- bebel_agent(model, greedy = TRUE, max_gen = 48, max_think = 16)
 bebel_append_user(agent, "What is the capital of Mali? Answer briefly.")
 turn1 <- bebel_assistant_turn(agent, on_event = NULL)
 
-bebel_append_user(agent, "And Italy?")
+bebel_append_user(agent, "What about Italy?")
 turn2 <- bebel_assistant_turn(agent, on_event = NULL)
 
 turn1
 #> <BebeLM assistant turn>
 #>   stop: eos 
 #>   tokens: 27 generated; 19 prompt
-#>   prefill: 9.1 tok/s 
-#>   decode: 9.27 tok/s 
+#>   prefill: 9.2 tok/s 
+#>   decode: 9.57 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "What is the capital of Mali? Answer briefly."</think>
@@ -99,22 +99,22 @@ turn1
 turn2
 #> <BebeLM assistant turn>
 #>   stop: eos 
-#>   tokens: 30 generated; 13 prompt
-#>   prefill: 9.2 tok/s 
-#>   decode: 9.12 tok/s 
+#>   tokens: 26 generated; 14 prompt
+#>   prefill: 9.7 tok/s 
+#>   decode: 9.49 tok/s 
 #>   text:
 #> <think>
-#> The user asks: "And Italy?" The previous question: "What is</think>
-#> The capital of Mali is Bamako. And Italy?
+#> The user asks: "What about Italy? Answer briefly." Likely they</think>
+#> The capital of Italy is Rome.
 bebel_agent_info(agent)[c("history_tokens", "processed_tokens", "kv_tokens")]
 #> $history_tokens
-#> [1] 91
+#> [1] 88
 #> 
 #> $processed_tokens
-#> [1] 89
+#> [1] 86
 #> 
 #> $kv_tokens
-#> [1] 89
+#> [1] 86
 ```
 
 A `BebelAgent` owns the token transcript and decode caches while sharing
@@ -125,7 +125,7 @@ tokens. The direct methods `agent$history()`, `agent$transcript()`, and
 
 ``` r
 length(agent$history())
-#> [1] 91
+#> [1] 88
 substr(agent$transcript(), 1, 80)
 #> [1] "<|startoftext|><|im_start|>user\nWhat is the capital of Mali? Answer briefly.<|im"
 identical(agent$history(), bebel_history(agent))
@@ -194,8 +194,8 @@ result
 #> <BebeLM chat result>
 #>   stop: max_new 
 #>   tokens: 48 generated; 22 prompt
-#>   prefill: 9.4 tok/s 
-#>   decode: 9.35 tok/s 
+#>   prefill: 9.6 tok/s 
+#>   decode: 9.64 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "In one concise sentence, what does runtime SIMD</think>
@@ -220,12 +220,28 @@ raw_result
 #>   stop: max_new 
 #>   tokens: 24 generated; 8 prompt
 #>   prefill: 9.5 tok/s 
-#>   decode: 10.00 tok/s 
+#>   decode: 9.92 tok/s 
 #>   text:
 #>  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However
 ```
 
-Agents can also be driven at the lower level with raw text or token ids:
+Use `bebel_append_system()` for a ChatML system-role instruction. Raw
+appends do not add user framing, so the low-level `bebel_append()` form
+below is equivalent apart from being more explicit about the tokens.
+
+``` r
+system_agent <- bebel_agent(model)
+bebel_append_system(system_agent, "You are concise.")
+bebel_transcript(system_agent)
+#> [1] "<|startoftext|><|im_start|>system\nYou are concise.<|im_end|>\n"
+
+raw_system_agent <- bebel_agent(model)
+bebel_append(raw_system_agent, "<|im_start|>system\nYou are concise.<|im_end|>\n")
+identical(bebel_transcript(system_agent), bebel_transcript(raw_system_agent))
+#> [1] TRUE
+```
+
+Agents can also be driven at the lower level with raw text or token ids.
 
 ``` r
 raw_agent <- bebel_agent(model, greedy = TRUE, max_gen = 16, max_think = 0)
@@ -290,8 +306,8 @@ run
 #> <BebeLM assistant turn>
 #>   stop: eos 
 #>   tokens: 7 generated; 31 prompt
-#>   prefill: 9.5 tok/s 
-#>   decode: 9.57 tok/s 
+#>   prefill: 10.0 tok/s 
+#>   decode: 10.10 tok/s 
 #>   text:
 #> The capital of Italy is Rome.
 ctx$log

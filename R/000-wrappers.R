@@ -75,6 +75,12 @@ NULL
   }
 }
 
+`BebelAgent_append_system` <- function(self) {
+  function(`message`) {
+    .Call(savvy_BebelAgent_append_system__impl, `self`, `message`)
+  }
+}
+
 `BebelAgent_append_tokens` <- function(self) {
   function(`ids`) {
     .Call(savvy_BebelAgent_append_tokens__impl, `self`, `ids`)
@@ -139,6 +145,7 @@ NULL
   e <- new.env(parent = emptyenv())
   e$.ptr <- ptr
   e$`append` <- `BebelAgent_append`(ptr)
+  e$`append_system` <- `BebelAgent_append_system`(ptr)
   e$`append_tokens` <- `BebelAgent_append_tokens`(ptr)
   e$`append_tool_result` <- `BebelAgent_append_tool_result`(ptr)
   e$`append_user` <- `BebelAgent_append_user`(ptr)
