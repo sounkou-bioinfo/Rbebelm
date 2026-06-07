@@ -20,6 +20,7 @@ bebel_r_agent_start(
   prompt = "bebel> ",
   max_steps = 4L,
   show_stats = TRUE,
+  blank_limit = 10L,
   prompt_style = c("compact", "full")
 )
 }
@@ -42,6 +43,8 @@ bebel_r_agent_start(
 \item{max_steps}{Maximum assistant/tool iterations per user prompt.}
 
 \item{show_stats}{Whether to print token/timing stats after each turn.}
+
+\item{blank_limit}{Number of consecutive blank inputs before exiting the console. Set to \code{Inf} to never auto-exit on blanks.}
 
 \item{prompt_style}{Tool prompt verbosity passed to \code{\link[=bebel_r_agent]{bebel_r_agent()}}.}
 }

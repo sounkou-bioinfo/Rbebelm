@@ -602,12 +602,17 @@ bebel_format_agent_run_stats <- function(run) {
 #' @param prompt Prompt string.
 #' @param max_steps Maximum assistant/tool iterations per user prompt.
 #' @param show_stats Whether to print token/timing stats after each turn.
+#' @param blank_limit Number of consecutive blank inputs before exiting. Set to `Inf` to never auto-exit on blanks.
 #' @return Invisibly returns `session`.
 #' @export
-bebel_r_agent_console <- function(session, prompt = "bebel> ", max_steps = 4L, show_stats = TRUE) {
+bebel_r_agent_console <- function(session, prompt = "bebel> ", max_steps = 4L, show_stats = TRUE, blank_limit = 10L) {
   bebel_agent_layer_stopif(inherits(session, "bebelRAgent"), "session must be a bebelRAgent")
   if (!interactive() && !isatty(stdin())) stop("bebel_r_agent_console() requires an interactive terminal", call. = FALSE)
+  blank_limit <- suppressWarnings(as.numeric(blank_limit))
+  blank_limit <- if (length(blank_limit)) blank_limit[[1L]] else NA_real_
+  if (is.na(blank_limit) || blank_limit < 1) blank_limit <- 10
   cat("RbebelM R agent. Commands: /help, /tools, /r, /transcript, /clear, /quit\n")
+  cat("Type a message and press Enter; blank lines are ignored.\n")
   blank_count <- 0L
   repeat {
     quit <- FALSE
@@ -620,7 +625,12 @@ bebel_r_agent_console <- function(session, prompt = "bebel> ", max_steps = 4L, s
         line_trim <- trimws(line)
         if (!nzchar(line_trim)) {
           blank_count <- blank_count + 1L
-          if (blank_count %% 5L == 0L) cat("[blank input ignored; type /quit to exit]\n")
+          if (is.finite(blank_limit) && blank_count >= blank_limit) {
+            cat(sprintf("[exiting after %d blank inputs]\n", blank_count))
+            quit <- TRUE
+          } else if (blank_count %% 3L == 0L) {
+            cat("[blank input ignored; type a message, /help, or /quit]\n")
+          }
         } else {
           blank_count <- 0L
           if (startsWith(line_trim, "/")) {
@@ -696,6 +706,7 @@ bebel_r_agent_console <- function(session, prompt = "bebel> ", max_steps = 4L, s
 #' @param prompt Prompt string for [bebel_r_agent_console()].
 #' @param max_steps Maximum assistant/tool iterations per user prompt.
 #' @param show_stats Whether to print token/timing stats after each turn.
+#' @param blank_limit Number of consecutive blank inputs before exiting the console. Set to `Inf` to never auto-exit on blanks.
 #' @param prompt_style Tool prompt verbosity passed to [bebel_r_agent()].
 #' @return Invisibly returns the `bebelRAgent` session after the console exits.
 #' @export
@@ -715,6 +726,7 @@ bebel_r_agent_start <- function(
   prompt = "bebel> ",
   max_steps = 4L,
   show_stats = TRUE,
+  blank_limit = 10L,
   prompt_style = c("compact", "full")
 ) {
   prompt_style <- match.arg(prompt_style)
@@ -733,7 +745,7 @@ bebel_r_agent_start <- function(
     repeat_penalty = repeat_penalty,
     prompt_style = prompt_style
   )
-  bebel_r_agent_console(session, prompt = prompt, max_steps = max_steps, show_stats = show_stats)
+  bebel_r_agent_console(session, prompt = prompt, max_steps = max_steps, show_stats = show_stats, blank_limit = blank_limit)
   invisible(session)
 }
 

@@ -96,6 +96,8 @@ expect_true(is.double(max_think_default))
 expect_equal(threads_default, 2)
 expect_equal(max_gen_default, 256)
 expect_equal(max_think_default, 48)
+expect_equal(formals(bebel_r_agent_console)$blank_limit, 10L)
+expect_equal(formals(bebel_r_agent_start)$blank_limit, 10L)
 expect_equal(Rbebelm:::bebel_numeric_or_null(300L), 300)
 
 agent_bin <- system.file("bin/rbebelm-agent", package = "Rbebelm")

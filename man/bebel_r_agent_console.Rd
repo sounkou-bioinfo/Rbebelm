@@ -8,7 +8,8 @@ bebel_r_agent_console(
   session,
   prompt = "bebel> ",
   max_steps = 4L,
-  show_stats = TRUE
+  show_stats = TRUE,
+  blank_limit = 10L
 )
 }
 \arguments{
@@ -19,6 +20,8 @@ bebel_r_agent_console(
 \item{max_steps}{Maximum assistant/tool iterations per user prompt.}
 
 \item{show_stats}{Whether to print token/timing stats after each turn.}
+
+\item{blank_limit}{Number of consecutive blank inputs before exiting. Set to \code{Inf} to never auto-exit on blanks.}
 }
 \value{
 Invisibly returns \code{session}.
