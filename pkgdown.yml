@@ -7,7 +7,8 @@ articles:
   events-and-adapters: events-and-adapters.html
   getting-started: getting-started.html
   model-claims-benchmark: model-claims-benchmark.html
-last_built: 2026-06-07T13:45Z
+  r-native-agent-layer: r-native-agent-layer.html
+last_built: 2026-06-07T16:39Z
 urls:
   reference: https://sounkou-bioinfo.github.io/Rbebelm/reference
   article: https://sounkou-bioinfo.github.io/Rbebelm/articles

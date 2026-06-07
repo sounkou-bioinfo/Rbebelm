@@ -60,6 +60,25 @@
   : Persistent BebeLM conversation agent with transcript and decode
   caches.
 
+## R-native agent layer
+
+- [`bebel_r_agent()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_r_agent.md)
+  : Create an R-native Rbebelm agent session
+- [`bebel_r_agent_turn()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_r_agent_turn.md)
+  : Run one user turn through an Rbebelm R agent
+- [`bebel_r_agent_console()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_r_agent_console.md)
+  : Start an interactive Rbebelm console agent
+- [`bebel_r_agent_rpc_server()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_r_agent_rpc_server.md)
+  : Serve an Rbebelm R agent over JSON-RPC
+- [`bebel_r_agent_clear()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_r_agent_clear.md)
+  : Clear an Rbebelm R agent session
+- [`bebel_default_r_tools()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_default_r_tools.md)
+  : Built-in R session tools for the Rbebelm agent layer
+- [`bebel_agent_tool()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_tool.md)
+  : Create an Rbebelm agent tool specification
+- [`bebel_agent_tool_catalog()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_tool_catalog.md)
+  : Describe an Rbebelm agent tool catalog
+
 ## Backend dispatch and diagnostics
 
 - [`rbebelm_set_backend()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/rbebelm_set_backend.md)
