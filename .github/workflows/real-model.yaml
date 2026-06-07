@@ -28,7 +28,7 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::tinytest, any::jsonlite, any::knitr, any::rmarkdown
+          extra-packages: any::tinytest, any::knitr, any::rmarkdown, any::jsonlite
           needs: check
 
       - name: Cache GGUF weights

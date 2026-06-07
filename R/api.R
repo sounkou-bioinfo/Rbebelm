@@ -355,10 +355,11 @@ normalize_bebel_tools <- function(tools) {
   out
 }
 
+
 parse_bebel_call_args <- function(args) {
   args <- trimws(args)
   if (!nzchar(args)) return(list())
-  if (requireNamespace("jsonlite", quietly = TRUE) && grepl("^\\s*\\{", args)) {
+  if (grepl("^\\s*\\{", args)) {
     return(jsonlite::fromJSON(args, simplifyVector = FALSE))
   }
   parts <- strsplit(args, "\\s*,\\s*", perl = TRUE)[[1]]
@@ -384,8 +385,8 @@ parse_bebel_call_args <- function(args) {
 
 #' Parse a BebeLM tool call block
 #'
-#' The default parser accepts JSON objects such as `{\"name\": \"tool\", \"arguments\": {...}}`
-#' when `jsonlite` is installed, simple `name({...})` calls, and bracketed
+#' The default parser accepts JSON objects such as `{\"name\": \"tool\", \"arguments\": {...}}`,
+#' simple `name({...})` calls, and bracketed
 #' BebeLM calls such as `[name(key=\"value\")]`. Pass a custom parser to
 #' `bebel_agent_run()` for model- or prompt-specific formats.
 #'
@@ -398,7 +399,7 @@ bebel_parse_tool_call <- function(content) {
   if (!nzchar(x)) stop("empty tool call", call. = FALSE)
   if (grepl("^\\[.*\\]$", x)) x <- trimws(substr(x, 2L, nchar(x) - 1L))
 
-  if (requireNamespace("jsonlite", quietly = TRUE) && grepl("^\\s*\\{", x)) {
+  if (grepl("^\\s*\\{", x)) {
     obj <- jsonlite::fromJSON(x, simplifyVector = FALSE)
     name <- obj$name %||% obj$tool %||% (obj[["function"]] %||% list())$name
     args <- obj$arguments %||% obj$args %||% obj$input %||% list()
@@ -450,11 +451,7 @@ format_bebel_tool_result <- function(call, result, error = NULL) {
     result = if (is.null(error)) result else NULL,
     error = if (!is.null(error)) conditionMessage(error) else NULL
   )
-  if (requireNamespace("jsonlite", quietly = TRUE)) {
-    jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null")
-  } else {
-    paste0("tool=", call$name, " ok=", is.null(error), " result=", paste(utils::capture.output(utils::str(payload)), collapse = "\\n"))
-  }
+  jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null")
 }
 
 #' Run a BebeLM agent with R tool dispatch
