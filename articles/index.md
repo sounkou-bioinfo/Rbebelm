@@ -1,13 +1,12 @@
 # Articles
 
-### Getting started
+### Guides
 
 - [Getting
   started](https://sounkou-bioinfo.github.io/Rbebelm/articles/getting-started.md):
-
-### Runtime and streaming internals
-
-- [Streaming
-  generation](https://sounkou-bioinfo.github.io/Rbebelm/articles/streaming-generation.md):
-- [Backend
-  dispatch](https://sounkou-bioinfo.github.io/Rbebelm/articles/backend-dispatch.md):
+- [Agents and
+  tools](https://sounkou-bioinfo.github.io/Rbebelm/articles/agents-and-tools.md):
+- [Events and
+  adapters](https://sounkou-bioinfo.github.io/Rbebelm/articles/events-and-adapters.md):
+- [Backends and
+  webR](https://sounkou-bioinfo.github.io/Rbebelm/articles/backend-and-webr.md):

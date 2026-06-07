@@ -34,8 +34,9 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/getting-started.html">Getting started</a></li>
-    <li><a class="dropdown-item" href="../articles/streaming-generation.html">Streaming generation</a></li>
-    <li><a class="dropdown-item" href="../articles/backend-dispatch.html">Backend dispatch</a></li>
+    <li><a class="dropdown-item" href="../articles/agents-and-tools.html">Agents and tools</a></li>
+    <li><a class="dropdown-item" href="../articles/events-and-adapters.html">Events and adapters</a></li>
+    <li><a class="dropdown-item" href="../articles/backend-and-webr.html">Backends and webR</a></li>
   </ul>
 </li>
       </ul>
@@ -66,8 +67,11 @@
 
     
     
-<p><code>Rbebelm</code> binds the Rust <code>bebelm</code> crate. Model
-weights are not bundled; point the package at a local GGUF file.</p>
+<p><code>Rbebelm</code> provides <code>R</code> bindings to
+<code>BebeLM</code>, a Rust implementation of local <code>CPU</code>
+inference for Liquid AI LFM2.5-8B-A1B GGUF weights. Model weights are
+not bundled with the package. Set <code>BEBELM_WEIGHTS_FILE</code> to a
+local GGUF path before running the model examples.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/sounkou-bioinfo/Rbebelm" class="external-link">Rbebelm</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/rbebelm_backend_info.html">rbebelm_backend_info</a></span><span class="op">(</span><span class="op">)</span></span>
@@ -88,22 +92,64 @@ weights are not bundled; point the package at a local GGUF file.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $backend_loaded</span></span>
 <span><span class="co">#&gt; [1] FALSE</span></span></code></pre></div>
+<div class="section level2">
+<h2 id="load-a-model">Load a model<a class="anchor" aria-label="anchor" href="#load-a-model"></a>
+</h2>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">weights</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"BEBELM_WEIGHTS_FILE"</span><span class="op">)</span></span>
-<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nchar.html" class="external-link">nzchar</a></span><span class="op">(</span><span class="va">weights</span><span class="op">)</span> <span class="op">&amp;&amp;</span> <span class="fu"><a href="https://rdrr.io/r/base/files.html" class="external-link">file.exists</a></span><span class="op">(</span><span class="va">weights</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bebel_model_load.html">bebel_model_load</a></span><span class="op">(</span><span class="va">weights</span>, num_threads <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="../reference/bebel_chat.html">bebel_chat</a></span><span class="op">(</span><span class="va">model</span>, <span class="st">"Say hello from BebeLM."</span>, max_gen <span class="op">=</span> <span class="fl">32</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bebel_model_load.html">bebel_model_load</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"BEBELM_WEIGHTS_FILE"</span><span class="op">)</span>, num_threads <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="va">model</span></span></code></pre></div>
+<p>If <code>BEBELM_WEIGHTS_FILE</code> is not set, use the same code
+with an explicit file path:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bebel_model_load.html">bebel_model_load</a></span><span class="op">(</span><span class="st">"LFM2.5-8B-A1B-Q4_K_M.gguf"</span>, num_threads <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="use-an-agent">Use an agent<a class="anchor" aria-label="anchor" href="#use-an-agent"></a>
+</h2>
+<p>The main interface is <code>BebelAgent</code>. An agent owns the
+transcript and decode caches while sharing the loaded model weights.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">agent</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bebel_agent.html">bebel_agent</a></span><span class="op">(</span><span class="va">model</span>, greedy <span class="op">=</span> <span class="cn">TRUE</span>, max_gen <span class="op">=</span> <span class="fl">48</span>, max_think <span class="op">=</span> <span class="fl">16</span><span class="op">)</span></span>
 <span></span>
-<span>  <span class="va">agent</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bebel_agent.html">bebel_agent</a></span><span class="op">(</span><span class="va">model</span>, max_gen <span class="op">=</span> <span class="fl">32</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="../reference/bebel_append_user.html">bebel_append_user</a></span><span class="op">(</span><span class="va">agent</span>, <span class="st">"Remember this city: Paris."</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="../reference/bebel_assistant_turn.html">bebel_assistant_turn</a></span><span class="op">(</span><span class="va">agent</span>, on_event <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="../reference/bebel_append_user.html">bebel_append_user</a></span><span class="op">(</span><span class="va">agent</span>, <span class="st">"Which city did I name?"</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="../reference/bebel_assistant_turn.html">bebel_assistant_turn</a></span><span class="op">(</span><span class="va">agent</span>, on_event <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
-<span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/message.html" class="external-link">message</a></span><span class="op">(</span><span class="st">"Set BEBELM_WEIGHTS_FILE to run the model example."</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span><span class="co">#&gt; Set BEBELM_WEIGHTS_FILE to run the model example.</span></span></code></pre></div>
-  </main>
+<span><span class="fu"><a href="../reference/bebel_append_user.html">bebel_append_user</a></span><span class="op">(</span><span class="va">agent</span>, <span class="st">"What is the capital of France? Answer briefly."</span><span class="op">)</span></span>
+<span><span class="va">turn1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bebel_assistant_turn.html">bebel_assistant_turn</a></span><span class="op">(</span><span class="va">agent</span>, on_event <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/bebel_append_user.html">bebel_append_user</a></span><span class="op">(</span><span class="va">agent</span>, <span class="st">"And Italy?"</span><span class="op">)</span></span>
+<span><span class="va">turn2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bebel_assistant_turn.html">bebel_assistant_turn</a></span><span class="op">(</span><span class="va">agent</span>, on_event <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">turn1</span></span>
+<span><span class="va">turn2</span></span>
+<span><span class="fu"><a href="../reference/bebel_agent_info.html">bebel_agent_info</a></span><span class="op">(</span><span class="va">agent</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"history_tokens"</span>, <span class="st">"processed_tokens"</span>, <span class="st">"kv_tokens"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<p>Use <code>bebel_clear(agent)</code> to reset transcript and caches
+without reloading the model.</p>
+</div>
+<div class="section level2">
+<h2 id="convenience-calls">Convenience calls<a class="anchor" aria-label="anchor" href="#convenience-calls"></a>
+</h2>
+<p>For simple calls, <code><a href="../reference/bebel_chat.html">bebel_chat()</a></code> creates a single ChatML
+user/assistant turn. For raw prompt completion, use
+<code><a href="../reference/bebel_generate.html">bebel_generate()</a></code>.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/bebel_chat.html">bebel_chat</a></span><span class="op">(</span></span>
+<span>  <span class="va">model</span>,</span>
+<span>  <span class="st">"In one concise sentence, what does runtime backend dispatch do?"</span>,</span>
+<span>  greedy <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  max_gen <span class="op">=</span> <span class="fl">48</span>,</span>
+<span>  max_think <span class="op">=</span> <span class="fl">16</span>,</span>
+<span>  on_event <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="token-helpers">Token helpers<a class="anchor" aria-label="anchor" href="#token-helpers"></a>
+</h2>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ids</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bebel_tokenize.html">bebel_tokenize</a></span><span class="op">(</span><span class="va">model</span>, <span class="st">"The capital of Italy is"</span>, add_bos <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">ids</span></span>
+<span><span class="fu"><a href="../reference/bebel_detokenize.html">bebel_detokenize</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">ids</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/bebel_token_ids.html">bebel_token_ids</a></span><span class="op">(</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"TOKEN_THINK"</span>, <span class="st">"TOKEN_TOOL_CALL_START"</span>, <span class="st">"TOKEN_TOOL_CALL_END"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+</div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside>
 </div>
 
 
