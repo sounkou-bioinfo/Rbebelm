@@ -55,8 +55,8 @@ Rbebelm::bebel_r_agent_start(
   num_threads = as_num(value("--threads", Sys.getenv("BEBELM_NUM_THREADS", "2")), 2),
   allow_eval = !flag("--no-eval"),
   greedy = !flag("--sample"),
-  max_gen = as_int(value("--max-gen", Sys.getenv("BEBELM_AGENT_MAX_GEN", "256")), 256L),
-  max_think = as_int(value("--max-think", Sys.getenv("BEBELM_AGENT_MAX_THINK", "48")), 48L),
+  max_gen = as_num(value("--max-gen", Sys.getenv("BEBELM_AGENT_MAX_GEN", "256")), 256),
+  max_think = as_num(value("--max-think", Sys.getenv("BEBELM_AGENT_MAX_THINK", "48")), 48),
   max_steps = as_int(value("--max-steps", "4"), 4L),
   show_stats = !flag("--no-stats"),
   prompt_style = if (flag("--full-prompt")) "full" else "compact"

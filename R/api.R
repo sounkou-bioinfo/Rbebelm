@@ -76,6 +76,10 @@ print.rbebelmBackendFeatures <- function(x, ...) {
   invisible(x)
 }
 
+bebel_numeric_or_null <- function(x) {
+  if (is.null(x)) NULL else as.numeric(x)
+}
+
 #' Load a BebeLM GGUF model
 #'
 #' @param path Path to the GGUF weights file.
@@ -83,7 +87,7 @@ print.rbebelmBackendFeatures <- function(x, ...) {
 #' @return A `BebelModel` object.
 #' @export
 bebel_model_load <- function(path, num_threads = NULL) {
-  BebelModel$load(path, num_threads = num_threads)
+  BebelModel$load(path, num_threads = bebel_numeric_or_null(num_threads))
 }
 
 #' Tokenize text with a BebeLM model tokenizer
@@ -137,12 +141,12 @@ bebel_agent <- function(
   BebelAgent$new(
     model = model,
     greedy = greedy,
-    max_gen = max_gen,
-    max_context = max_context,
-    max_think = max_think,
-    temperature = temperature,
-    top_k = top_k,
-    repeat_penalty = repeat_penalty
+    max_gen = bebel_numeric_or_null(max_gen),
+    max_context = bebel_numeric_or_null(max_context),
+    max_think = bebel_numeric_or_null(max_think),
+    temperature = bebel_numeric_or_null(temperature),
+    top_k = bebel_numeric_or_null(top_k),
+    repeat_penalty = bebel_numeric_or_null(repeat_penalty)
   )
 }
 
@@ -182,12 +186,12 @@ bebel_agent_configure <- function(
   check_bebel_agent(agent)
   agent$configure(
     greedy = greedy,
-    max_gen = max_gen,
-    max_context = max_context,
-    max_think = max_think,
-    temperature = temperature,
-    top_k = top_k,
-    repeat_penalty = repeat_penalty
+    max_gen = bebel_numeric_or_null(max_gen),
+    max_context = bebel_numeric_or_null(max_context),
+    max_think = bebel_numeric_or_null(max_think),
+    temperature = bebel_numeric_or_null(temperature),
+    top_k = bebel_numeric_or_null(top_k),
+    repeat_penalty = bebel_numeric_or_null(repeat_penalty)
   )
 }
 
@@ -754,12 +758,12 @@ bebel_generate <- function(
     greedy = greedy,
     check_interrupt = check_interrupt,
     on_event = on_event,
-    max_gen = max_gen,
-    max_context = max_context,
-    max_think = max_think,
-    temperature = temperature,
-    top_k = top_k,
-    repeat_penalty = repeat_penalty
+    max_gen = bebel_numeric_or_null(max_gen),
+    max_context = bebel_numeric_or_null(max_context),
+    max_think = bebel_numeric_or_null(max_think),
+    temperature = bebel_numeric_or_null(temperature),
+    top_k = bebel_numeric_or_null(top_k),
+    repeat_penalty = bebel_numeric_or_null(repeat_penalty)
   )
   class(out) <- c("bebelGenerateResult", "bebelGeneration", class(out))
   out
@@ -792,12 +796,12 @@ bebel_chat <- function(
     greedy = greedy,
     check_interrupt = check_interrupt,
     on_event = on_event,
-    max_gen = max_gen,
-    max_context = max_context,
-    max_think = max_think,
-    temperature = temperature,
-    top_k = top_k,
-    repeat_penalty = repeat_penalty
+    max_gen = bebel_numeric_or_null(max_gen),
+    max_context = bebel_numeric_or_null(max_context),
+    max_think = bebel_numeric_or_null(max_think),
+    temperature = bebel_numeric_or_null(temperature),
+    top_k = bebel_numeric_or_null(top_k),
+    repeat_penalty = bebel_numeric_or_null(repeat_penalty)
   )
   class(out) <- c("bebelChatResult", "bebelGeneration", class(out))
   out
