@@ -27,7 +27,7 @@ rbebelm_backend_info()
 #> [1] "auto"
 #> 
 #> $selected_backend
-#> [1] "unknown"
+#> [1] "avx2"
 #> 
 #> $installed_backends
 #> [1] "scalar,avx2,avx512"
@@ -36,7 +36,7 @@ rbebelm_backend_info()
 #> [1] "scalar,avx2"
 #> 
 #> $backend_loaded
-#> [1] FALSE
+#> [1] TRUE
 ```
 
 ## Backend selection
@@ -49,7 +49,8 @@ before the first call that loads backend symbols.
 ``` r
 
 rbebelm_set_backend("auto")
-#> [1] "auto"
+#> Error in `rbebelm_set_backend()`:
+#> ! Rbebelm backend is already initialized; call rbebelm_set_backend() before loading a model or querying backend features
 rbebelm_backend_features()
 #> $backend
 #> [1] "avx2"

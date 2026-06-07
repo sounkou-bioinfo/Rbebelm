@@ -16,7 +16,7 @@ rbebelm_backend_info()
 #> [1] "auto"
 #> 
 #> $selected_backend
-#> [1] "unknown"
+#> [1] "avx2"
 #> 
 #> $installed_backends
 #> [1] "scalar,avx2,avx512"
@@ -25,7 +25,7 @@ rbebelm_backend_info()
 #> [1] "scalar,avx2"
 #> 
 #> $backend_loaded
-#> [1] FALSE
+#> [1] TRUE
 ```
 
 ## Load a model
@@ -33,7 +33,15 @@ rbebelm_backend_info()
 ``` r
 
 model <- bebel_model_load(Sys.getenv("BEBELM_WEIGHTS_FILE"), num_threads = 2)
-model
+rbebelm_backend_features()[c("backend", "target_arch", "target_os")]
+#> $backend
+#> [1] "avx2"
+#> 
+#> $target_arch
+#> [1] "x86_64"
+#> 
+#> $target_os
+#> [1] "linux"
 ```
 
 If `BEBELM_WEIGHTS_FILE` is not set, use the same code with an explicit
@@ -60,8 +68,34 @@ bebel_append_user(agent, "And Italy?")
 turn2 <- bebel_assistant_turn(agent, on_event = NULL)
 
 turn1
+#> <BebeLM assistant turn>
+#>   stop: eos 
+#>   tokens: 26 generated; 19 prompt
+#>   prefill: 9.4 tok/s 
+#>   decode: 9.40 tok/s 
+#>   text:
+#> <think>
+#> The user asks: "What is the capital of France? Answer briefly."</think>
+#> The capital of France is Paris.
 turn2
+#> <BebeLM assistant turn>
+#>   stop: eos 
+#>   tokens: 26 generated; 13 prompt
+#>   prefill: 9.4 tok/s 
+#>   decode: 9.39 tok/s 
+#>   text:
+#> <think>
+#> The user asks: "And Italy?" Possibly they are continuing a conversation</think>
+#> The capital of Italy is Rome.
 bebel_agent_info(agent)[c("history_tokens", "processed_tokens", "kv_tokens")]
+#> $history_tokens
+#> [1] 86
+#> 
+#> $processed_tokens
+#> [1] 84
+#> 
+#> $kv_tokens
+#> [1] 84
 ```
 
 Use `bebel_clear(agent)` to reset transcript and caches without
@@ -85,6 +119,15 @@ bebel_chat(
   max_think = 16,
   on_event = NULL
 )
+#> <BebeLM chat result>
+#>   stop: max_new 
+#>   tokens: 48 generated; 21 prompt
+#>   prefill: 9.9 tok/s 
+#>   decode: 10.11 tok/s 
+#>   text:
+#> <think>
+#> The user asks: "In one concise sentence, what does runtime backend dispatch</think>
+#> Runtime backend dispatch assigns incoming requests to the appropriate service or function based on dynamic criteria at execution time. That's one sentence. But they want "
 ```
 
 ## Token helpers
@@ -93,6 +136,10 @@ bebel_chat(
 
 ids <- bebel_tokenize(model, "The capital of Italy is", add_bos = TRUE)
 ids
+#> [1] 124894    597   5205    302  10125    355
 bebel_detokenize(model, ids)
+#> [1] "<|startoftext|>The capital of Italy is"
 bebel_token_ids()[c("TOKEN_THINK", "TOKEN_TOOL_CALL_START", "TOKEN_TOOL_CALL_END")]
+#>           TOKEN_THINK TOKEN_TOOL_CALL_START   TOKEN_TOOL_CALL_END 
+#>                124901                124905                124906
 ```

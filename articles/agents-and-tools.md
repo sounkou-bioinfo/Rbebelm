@@ -14,13 +14,21 @@ library(Rbebelm)
 model <- bebel_model_load(Sys.getenv("BEBELM_WEIGHTS_FILE"), num_threads = 2)
 agent <- bebel_agent(model, greedy = TRUE, max_gen = 48, max_think = 16)
 
-bebel_append_user(agent, "Remember this city: Paris.")
-bebel_assistant_turn(agent, on_event = NULL)
+bebel_append_user(agent, "Say exactly: Paris noted.")
+turn1 <- bebel_assistant_turn(agent, on_event = NULL)
 
-bebel_append_user(agent, "Which city did I name?")
-bebel_assistant_turn(agent, on_event = NULL)
+bebel_append_user(agent, "Say exactly: second turn complete.")
+turn2 <- bebel_assistant_turn(agent, on_event = NULL)
 
 bebel_agent_info(agent)[c("history_tokens", "processed_tokens", "kv_tokens")]
+#> $history_tokens
+#> [1] 82
+#> 
+#> $processed_tokens
+#> [1] 80
+#> 
+#> $kv_tokens
+#> [1] 80
 ```
 
 Agents can also be driven with raw text and token ids.
@@ -30,11 +38,17 @@ Agents can also be driven with raw text and token ids.
 raw_agent <- bebel_agent(model, greedy = TRUE, max_gen = 16, max_think = 0)
 bebel_append(raw_agent, "The capital of France is")
 raw_turn <- bebel_agent_generate(raw_agent, on_event = NULL)
-raw_turn$text
+raw_turn[c("stop", "generated_tokens")]
+#> $stop
+#> [1] "max_new"
+#> 
+#> $generated_tokens
+#> [1] 16
 
 ids <- bebel_tokenize(model, " and Italy is", add_bos = FALSE)
 bebel_append_tokens(raw_agent, ids)
 bebel_history(raw_agent)[1:8]
+#> [1] 124894    597   5205    302   3980    355   4741     22
 ```
 
 ## Tool definitions
@@ -133,7 +147,26 @@ bebel_append_user(agent, tool_prompt)
 run <- bebel_agent_run(agent, tools = tools, context = ctx, hooks = hooks, max_steps = 2)
 
 run
+#> <bebelAgentRun>
+#>   turns: 2 
+#>   tool calls: 1 
+#> <BebeLM assistant turn>
+#>   stop: eos 
+#>   tokens: 34 generated; 31 prompt
+#>   prefill: 9.6 tok/s 
+#>   decode: 9.40 tok/s 
+#>   text:
+#> {
+#>   "tool_call": {
+#>     "name": "lookup_capital",
+#>     "parameters": {
+#>       "country": "Italy"
+#>     }
+#>   }
+#> }
 ctx$log
+#> [1] "request lookup_capital"     "tool lookup_capital Italy" 
+#> [3] "result lookup_capital Rome"
 ```
 
 If a model uses a different tool-call format, pass a custom

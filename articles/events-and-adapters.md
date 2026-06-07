@@ -43,7 +43,16 @@ turn <- bebel_generate(
 )
 
 paste0(text, collapse = "")
+#> [1] " be used to update a text field in a UI component."
 turn[c("stop", "generated_tokens", "decode_tps")]
+#> $stop
+#> [1] "max_new"
+#> 
+#> $generated_tokens
+#> [1] 12
+#> 
+#> $decode_tps
+#> [1] 10.61083
 ```
 
 ## Handler lists
@@ -69,6 +78,8 @@ invisible(bebel_generate(
 ))
 
 counts
+#>     text_delta thinking_delta           done 
+#>              4              0              1
 ```
 
 ## SSE example
