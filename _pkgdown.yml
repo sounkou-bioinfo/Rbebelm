@@ -38,6 +38,16 @@ reference:
       - bebel_live_console
       - BebelModel
       - BebelAgent
+  - title: R-native agent layer
+    contents:
+      - bebel_r_agent
+      - bebel_r_agent_turn
+      - bebel_r_agent_console
+      - bebel_r_agent_rpc_server
+      - bebel_r_agent_clear
+      - bebel_default_r_tools
+      - bebel_agent_tool
+      - bebel_agent_tool_catalog
   - title: Backend dispatch and diagnostics
     contents:
       - rbebelm_set_backend
@@ -54,6 +64,7 @@ articles:
     contents:
       - getting-started
       - agents-and-tools
+      - r-native-agent-layer
       - events-and-adapters
       - backend-and-webr
       - model-claims-benchmark

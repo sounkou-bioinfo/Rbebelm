@@ -245,6 +245,56 @@ run
 ctx$log
 ```
 
+## R-native agent layer
+
+`bebel_r_agent()` adds a small Corteza-inspired harness on top of the core
+model bindings. One session object owns a BebeLM agent, a tool catalog, a private
+context environment, and can be driven either from an R console or from a small
+JSON-RPC SDK surface.
+
+```{r r-agent-layer, eval=has_weights}
+r_agent <- bebel_r_agent(
+  model,
+  allow_eval = FALSE,
+  greedy = TRUE,
+  max_gen = 96,
+  max_think = 16
+)
+bebel_agent_tool_catalog(r_agent$tools)
+```
+
+Interactive console. The `/r` command is a direct R escape hatch into the same
+environment used by the agent's R tools; for example `/r x <- mtcars` creates an
+object that `r_objects()` can later see. The `r_eval` tool is only advertised to
+the model when `allow_eval = TRUE`.
+
+```{r r-agent-console, eval=FALSE}
+bebel_r_agent_console(r_agent)
+```
+
+A compact one-liner keeps the loaded BebeLM model object out of `.GlobalEnv`
+while still sharing `.GlobalEnv` with `/r` and the agent's R tools:
+
+```{r r-agent-console-oneliner, eval=FALSE}
+local({
+  library(Rbebelm)
+  model <- bebel_model_load(Sys.getenv("BEBELM_WEIGHTS_FILE", "LFM2.5-8B-A1B-Q4_K_M.gguf"), num_threads = 2)
+  bebel_r_agent_console(bebel_r_agent(model, allow_eval = TRUE, greedy = TRUE, max_gen = 96, max_think = 8))
+})
+```
+
+Optional RPC server, using `nanonext` and `jsonlite` only when requested:
+
+```{r r-agent-rpc, eval=FALSE}
+server <- bebel_r_agent_rpc_server(r_agent, url = "http://127.0.0.1:8080")
+server$start()
+# ... handle requests ...
+server$close()
+```
+
+The RPC endpoint accepts `POST /rpc` JSON-RPC calls such as `tools/list`,
+`session/info`, `session/transcript`, `session/clear`, and `turn`.
+
 The same event stream can be consumed programmatically. For example, collect
 only answer-text deltas while suppressing console output:
 

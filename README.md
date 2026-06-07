@@ -90,8 +90,8 @@ turn1
 #> <BebeLM assistant turn>
 #>   stop: eos 
 #>   tokens: 27 generated; 19 prompt
-#>   prefill: 9.2 tok/s 
-#>   decode: 9.57 tok/s 
+#>   prefill: 9.1 tok/s 
+#>   decode: 9.62 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "What is the capital of Mali? Answer briefly."</think>
@@ -100,8 +100,8 @@ turn2
 #> <BebeLM assistant turn>
 #>   stop: eos 
 #>   tokens: 26 generated; 14 prompt
-#>   prefill: 9.7 tok/s 
-#>   decode: 9.49 tok/s 
+#>   prefill: 9.6 tok/s 
+#>   decode: 9.69 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "What about Italy? Answer briefly." Likely they</think>
@@ -194,8 +194,8 @@ result
 #> <BebeLM chat result>
 #>   stop: max_new 
 #>   tokens: 48 generated; 22 prompt
-#>   prefill: 9.6 tok/s 
-#>   decode: 9.64 tok/s 
+#>   prefill: 9.8 tok/s 
+#>   decode: 10.03 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "In one concise sentence, what does runtime SIMD</think>
@@ -219,8 +219,8 @@ raw_result
 #> <BebeLM generation result>
 #>   stop: max_new 
 #>   tokens: 24 generated; 8 prompt
-#>   prefill: 9.5 tok/s 
-#>   decode: 9.92 tok/s 
+#>   prefill: 9.8 tok/s 
+#>   decode: 10.18 tok/s 
 #>   text:
 #>  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However
 ```
@@ -306,14 +306,73 @@ run
 #> <BebeLM assistant turn>
 #>   stop: eos 
 #>   tokens: 7 generated; 31 prompt
-#>   prefill: 10.0 tok/s 
-#>   decode: 10.10 tok/s 
+#>   prefill: 9.6 tok/s 
+#>   decode: 9.54 tok/s 
 #>   text:
 #> The capital of Italy is Rome.
 ctx$log
 #> [1] "request lookup_capital"     "tool lookup_capital Italy" 
 #> [3] "result lookup_capital Rome"
 ```
+
+## R-native agent layer
+
+`bebel_r_agent()` adds a small Corteza-inspired harness on top of the
+core model bindings. One session object owns a BebeLM agent, a tool
+catalog, a private context environment, and can be driven either from an
+R console or from a small JSON-RPC SDK surface.
+
+``` r
+r_agent <- bebel_r_agent(
+  model,
+  allow_eval = FALSE,
+  greedy = TRUE,
+  max_gen = 96,
+  max_think = 16
+)
+bebel_agent_tool_catalog(r_agent$tools)
+#>         name                                       description
+#> 1  r_objects     List objects in the configured R environment.
+#> 2     r_help Read R help for a topic, optionally in a package.
+#> 3 list_files                     List files under a directory.
+#> 4  read_file                                 Read a text file.
+#> 5 grep_files                       Search text files by regex.
+```
+
+Interactive console. The `/r` command is a direct R escape hatch into
+the same environment used by the agent’s R tools; for example
+`/r x <- mtcars` creates an object that `r_objects()` can later see. The
+`r_eval` tool is only advertised to the model when `allow_eval = TRUE`.
+
+``` r
+bebel_r_agent_console(r_agent)
+```
+
+A compact one-liner keeps the loaded BebeLM model object out of
+`.GlobalEnv` while still sharing `.GlobalEnv` with `/r` and the agent’s
+R tools:
+
+``` r
+local({
+  library(Rbebelm)
+  model <- bebel_model_load(Sys.getenv("BEBELM_WEIGHTS_FILE", "LFM2.5-8B-A1B-Q4_K_M.gguf"), num_threads = 2)
+  bebel_r_agent_console(bebel_r_agent(model, allow_eval = TRUE, greedy = TRUE, max_gen = 96, max_think = 8))
+})
+```
+
+Optional RPC server, using `nanonext` and `jsonlite` only when
+requested:
+
+``` r
+server <- bebel_r_agent_rpc_server(r_agent, url = "http://127.0.0.1:8080")
+server$start()
+# ... handle requests ...
+server$close()
+```
+
+The RPC endpoint accepts `POST /rpc` JSON-RPC calls such as
+`tools/list`, `session/info`, `session/transcript`, `session/clear`, and
+`turn`.
 
 The same event stream can be consumed programmatically. For example,
 collect only answer-text deltas while suppressing console output:
