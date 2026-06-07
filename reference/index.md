@@ -12,6 +12,8 @@
   : Create a persistent BebeLM agent
 - [`bebel_append()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_append.md)
   : Append raw text to a BebeLM agent transcript
+- [`bebel_append_system()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_append_system.md)
+  : Append a ChatML system turn to a BebeLM agent transcript
 - [`bebel_append_user()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_append_user.md)
   : Append a ChatML user turn to a BebeLM agent transcript
 - [`bebel_append_tokens()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_append_tokens.md)

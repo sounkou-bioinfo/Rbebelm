@@ -118,25 +118,25 @@ transcript and decode caches while sharing the loaded model weights.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">agent</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bebel_agent.html">bebel_agent</a></span><span class="op">(</span><span class="va">model</span>, greedy <span class="op">=</span> <span class="cn">TRUE</span>, max_gen <span class="op">=</span> <span class="fl">48</span>, max_think <span class="op">=</span> <span class="fl">16</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="../reference/bebel_append_user.html">bebel_append_user</a></span><span class="op">(</span><span class="va">agent</span>, <span class="st">"What is the capital of France? Answer briefly."</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/bebel_append_user.html">bebel_append_user</a></span><span class="op">(</span><span class="va">agent</span>, <span class="st">"What is the capital of Mali? Answer briefly."</span><span class="op">)</span></span>
 <span><span class="va">turn1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bebel_assistant_turn.html">bebel_assistant_turn</a></span><span class="op">(</span><span class="va">agent</span>, on_event <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="../reference/bebel_append_user.html">bebel_append_user</a></span><span class="op">(</span><span class="va">agent</span>, <span class="st">"And Italy?"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/bebel_append_user.html">bebel_append_user</a></span><span class="op">(</span><span class="va">agent</span>, <span class="st">"What about Italy?"</span><span class="op">)</span></span>
 <span><span class="va">turn2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bebel_assistant_turn.html">bebel_assistant_turn</a></span><span class="op">(</span><span class="va">agent</span>, on_event <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">turn1</span><span class="op">$</span><span class="va">text</span></span>
-<span><span class="co">#&gt; [1] "&lt;think&gt;\nThe user asks: \"What is the capital of France? Answer briefly.\"&lt;/think&gt;\nThe capital of France is Paris."</span></span>
+<span><span class="co">#&gt; [1] "&lt;think&gt;\nThe user asks: \"What is the capital of Mali? Answer briefly.\"&lt;/think&gt;\nThe capital of Mali is Bamako."</span></span>
 <span><span class="va">turn2</span><span class="op">$</span><span class="va">text</span></span>
-<span><span class="co">#&gt; [1] "&lt;think&gt;\nThe user asks: \"And Italy?\" Possibly they are continuing a conversation&lt;/think&gt;\nThe capital of Italy is Rome."</span></span>
+<span><span class="co">#&gt; [1] "&lt;think&gt;\nThe user asks: \"What about Italy? Answer briefly.\" Likely they&lt;/think&gt;\nThe capital of Italy is Rome."</span></span>
 <span><span class="fu"><a href="../reference/bebel_agent_info.html">bebel_agent_info</a></span><span class="op">(</span><span class="va">agent</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"history_tokens"</span>, <span class="st">"processed_tokens"</span>, <span class="st">"kv_tokens"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt; $history_tokens</span></span>
-<span><span class="co">#&gt; [1] 86</span></span>
+<span><span class="co">#&gt; [1] 88</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $processed_tokens</span></span>
-<span><span class="co">#&gt; [1] 84</span></span>
+<span><span class="co">#&gt; [1] 86</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $kv_tokens</span></span>
-<span><span class="co">#&gt; [1] 84</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 86</span></span></code></pre></div>
 <p>Use <code>bebel_clear(agent)</code> to reset transcript and caches
 without reloading the model.</p>
 </div>

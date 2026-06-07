@@ -68,6 +68,10 @@ excerpt <- function(x, n = 120) {
   ifelse(nchar(x) > n, paste0(substr(x, 1, n), "..."), x)
 }
 
+or_unknown <- function(x) {
+  if (is.null(x) || length(x) == 0L || is.na(x)) "unknown" else x
+}
+
 run_task <- function(task, ...) {
   task$solve(...)
   task$score()
@@ -175,13 +179,15 @@ rbebelm_tool_solver <- function(inputs, model, expected_tool, max_steps = 3, ...
     context <- new.env(parent = emptyenv())
     context$calls <- character()
 
-    lookup_capital <- bebel_tool("lookup_capital", function(country, context) {
+    lookup_capital <- bebel_tool("lookup_capital", function(args, context) {
+      country <- args$country
       context$calls <- c(context$calls, paste0("lookup_capital:", country))
-      c(Mali = "Bamako", Italy = "Rome", Japan = "Tokyo")[[country]] %||% "unknown"
+      or_unknown(c(Mali = "Bamako", Italy = "Rome", Japan = "Tokyo")[[country]])
     })
-    lookup_currency <- bebel_tool("lookup_currency", function(country, context) {
+    lookup_currency <- bebel_tool("lookup_currency", function(args, context) {
+      country <- args$country
       context$calls <- c(context$calls, paste0("lookup_currency:", country))
-      c(Mali = "XOF", Japan = "yen", Italy = "euro")[[country]] %||% "unknown"
+      or_unknown(c(Mali = "XOF", Japan = "yen", Italy = "euro")[[country]])
     })
 
     agent <- bebel_agent(model, greedy = TRUE, max_gen = 128, max_think = 0)
@@ -200,7 +206,8 @@ rbebelm_tool_solver <- function(inputs, model, expected_tool, max_steps = 3, ...
       result[[i]] <- bebel_transcript(agent)
       loop_error <- conditionMessage(run)
     } else {
-      result[[i]] <- tail(run$turns, 1)[[1]]$text %||% bebel_transcript(agent)
+      result[[i]] <- or_unknown(tail(run$turns, 1)[[1]]$text)
+      if (identical(result[[i]], "unknown")) result[[i]] <- bebel_transcript(agent)
       loop_error <- NA_character_
     }
     metadata[[i]] <- list(
@@ -246,7 +253,7 @@ tool_task <- vitals::Task$new(
 tool_eval <- run_task(tool_task, model = model, expected_tool = tool_data$expected_tool)
 tool_eval$metrics
 #> accuracy 
-#>        0
+#> 66.66667
 data.frame(
   sample = seq_len(nrow(tool_eval$samples)),
   target = tool_eval$samples$target,
@@ -263,13 +270,17 @@ data.frame(
 #> 2      2    XOF
 #> 3      3   Rome
 #>                                                                                                                        result
-#> 1 <|startoftext|><|im_start|>user Do not answer from memory. Emit exactly [lookup_capital(country="Mali")]. After the tool...
+#> 1                                                                                                              ANSWER: Bamako
 #> 2 <tool_call> {"name": "lookup_currency", "arguments": {"country": "Mali"}} </tool_call> <tool_result> {"currency": "Mali ...
-#> 3                                                                                             lookup_capital(country="Italy")
-#>   score answer_ok tool_ok calls                                explanation
-#> 1     I     FALSE   FALSE       missing expected tool call or final answer
-#> 2     I     FALSE   FALSE       missing expected tool call or final answer
-#> 3     I     FALSE   FALSE       missing expected tool call or final answer
+#> 3                                                                                                                ANSWER: Rome
+#>   score answer_ok tool_ok                                     calls
+#> 1     C      TRUE    TRUE lookup_capital:Mali | lookup_capital:Mali
+#> 2     I     FALSE   FALSE                                          
+#> 3     C      TRUE    TRUE                      lookup_capital:Italy
+#>                                  explanation
+#> 1          expected tool and answer observed
+#> 2 missing expected tool call or final answer
+#> 3          expected tool and answer observed
 ```
 
 ## Instruction-following task
