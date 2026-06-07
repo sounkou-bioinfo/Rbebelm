@@ -37,6 +37,7 @@
     <li><a class="dropdown-item" href="../articles/agents-and-tools.html">Agents and tools</a></li>
     <li><a class="dropdown-item" href="../articles/events-and-adapters.html">Events and adapters</a></li>
     <li><a class="dropdown-item" href="../articles/backend-and-webr.html">Backends and webR</a></li>
+    <li><a class="dropdown-item" href="../articles/model-claims-benchmark.html">Model claims benchmark</a></li>
   </ul>
 </li>
       </ul>
@@ -76,9 +77,10 @@
 -->
 <p><code>Rbebelm</code> provides <code>R</code> bindings to
 <code>BebeLM</code>, a Rust implementation of local <code>CPU</code>
-inference for Liquid AI LFM2.5-8B-A1B GGUF weights. Model weights are
-not bundled with the package. Set <code>BEBELM_WEIGHTS_FILE</code> to a
-local GGUF path before running the model examples.</p>
+inference for <a href="https://www.liquid.ai/blog/lfm2-5-8b-a1b" class="external-link">Liquid
+AI LFM2.5-8B-A1B</a> GGUF weights. Model weights are not bundled with
+the package. Set <code>BEBELM_WEIGHTS_FILE</code> to a local GGUF path
+before running the model examples.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/sounkou-bioinfo/Rbebelm" class="external-link">Rbebelm</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/rbebelm_backend_info.html">rbebelm_backend_info</a></span><span class="op">(</span><span class="op">)</span></span>

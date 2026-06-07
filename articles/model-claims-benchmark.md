@@ -1,0 +1,331 @@
+# Model claims benchmark
+
+This vignette records local probes related to public claims for [Liquid
+AI LFM2.5-8B-A1B](https://www.liquid.ai/blog/lfm2-5-8b-a1b). It is a
+runtime benchmark of the local GGUF and `Rbebelm` path, not a
+reproduction of Liquid AI’s training recipe or benchmark harnesses.
+
+The source is in `vignettes-raw/`; the rendered file in `vignettes/` is
+precompiled with `rawvignette` so `R CMD check`, pkgdown, and package
+installs do not rerun the model.
+
+``` r
+
+library(Rbebelm)
+weights_file
+#> [1] "/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf"
+has_weights
+#> [1] TRUE
+```
+
+## Backend and model loading
+
+``` r
+
+model <- bebel_model_load(weights_file, num_threads = num_threads)
+rbebelm_backend_info()
+#> <Rbebelm backend dispatch>
+#>   mode: dynamic 
+#>   requested: auto 
+#>   selected: avx2 
+#>   loaded: yes 
+#>   installed: scalar,avx2,avx512 
+#>   supported: scalar,avx2
+rbebelm_backend_features()[c("backend", "target_arch", "target_os", "compiled_avx2", "compiled_dotprod")]
+#> $backend
+#> [1] "avx2"
+#> 
+#> $target_arch
+#> [1] "x86_64"
+#> 
+#> $target_os
+#> [1] "linux"
+#> 
+#> $compiled_avx2
+#> [1] TRUE
+#> 
+#> $compiled_dotprod
+#> [1] FALSE
+```
+
+## Local generation throughput
+
+This checks that the GGUF can run locally through the selected backend
+and records throughput for a short deterministic completion.
+
+``` r
+
+prompt <- "The capital of France is"
+t0 <- proc.time()[["elapsed"]]
+gen <- bebel_generate(
+  model,
+  prompt,
+  greedy = TRUE,
+  max_gen = 32,
+  max_think = 0,
+  on_event = NULL
+)
+t1 <- proc.time()[["elapsed"]]
+
+data.frame(
+  prompt = prompt,
+  text = gen$text,
+  generated_tokens = length(gen$tokens),
+  elapsed_sec = round(t1 - t0, 3),
+  tokens_per_sec = round(length(gen$tokens) / max(t1 - t0, .Machine$double.eps), 3),
+  contains_paris = grepl("Paris", gen$text, ignore.case = TRUE)
+)
+#>                     prompt
+#> 1 The capital of France is
+#>                                                                                                                          text
+#> 1  Paris. city name: france. name: france. city name: paris. name: paris. ... and so on. This is a series of statements about
+#>   generated_tokens elapsed_sec tokens_per_sec contains_paris
+#> 1                0       3.854              0           TRUE
+```
+
+## Tool dispatch
+
+This probes the local agent loop: the model emits a BebeLM tool-call
+block, R parses it, dispatches the R tool, appends the result, and
+continues the agent transcript.
+
+``` r
+
+agent <- bebel_agent(model, greedy = TRUE, max_gen = 96, max_think = 0)
+bebel_append_user(agent, paste(
+  "You may call exactly one tool. Do not answer from memory.",
+  "To answer, emit exactly: [lookup_capital(country=\"Italy\")]"
+))
+
+context <- new.env(parent = emptyenv())
+context$calls <- character()
+hook_log <- character()
+
+lookup_capital <- bebel_tool("lookup_capital", function(country, context) {
+  context$calls <- c(context$calls, country)
+  c(Italy = "Rome", France = "Paris")[[country]] %maybe% "unknown"
+})
+
+run <- bebel_agent_run(
+  agent,
+  tools = list(lookup_capital),
+  context = context,
+  max_steps = 2,
+  hooks = list(
+    tool_request = function(call, ...) hook_log <<- c(hook_log, paste("request", call$name)),
+    tool_result = function(call, result, ...) hook_log <<- c(hook_log, paste("result", call$name, result))
+  )
+)
+
+data.frame(
+  tool_calls = length(run$tool_calls),
+  context_calls = paste(context$calls, collapse = ","),
+  hook_log = paste(hook_log, collapse = " | "),
+  transcript_has_result = grepl("Rome", bebel_transcript(agent), fixed = TRUE)
+)
+#>   tool_calls context_calls hook_log transcript_has_result
+#> 1          0                                        FALSE
+```
+
+## Two-step tool-chain probe
+
+The public claims emphasize agentic tool use. This small probe asks for
+two tool calls in sequence and reports what the local run actually did.
+
+``` r
+
+chain_agent <- bebel_agent(model, greedy = TRUE, max_gen = 160, max_think = 0)
+bebel_append_user(chain_agent, paste(
+  "Use tools for each step.",
+  "First emit exactly: [lookup_capital(country=\"France\")].",
+  "After receiving that tool result, emit exactly: [lookup_country_info(city=\"Paris\")].",
+  "Then answer briefly."
+))
+
+chain_context <- new.env(parent = emptyenv())
+chain_context$calls <- character()
+
+lookup_capital <- bebel_tool("lookup_capital", function(country, context) {
+  context$calls <- c(context$calls, paste0("lookup_capital:", country))
+  c(France = "Paris", Italy = "Rome")[[country]] %maybe% "unknown"
+})
+
+lookup_country_info <- bebel_tool("lookup_country_info", function(city, context) {
+  context$calls <- c(context$calls, paste0("lookup_country_info:", city))
+  c(Paris = "France", Rome = "Italy")[[city]] %maybe% "unknown"
+})
+
+chain <- bebel_agent_run(
+  chain_agent,
+  tools = list(lookup_capital, lookup_country_info),
+  context = chain_context,
+  max_steps = 4
+)
+
+data.frame(
+  tool_calls = length(chain$tool_calls),
+  calls = paste(chain_context$calls, collapse = " | "),
+  chained_two_tools = length(chain_context$calls) >= 2L
+)
+#>   tool_calls calls chained_two_tools
+#> 1          4                   FALSE
+```
+
+## Non-Latin tokenization probe
+
+This probes tokenizer behavior for a few non-Latin examples. It does not
+measure language quality.
+
+``` r
+
+texts <- c(
+  japanese = "東京は日本の首都です。",
+  arabic = "القاهرة مدينة كبيرة.",
+  hindi = "दिल्ली भारत की राजधानी है।"
+)
+
+do.call(rbind, lapply(names(texts), function(name) {
+  ids <- bebel_tokenize(model, texts[[name]], add_bos = FALSE)
+  roundtrip <- bebel_detokenize(model, ids)
+  data.frame(
+    text = name,
+    chars = nchar(texts[[name]], type = "chars"),
+    tokens = length(ids),
+    roundtrip_nonempty = nzchar(roundtrip)
+  )
+}))
+#>       text chars tokens roundtrip_nonempty
+#> 1 japanese    11      7               TRUE
+#> 2   arabic    20      5               TRUE
+#> 3    hindi    26     16               TRUE
+```
+
+## Context-path probe
+
+The model announcement cites a 128K context window. This package-level
+probe does not attempt a full 128K evaluation. It checks that a
+configurable long prompt can pass through the local R/BebeLM path.
+Increase `BEBELM_CONTEXT_PROBE_TOKENS` for heavier local experiments.
+
+``` r
+
+seed <- "alpha beta gamma delta epsilon zeta eta theta "
+long_prompt <- paste(rep(seed, ceiling(context_probe_tokens / 8)), collapse = "")
+ids <- bebel_tokenize(model, long_prompt, add_bos = TRUE)
+ids <- ids[seq_len(min(length(ids), context_probe_tokens))]
+long_text <- bebel_detokenize(model, ids)
+
+context_agent <- bebel_agent(
+  model,
+  greedy = TRUE,
+  max_context = context_probe_tokens + 64,
+  max_gen = 8,
+  max_think = 0
+)
+bebel_append(context_agent, long_text)
+long_out <- bebel_agent_generate(context_agent, on_event = NULL)
+
+data.frame(
+  requested_context_probe_tokens = context_probe_tokens,
+  actual_prompt_tokens = length(ids),
+  generated_tokens = length(long_out$tokens),
+  context_path_ok = length(long_out$tokens) > 0L
+)
+#>   requested_context_probe_tokens actual_prompt_tokens generated_tokens
+#> 1                           2048                 2048                0
+#>   context_path_ok
+#> 1           FALSE
+```
+
+## Optional `vitals` task
+
+[`vitals`](https://github.com/tidyverse/vitals) is a general LLM
+evaluation framework for R. When it is installed, the same local
+`Rbebelm` model can be wrapped as a `vitals::Task` with a
+package-specific solver and scorer. This is useful for turning the
+probes above into repeatable evaluation logs.
+
+``` r
+
+claim_dataset <- data.frame(
+  input = c(
+    "Answer with exactly: ANSWER: Paris. What is the capital of France?",
+    "Answer with exactly: ANSWER: Rome. What is the capital of Italy?"
+  ),
+  target = c("Paris", "Rome")
+)
+
+rbebelm_solver <- function(inputs, model, ...) {
+  result <- vapply(inputs, function(input) {
+    agent <- bebel_agent(model, greedy = TRUE, max_gen = 32, max_think = 0)
+    bebel_append_user(agent, input)
+    bebel_assistant_turn(agent, on_event = NULL)$text
+  }, character(1))
+  list(
+    result = result,
+    solver_chat = vector("list", length(inputs)),
+    solver_metadata = lapply(result, function(text) list(chars = nchar(text)))
+  )
+}
+
+answer_scorer <- function(samples) {
+  extracted <- sub(".*ANSWER:\\s*([^\\n.]+).*", "\\1", samples$result, ignore.case = TRUE)
+  ok <- trimws(tolower(extracted)) == trimws(tolower(samples$target))
+  list(
+    score = factor(ifelse(ok, "C", "I"), levels = c("I", "C"), ordered = TRUE),
+    scorer_metadata = Map(function(answer, target) list(answer = answer, target = target), extracted, samples$target)
+  )
+}
+
+task <- vitals::Task$new(
+  dataset = claim_dataset,
+  solver = rbebelm_solver,
+  scorer = answer_scorer,
+  name = "rbebelm-capitals"
+)
+
+task$eval(model = model, view = FALSE)
+task$get_samples()[c("input", "target", "result", "score")]
+```
+
+If `vitals` is not installed, install it with:
+
+``` r
+
+install.packages("vitals")
+# or: pak::pak("tidyverse/vitals")
+```
+
+## What this does and does not verify
+
+``` r
+
+data.frame(
+  claim_area = c(
+    "local inference",
+    "short-generation speed",
+    "tool dispatch",
+    "simple tool chaining",
+    "non-Latin tokenizer path",
+    "long-context plumbing",
+    "8B/1.5B-active architecture",
+    "38T training tokens and RL recipe",
+    "published benchmark scores",
+    "comparison to larger models",
+    "license terms"
+  ),
+  probed_here = c(TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE)
+)
+#>                           claim_area probed_here
+#> 1                    local inference        TRUE
+#> 2             short-generation speed        TRUE
+#> 3                      tool dispatch        TRUE
+#> 4               simple tool chaining        TRUE
+#> 5           non-Latin tokenizer path        TRUE
+#> 6              long-context plumbing        TRUE
+#> 7        8B/1.5B-active architecture       FALSE
+#> 8  38T training tokens and RL recipe       FALSE
+#> 9         published benchmark scores       FALSE
+#> 10       comparison to larger models       FALSE
+#> 11                     license terms       FALSE
+```

@@ -39,6 +39,7 @@
     <li><a class="dropdown-item" href="articles/agents-and-tools.html">Agents and tools</a></li>
     <li><a class="dropdown-item" href="articles/events-and-adapters.html">Events and adapters</a></li>
     <li><a class="dropdown-item" href="articles/backend-and-webr.html">Backends and webR</a></li>
+    <li><a class="dropdown-item" href="articles/model-claims-benchmark.html">Model claims benchmark</a></li>
   </ul>
 </li>
       </ul>
@@ -59,7 +60,7 @@
 </h1></div>
 <!-- badges: start -->
 
-<p><code>Rbebelm</code> provides experimental R bindings for upstream <a href="https://github.com/maximecb/bebelm" class="external-link"><code>maximecb/bebelm</code></a>, a pure-Rust CPU-only implementation of Liquid AI LFM2.5-8B-A1B inference. The R package uses <a href="https://github.com/yutannihilation/savvy" class="external-link"><code>savvy</code></a> for the R/Rust boundary and a runtime backend layout for portable SIMD dispatch.</p>
+<p><code>Rbebelm</code> provides experimental R bindings for upstream <a href="https://github.com/maximecb/bebelm" class="external-link"><code>maximecb/bebelm</code></a>, a pure-Rust CPU-only implementation of <a href="https://www.liquid.ai/blog/lfm2-5-8b-a1b" class="external-link">Liquid AI LFM2.5-8B-A1B</a> inference. The R package uses <a href="https://github.com/yutannihilation/savvy" class="external-link"><code>savvy</code></a> for the R/Rust boundary and a runtime backend layout for portable SIMD dispatch.</p>
 <p>The package is designed for interactive LLM use: generation streams tokens to the R console as soon as they are decoded, while the function still returns the final text, token ids, stop reason, and timing statistics.</p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
@@ -111,8 +112,8 @@
 <span><span class="co">#&gt; &lt;BebeLM assistant turn&gt;</span></span>
 <span><span class="co">#&gt;   stop: eos </span></span>
 <span><span class="co">#&gt;   tokens: 26 generated; 19 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 9.5 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 9.50 tok/s </span></span>
+<span><span class="co">#&gt;   prefill: 9.3 tok/s </span></span>
+<span><span class="co">#&gt;   decode: 9.59 tok/s </span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; &lt;think&gt;</span></span>
 <span><span class="co">#&gt; The user asks: "What is the capital of France? Answer briefly."&lt;/think&gt;</span></span>
@@ -122,7 +123,7 @@
 <span><span class="co">#&gt;   stop: eos </span></span>
 <span><span class="co">#&gt;   tokens: 26 generated; 13 prompt</span></span>
 <span><span class="co">#&gt;   prefill: 9.8 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 9.63 tok/s </span></span>
+<span><span class="co">#&gt;   decode: 9.76 tok/s </span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; &lt;think&gt;</span></span>
 <span><span class="co">#&gt; The user asks: "And Italy?" Possibly they are continuing a conversation&lt;/think&gt;</span></span>
@@ -198,7 +199,7 @@
 <span><span class="co">#&gt;   stop: max_new </span></span>
 <span><span class="co">#&gt;   tokens: 48 generated; 22 prompt</span></span>
 <span><span class="co">#&gt;   prefill: 9.8 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 9.95 tok/s </span></span>
+<span><span class="co">#&gt;   decode: 10.05 tok/s </span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; &lt;think&gt;</span></span>
 <span><span class="co">#&gt; The user asks: "In one concise sentence, what does runtime SIMD&lt;/think&gt;</span></span>
@@ -219,8 +220,8 @@
 <span><span class="co">#&gt; &lt;BebeLM generation result&gt;</span></span>
 <span><span class="co">#&gt;   stop: max_new </span></span>
 <span><span class="co">#&gt;   tokens: 24 generated; 8 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 9.6 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 9.98 tok/s </span></span>
+<span><span class="co">#&gt;   prefill: 9.9 tok/s </span></span>
+<span><span class="co">#&gt;   decode: 10.24 tok/s </span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt;  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However</span></span></code></pre></div>
 <p>Agents can also be driven at the lower level with raw text or token ids:</p>
@@ -279,8 +280,8 @@
 <span><span class="co">#&gt; &lt;BebeLM assistant turn&gt;</span></span>
 <span><span class="co">#&gt;   stop: eos </span></span>
 <span><span class="co">#&gt;   tokens: 7 generated; 31 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 9.6 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 9.75 tok/s </span></span>
+<span><span class="co">#&gt;   prefill: 9.9 tok/s </span></span>
+<span><span class="co">#&gt;   decode: 9.81 tok/s </span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; The capital of Italy is Rome.</span></span>
 <span><span class="va">ctx</span><span class="op">$</span><span class="va">log</span></span>
@@ -344,6 +345,7 @@
 <span><span class="co">#&gt;   x86_64-v3: yes </span></span>
 <span><span class="co">#&gt;   x86_64-v4: no </span></span>
 <span><span class="co">#&gt;   NEON: no </span></span>
+<span><span class="co">#&gt;   ARM dotprod: no </span></span>
 <span><span class="co">#&gt;   wasm simd128: no</span></span>
 <span><span class="fu"><a href="reference/rbebelm_backend_features.html">rbebelm_backend_features</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; &lt;Rbebelm backend features&gt;</span></span>
@@ -355,6 +357,7 @@
 <span><span class="co">#&gt;     AVX2: yes </span></span>
 <span><span class="co">#&gt;     AVX-512F: no </span></span>
 <span><span class="co">#&gt;     NEON: no </span></span>
+<span><span class="co">#&gt;     ARM dotprod: no </span></span>
 <span><span class="co">#&gt;     wasm simd128: no</span></span>
 <span><span class="fu"><a href="reference/rbebelm_backend_info.html">rbebelm_backend_info</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; &lt;Rbebelm backend dispatch&gt;</span></span>
