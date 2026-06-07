@@ -71,8 +71,8 @@ turn1
 #> <BebeLM assistant turn>
 #>   stop: eos 
 #>   tokens: 26 generated; 19 prompt
-#>   prefill: 9.4 tok/s 
-#>   decode: 9.40 tok/s 
+#>   prefill: 9.6 tok/s 
+#>   decode: 9.86 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "What is the capital of France? Answer briefly."</think>
@@ -81,8 +81,8 @@ turn2
 #> <BebeLM assistant turn>
 #>   stop: eos 
 #>   tokens: 26 generated; 13 prompt
-#>   prefill: 9.4 tok/s 
-#>   decode: 9.39 tok/s 
+#>   prefill: 9.9 tok/s 
+#>   decode: 9.85 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "And Italy?" Possibly they are continuing a conversation</think>
@@ -122,8 +122,8 @@ bebel_chat(
 #> <BebeLM chat result>
 #>   stop: max_new 
 #>   tokens: 48 generated; 21 prompt
-#>   prefill: 9.9 tok/s 
-#>   decode: 10.11 tok/s 
+#>   prefill: 9.8 tok/s 
+#>   decode: 9.98 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "In one concise sentence, what does runtime backend dispatch</think>

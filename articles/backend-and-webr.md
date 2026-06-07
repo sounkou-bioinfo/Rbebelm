@@ -8,17 +8,11 @@ registration and dispatch; model code lives in Rust backend libraries.
 
 library(Rbebelm)
 rbebelm_cpuid_info()
-#> $cpu_x86_64_v3
-#> [1] TRUE
-#> 
-#> $cpu_x86_64_v4
-#> [1] FALSE
-#> 
-#> $cpu_neon
-#> [1] FALSE
-#> 
-#> $cpu_wasm_simd128
-#> [1] FALSE
+#> <Rbebelm CPU features>
+#>   x86_64-v3: yes 
+#>   x86_64-v4: no 
+#>   NEON: no 
+#>   wasm simd128: no
 rbebelm_backend_info()
 #> $dispatch_mode
 #> [1] "dynamic"
@@ -52,35 +46,16 @@ rbebelm_set_backend("auto")
 #> Error in `rbebelm_set_backend()`:
 #> ! Rbebelm backend is already initialized; call rbebelm_set_backend() before loading a model or querying backend features
 rbebelm_backend_features()
-#> $backend
-#> [1] "avx2"
-#> 
-#> $target_arch
-#> [1] "x86_64"
-#> 
-#> $target_os
-#> [1] "linux"
-#> 
-#> $rust_package
-#> [1] "rbebelm_backend"
-#> 
-#> $rust_package_version
-#> [1] "0.0.0"
-#> 
-#> $native_simd_feature
-#> [1] TRUE
-#> 
-#> $compiled_avx2
-#> [1] TRUE
-#> 
-#> $compiled_avx512f
-#> [1] FALSE
-#> 
-#> $compiled_neon
-#> [1] FALSE
-#> 
-#> $compiled_wasm_simd128
-#> [1] FALSE
+#> <Rbebelm backend features>
+#>   backend: avx2 
+#>   target: x86_64-linux 
+#>   Rust crate: rbebelm_backend 0.1.0 
+#>   native SIMD feature: yes 
+#>   compiled features:
+#>     AVX2: yes 
+#>     AVX-512F: no 
+#>     NEON: no 
+#>     wasm simd128: no
 rbebelm_backend_info()
 #> $dispatch_mode
 #> [1] "dynamic"

@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">Rbebelm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0-0.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -111,8 +111,8 @@
 <span><span class="co">#&gt; &lt;BebeLM assistant turn&gt;</span></span>
 <span><span class="co">#&gt;   stop: eos </span></span>
 <span><span class="co">#&gt;   tokens: 26 generated; 19 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 9.3 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 9.70 tok/s </span></span>
+<span><span class="co">#&gt;   prefill: 9.5 tok/s </span></span>
+<span><span class="co">#&gt;   decode: 9.77 tok/s </span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; &lt;think&gt;</span></span>
 <span><span class="co">#&gt; The user asks: "What is the capital of France? Answer briefly."&lt;/think&gt;</span></span>
@@ -122,7 +122,7 @@
 <span><span class="co">#&gt;   stop: eos </span></span>
 <span><span class="co">#&gt;   tokens: 26 generated; 13 prompt</span></span>
 <span><span class="co">#&gt;   prefill: 9.7 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 9.67 tok/s </span></span>
+<span><span class="co">#&gt;   decode: 9.73 tok/s </span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; &lt;think&gt;</span></span>
 <span><span class="co">#&gt; The user asks: "And Italy?" Possibly they are continuing a conversation&lt;/think&gt;</span></span>
@@ -178,8 +178,8 @@
 <span><span class="co">#&gt; &lt;BebeLM chat result&gt;</span></span>
 <span><span class="co">#&gt;   stop: max_new </span></span>
 <span><span class="co">#&gt;   tokens: 48 generated; 22 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 9.7 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 9.75 tok/s </span></span>
+<span><span class="co">#&gt;   prefill: 9.9 tok/s </span></span>
+<span><span class="co">#&gt;   decode: 9.97 tok/s </span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; &lt;think&gt;</span></span>
 <span><span class="co">#&gt; The user asks: "In one concise sentence, what does runtime SIMD&lt;/think&gt;</span></span>
@@ -200,8 +200,8 @@
 <span><span class="co">#&gt; &lt;BebeLM generation result&gt;</span></span>
 <span><span class="co">#&gt;   stop: max_new </span></span>
 <span><span class="co">#&gt;   tokens: 24 generated; 8 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 9.6 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 10.11 tok/s </span></span>
+<span><span class="co">#&gt;   prefill: 10.1 tok/s </span></span>
+<span><span class="co">#&gt;   decode: 10.08 tok/s </span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt;  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However</span></span></code></pre></div>
 <p>Agents can also be driven at the lower level with raw text or token ids:</p>
@@ -261,7 +261,7 @@
 <span><span class="co">#&gt;   stop: eos </span></span>
 <span><span class="co">#&gt;   tokens: 34 generated; 31 prompt</span></span>
 <span><span class="co">#&gt;   prefill: 9.8 tok/s </span></span>
-<span><span class="co">#&gt;   decode: 9.58 tok/s </span></span>
+<span><span class="co">#&gt;   decode: 9.71 tok/s </span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; {</span></span>
 <span><span class="co">#&gt;   "tool_call": {</span></span>
@@ -328,47 +328,22 @@
 <p>Inspect the current CPU/runtime and selected backend:</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/rbebelm_cpuid_info.html">rbebelm_cpuid_info</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; $cpu_x86_64_v3</span></span>
-<span><span class="co">#&gt; [1] TRUE</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $cpu_x86_64_v4</span></span>
-<span><span class="co">#&gt; [1] FALSE</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $cpu_neon</span></span>
-<span><span class="co">#&gt; [1] FALSE</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $cpu_wasm_simd128</span></span>
-<span><span class="co">#&gt; [1] FALSE</span></span>
+<span><span class="co">#&gt; &lt;Rbebelm CPU features&gt;</span></span>
+<span><span class="co">#&gt;   x86_64-v3: yes </span></span>
+<span><span class="co">#&gt;   x86_64-v4: no </span></span>
+<span><span class="co">#&gt;   NEON: no </span></span>
+<span><span class="co">#&gt;   wasm simd128: no</span></span>
 <span><span class="fu"><a href="reference/rbebelm_backend_features.html">rbebelm_backend_features</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; $backend</span></span>
-<span><span class="co">#&gt; [1] "avx2"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $target_arch</span></span>
-<span><span class="co">#&gt; [1] "x86_64"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $target_os</span></span>
-<span><span class="co">#&gt; [1] "linux"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $rust_package</span></span>
-<span><span class="co">#&gt; [1] "rbebelm_backend"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $rust_package_version</span></span>
-<span><span class="co">#&gt; [1] "0.0.0"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $native_simd_feature</span></span>
-<span><span class="co">#&gt; [1] TRUE</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $compiled_avx2</span></span>
-<span><span class="co">#&gt; [1] TRUE</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $compiled_avx512f</span></span>
-<span><span class="co">#&gt; [1] FALSE</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $compiled_neon</span></span>
-<span><span class="co">#&gt; [1] FALSE</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $compiled_wasm_simd128</span></span>
-<span><span class="co">#&gt; [1] FALSE</span></span>
+<span><span class="co">#&gt; &lt;Rbebelm backend features&gt;</span></span>
+<span><span class="co">#&gt;   backend: avx2 </span></span>
+<span><span class="co">#&gt;   target: x86_64-linux </span></span>
+<span><span class="co">#&gt;   Rust crate: rbebelm_backend 0.1.0 </span></span>
+<span><span class="co">#&gt;   native SIMD feature: yes </span></span>
+<span><span class="co">#&gt;   compiled features:</span></span>
+<span><span class="co">#&gt;     AVX2: yes </span></span>
+<span><span class="co">#&gt;     AVX-512F: no </span></span>
+<span><span class="co">#&gt;     NEON: no </span></span>
+<span><span class="co">#&gt;     wasm simd128: no</span></span>
 <span><span class="fu"><a href="reference/rbebelm_backend_info.html">rbebelm_backend_info</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; $dispatch_mode</span></span>
 <span><span class="co">#&gt; [1] "dynamic"</span></span>
@@ -413,7 +388,8 @@
 <div class="license">
 <h2 data-toc-skip>License</h2>
 <ul class="list-unstyled">
-<li>GPL (&gt;= 2)</li>
+<li><a href="LICENSE.html">Full license</a></li>
+<li><small>GPL (&gt;= 3)</small></li>
 </ul>
 </div>
 

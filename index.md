@@ -82,8 +82,8 @@ turn1
 #> <BebeLM assistant turn>
 #>   stop: eos 
 #>   tokens: 26 generated; 19 prompt
-#>   prefill: 9.3 tok/s 
-#>   decode: 9.70 tok/s 
+#>   prefill: 9.5 tok/s 
+#>   decode: 9.77 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "What is the capital of France? Answer briefly."</think>
@@ -93,7 +93,7 @@ turn2
 #>   stop: eos 
 #>   tokens: 26 generated; 13 prompt
 #>   prefill: 9.7 tok/s 
-#>   decode: 9.67 tok/s 
+#>   decode: 9.73 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "And Italy?" Possibly they are continuing a conversation</think>
@@ -168,8 +168,8 @@ result
 #> <BebeLM chat result>
 #>   stop: max_new 
 #>   tokens: 48 generated; 22 prompt
-#>   prefill: 9.7 tok/s 
-#>   decode: 9.75 tok/s 
+#>   prefill: 9.9 tok/s 
+#>   decode: 9.97 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "In one concise sentence, what does runtime SIMD</think>
@@ -195,8 +195,8 @@ raw_result
 #> <BebeLM generation result>
 #>   stop: max_new 
 #>   tokens: 24 generated; 8 prompt
-#>   prefill: 9.6 tok/s 
-#>   decode: 10.11 tok/s 
+#>   prefill: 10.1 tok/s 
+#>   decode: 10.08 tok/s 
 #>   text:
 #>  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However
 ```
@@ -269,7 +269,7 @@ run
 #>   stop: eos 
 #>   tokens: 34 generated; 31 prompt
 #>   prefill: 9.8 tok/s 
-#>   decode: 9.58 tok/s 
+#>   decode: 9.71 tok/s 
 #>   text:
 #> {
 #>   "tool_call": {
@@ -377,47 +377,22 @@ Inspect the current CPU/runtime and selected backend:
 ``` r
 
 rbebelm_cpuid_info()
-#> $cpu_x86_64_v3
-#> [1] TRUE
-#> 
-#> $cpu_x86_64_v4
-#> [1] FALSE
-#> 
-#> $cpu_neon
-#> [1] FALSE
-#> 
-#> $cpu_wasm_simd128
-#> [1] FALSE
+#> <Rbebelm CPU features>
+#>   x86_64-v3: yes 
+#>   x86_64-v4: no 
+#>   NEON: no 
+#>   wasm simd128: no
 rbebelm_backend_features()
-#> $backend
-#> [1] "avx2"
-#> 
-#> $target_arch
-#> [1] "x86_64"
-#> 
-#> $target_os
-#> [1] "linux"
-#> 
-#> $rust_package
-#> [1] "rbebelm_backend"
-#> 
-#> $rust_package_version
-#> [1] "0.0.0"
-#> 
-#> $native_simd_feature
-#> [1] TRUE
-#> 
-#> $compiled_avx2
-#> [1] TRUE
-#> 
-#> $compiled_avx512f
-#> [1] FALSE
-#> 
-#> $compiled_neon
-#> [1] FALSE
-#> 
-#> $compiled_wasm_simd128
-#> [1] FALSE
+#> <Rbebelm backend features>
+#>   backend: avx2 
+#>   target: x86_64-linux 
+#>   Rust crate: rbebelm_backend 0.1.0 
+#>   native SIMD feature: yes 
+#>   compiled features:
+#>     AVX2: yes 
+#>     AVX-512F: no 
+#>     NEON: no 
+#>     wasm simd128: no
 rbebelm_backend_info()
 #> $dispatch_mode
 #> [1] "dynamic"

@@ -10,4 +10,5 @@ rbebelm_cpuid_info()
 
 ## Value
 
-A named list of logical CPU feature checks.
+A named list of logical CPU feature checks with class
+`rbebelmCpuidInfo`.

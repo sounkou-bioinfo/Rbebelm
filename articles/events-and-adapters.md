@@ -52,7 +52,7 @@ turn[c("stop", "generated_tokens", "decode_tps")]
 #> [1] 12
 #> 
 #> $decode_tps
-#> [1] 10.61083
+#> [1] 10.56027
 ```
 
 ## Handler lists

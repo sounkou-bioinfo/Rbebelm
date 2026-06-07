@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">Rbebelm</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0-0.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -81,17 +81,11 @@ backend libraries.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/sounkou-bioinfo/Rbebelm" class="external-link">Rbebelm</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/rbebelm_cpuid_info.html">rbebelm_cpuid_info</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; $cpu_x86_64_v3</span></span>
-<span><span class="co">#&gt; [1] TRUE</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $cpu_x86_64_v4</span></span>
-<span><span class="co">#&gt; [1] FALSE</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $cpu_neon</span></span>
-<span><span class="co">#&gt; [1] FALSE</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $cpu_wasm_simd128</span></span>
-<span><span class="co">#&gt; [1] FALSE</span></span>
+<span><span class="co">#&gt; &lt;Rbebelm CPU features&gt;</span></span>
+<span><span class="co">#&gt;   x86_64-v3: yes </span></span>
+<span><span class="co">#&gt;   x86_64-v4: no </span></span>
+<span><span class="co">#&gt;   NEON: no </span></span>
+<span><span class="co">#&gt;   wasm simd128: no</span></span>
 <span><span class="fu"><a href="../reference/rbebelm_backend_info.html">rbebelm_backend_info</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; $dispatch_mode</span></span>
 <span><span class="co">#&gt; [1] "dynamic"</span></span>
@@ -121,35 +115,16 @@ that loads backend symbols.</p>
 <span><span class="co">#&gt; Error in `rbebelm_set_backend()`:</span></span>
 <span><span class="co">#&gt; ! Rbebelm backend is already initialized; call rbebelm_set_backend() before loading a model or querying backend features</span></span>
 <span><span class="fu"><a href="../reference/rbebelm_backend_features.html">rbebelm_backend_features</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; $backend</span></span>
-<span><span class="co">#&gt; [1] "avx2"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $target_arch</span></span>
-<span><span class="co">#&gt; [1] "x86_64"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $target_os</span></span>
-<span><span class="co">#&gt; [1] "linux"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $rust_package</span></span>
-<span><span class="co">#&gt; [1] "rbebelm_backend"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $rust_package_version</span></span>
-<span><span class="co">#&gt; [1] "0.0.0"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $native_simd_feature</span></span>
-<span><span class="co">#&gt; [1] TRUE</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $compiled_avx2</span></span>
-<span><span class="co">#&gt; [1] TRUE</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $compiled_avx512f</span></span>
-<span><span class="co">#&gt; [1] FALSE</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $compiled_neon</span></span>
-<span><span class="co">#&gt; [1] FALSE</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $compiled_wasm_simd128</span></span>
-<span><span class="co">#&gt; [1] FALSE</span></span>
+<span><span class="co">#&gt; &lt;Rbebelm backend features&gt;</span></span>
+<span><span class="co">#&gt;   backend: avx2 </span></span>
+<span><span class="co">#&gt;   target: x86_64-linux </span></span>
+<span><span class="co">#&gt;   Rust crate: rbebelm_backend 0.1.0 </span></span>
+<span><span class="co">#&gt;   native SIMD feature: yes </span></span>
+<span><span class="co">#&gt;   compiled features:</span></span>
+<span><span class="co">#&gt;     AVX2: yes </span></span>
+<span><span class="co">#&gt;     AVX-512F: no </span></span>
+<span><span class="co">#&gt;     NEON: no </span></span>
+<span><span class="co">#&gt;     wasm simd128: no</span></span>
 <span><span class="fu"><a href="../reference/rbebelm_backend_info.html">rbebelm_backend_info</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; $dispatch_mode</span></span>
 <span><span class="co">#&gt; [1] "dynamic"</span></span>
