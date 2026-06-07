@@ -588,7 +588,8 @@ bebel_r_agent_console <- function(session, prompt = "bebel> ", max_steps = 4L) {
     }
     hooks <- list(
       tool_request = function(call, ...) cat(sprintf("\n[tool] %s\n", call$name)),
-      tool_result = function(call, result, ...) cat(sprintf("[tool result] %s\n", bebel_agent_tool_text(result)))
+      tool_result = function(call, result, ...) cat(sprintf("[tool result] %s\n", bebel_agent_tool_text(result))),
+      tool_error = function(call, error, ...) cat(sprintf("[tool error] %s: %s\n", call$name, conditionMessage(error)))
     )
     cat("[generating]\n")
     bebel_r_agent_turn(session, line, max_steps = max_steps, on_event = bebel_console_event(), hooks = hooks)
