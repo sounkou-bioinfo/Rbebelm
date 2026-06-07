@@ -1,9 +1,9 @@
 # Parse a BebeLM tool call block
 
 The default parser accepts JSON objects such as
-`{\"name\": \"tool\", \"arguments\": {...}}` when `jsonlite` is
-installed, simple `name({...})` calls, and bracketed BebeLM calls such
-as `[name(key=\"value\")]`. Pass a custom parser to
+`{\"name\": \"tool\", \"arguments\": {...}}`, simple `name({...})`
+calls, and bracketed BebeLM calls such as `[name(key=\"value\")]`. Pass
+a custom parser to
 [`bebel_agent_run()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_run.md)
 for model- or prompt-specific formats.
 

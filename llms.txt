@@ -81,8 +81,8 @@ turn1
 #> <BebeLM assistant turn>
 #>   stop: eos 
 #>   tokens: 26 generated; 19 prompt
-#>   prefill: 9.7 tok/s 
-#>   decode: 9.52 tok/s 
+#>   prefill: 9.6 tok/s 
+#>   decode: 9.68 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "What is the capital of France? Answer briefly."</think>
@@ -91,8 +91,8 @@ turn2
 #> <BebeLM assistant turn>
 #>   stop: eos 
 #>   tokens: 26 generated; 13 prompt
-#>   prefill: 9.6 tok/s 
-#>   decode: 9.48 tok/s 
+#>   prefill: 9.9 tok/s 
+#>   decode: 9.58 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "And Italy?" Possibly they are continuing a conversation</think>
@@ -190,8 +190,8 @@ result
 #> <BebeLM chat result>
 #>   stop: max_new 
 #>   tokens: 48 generated; 22 prompt
-#>   prefill: 9.8 tok/s 
-#>   decode: 9.88 tok/s 
+#>   prefill: 9.6 tok/s 
+#>   decode: 9.91 tok/s 
 #>   text:
 #> <think>
 #> The user asks: "In one concise sentence, what does runtime SIMD</think>
@@ -217,8 +217,8 @@ raw_result
 #> <BebeLM generation result>
 #>   stop: max_new 
 #>   tokens: 24 generated; 8 prompt
-#>   prefill: 10.0 tok/s 
-#>   decode: 10.29 tok/s 
+#>   prefill: 9.5 tok/s 
+#>   decode: 10.14 tok/s 
 #>   text:
 #>  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However
 ```
@@ -291,7 +291,7 @@ run
 #>   stop: eos 
 #>   tokens: 34 generated; 31 prompt
 #>   prefill: 9.7 tok/s 
-#>   decode: 9.53 tok/s 
+#>   decode: 9.62 tok/s 
 #>   text:
 #> {
 #>   "tool_call": {
