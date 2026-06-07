@@ -200,13 +200,13 @@ bebel_agent_default_system <- function(tools, detail = c("compact", "full")) {
 #' Built-in R session tools for the Rbebelm agent layer
 #'
 #' The default catalog is intentionally small. It exposes read-only file and R
-#' session inspection tools plus optional R evaluation. These are ordinary R
-#' functions and run in the current R process.
+#' session inspection tools plus optional R evaluation and plot rendering. These
+#' are ordinary R functions and run in the current R process.
 #'
-#' @param env Environment used by `r_objects` and `r_eval`.
-#' @param cwd Working directory for file tools.
-#' @param allow_eval Whether to include the `r_eval` tool. If `FALSE`, `r_eval`
-#'   is not advertised to the model.
+#' @param env Environment used by `r_objects`, `r_eval`, and `r_plot`.
+#' @param cwd Working directory for file and plot tools.
+#' @param allow_eval Whether to include the `r_eval` and `r_plot` tools. If
+#'   `FALSE`, code-evaluation tools are not advertised to the model.
 #' @param max_chars Maximum characters returned from a single tool.
 #' @return A named list of `bebelAgentTool` objects.
 #' @export
@@ -228,6 +228,10 @@ bebel_default_r_tools <- function(env = .GlobalEnv, cwd = getwd(), allow_eval = 
   strip_root <- function(path, root) {
     prefix <- if (endsWith(root, .Platform$file.sep)) root else paste0(root, .Platform$file.sep)
     ifelse(startsWith(path, prefix), substr(path, nchar(prefix) + 1L, nchar(path)), path)
+  }
+  is_text_file <- function(path) {
+    bytes <- tryCatch(readBin(path, what = "raw", n = 4096L), error = function(e) raw())
+    !length(bytes) || !any(bytes == as.raw(0))
   }
 
   tools <- list(
@@ -269,6 +273,26 @@ bebel_default_r_tools <- function(env = .GlobalEnv, cwd = getwd(), allow_eval = 
           txt <- paste(utils::capture.output(print(value)), collapse = "\n")
         }
         bebel_agent_format_value(txt, max_chars)
+      }
+    ),
+    r_plot = bebel_agent_tool(
+      "r_plot",
+      "Render R plotting code to a PNG file and return the saved path.",
+      params = list(
+        code = list(type = "string", description = "R plotting code, such as plot(mpg ~ cyl, mtcars).", required = TRUE),
+        width = list(type = "integer", description = "PNG width in pixels.", required = FALSE),
+        height = list(type = "integer", description = "PNG height in pixels.", required = FALSE)
+      ),
+      fun = function(args, context, call) {
+        if (!isTRUE(allow_eval)) {
+          return("r_plot is disabled for this agent. Recreate the agent with allow_eval = TRUE to enable it.")
+        }
+        code <- args$code %||% ""
+        expr <- parse(text = code)
+        width <- suppressWarnings(as.integer(args$width %||% 800L))
+        height <- suppressWarnings(as.integer(args$height %||% 600L))
+        path <- bebel_console_save_plot(expr, env, cwd = cwd, width = width, height = height)
+        paste("Plot saved to:", path)
       }
     ),
     r_help = bebel_agent_tool(
@@ -352,9 +376,13 @@ bebel_default_r_tools <- function(env = .GlobalEnv, cwd = getwd(), allow_eval = 
         hits <- character()
         for (f in files) {
           if (length(hits) >= limit) break
-          lines <- tryCatch(readLines(f, warn = FALSE), error = function(e) character())
+          if (!is_text_file(f)) next
+          lines <- tryCatch(
+            suppressWarnings(readLines(f, warn = FALSE)),
+            error = function(e) character()
+          )
           if (!length(lines)) next
-          idx <- grep(args$pattern, lines)
+          idx <- suppressWarnings(grep(args$pattern, lines, useBytes = TRUE))
           if (length(idx)) {
             rel <- strip_root(f, root)
             add <- sprintf("%s:%d: %s", rel, idx, lines[idx])
@@ -367,7 +395,10 @@ bebel_default_r_tools <- function(env = .GlobalEnv, cwd = getwd(), allow_eval = 
       }
     )
   )
-  if (!isTRUE(allow_eval)) tools$r_eval <- NULL
+  if (!isTRUE(allow_eval)) {
+    tools$r_eval <- NULL
+    tools$r_plot <- NULL
+  }
   tools
 }
 
@@ -582,6 +613,33 @@ bebel_console_eval_r <- function(exprs, envir) {
   invisible(value)
 }
 
+bebel_console_plot_path <- function(cwd = getwd()) {
+  root <- normalizePath(cwd, mustWork = FALSE)
+  plot_dir <- file.path(root, "rbebelm-plots")
+  dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
+  tempfile("plot-", tmpdir = plot_dir, fileext = ".png")
+}
+
+bebel_console_save_plot <- function(exprs, envir, cwd = getwd(), width = 800L, height = 600L) {
+  width <- suppressWarnings(as.integer(width %||% 800L))
+  height <- suppressWarnings(as.integer(height %||% 600L))
+  width <- if (length(width)) width[[1L]] else NA_integer_
+  height <- if (length(height)) height[[1L]] else NA_integer_
+  if (is.na(width) || width < 100L) width <- 800L
+  if (is.na(height) || height < 100L) height <- 600L
+  path <- bebel_console_plot_path(cwd)
+  opened <- FALSE
+  grDevices::png(filename = path, width = width, height = height)
+  opened <- TRUE
+  on.exit({
+    if (opened) grDevices::dev.off()
+  }, add = TRUE)
+  for (expr in exprs) eval(expr, envir = envir)
+  grDevices::dev.off()
+  opened <- FALSE
+  normalizePath(path, mustWork = FALSE)
+}
+
 bebel_agent_run_stats <- function(run) {
   turns <- run$turns %||% list()
   if (!length(turns)) {
@@ -631,7 +689,7 @@ bebel_r_agent_console <- function(session, prompt = "bebel> ", max_steps = 4L, s
   blank_limit <- suppressWarnings(as.numeric(blank_limit))
   blank_limit <- if (length(blank_limit)) blank_limit[[1L]] else NA_real_
   if (is.na(blank_limit) || blank_limit < 1) blank_limit <- 10
-  cat("RbebelM R agent. Commands: /help, /tools, /r, /transcript, /clear, /quit\n")
+  cat("RbebelM R agent. Commands: /help, /tools, /r, /rplot, /transcript, /clear, /quit\n")
   cat("Type a message and press Enter; blank lines are ignored.\n")
   input_con <- bebel_console_open_input()
   on.exit(bebel_console_close_input(input_con), add = TRUE)
@@ -660,8 +718,9 @@ bebel_r_agent_console <- function(session, prompt = "bebel> ", max_steps = 4L, s
             if (cmd %in% c("/q", "/quit", "/exit")) {
               quit <- TRUE
             } else if (cmd == "/help") {
-              cat("Commands: /help /tools /r /transcript /clear /quit\n")
+              cat("Commands: /help /tools /r /rplot /transcript /clear /quit\n")
               cat("Use /r <code> to evaluate R directly in the configured environment.\n")
+              cat("Use /rplot <plot-code> to save a PNG under rbebelm-plots/.\n")
               cat("Large /r output is truncated; assign objects with /r x <- value.\n")
             } else if (cmd == "/tools") {
               print(bebel_agent_tool_catalog(session$tools))
@@ -674,6 +733,20 @@ bebel_r_agent_console <- function(session, prompt = "bebel> ", max_steps = 4L, s
               if (!is.null(exprs)) {
                 tryCatch(bebel_console_eval_r(exprs, session$context$env), error = function(e) {
                   message("R error: ", conditionMessage(e))
+                })
+              }
+            } else if (cmd == "/rplot") {
+              code <- trimws(sub("^/rplot\\s*", "", line_trim))
+              exprs <- tryCatch(bebel_console_read_r(code, input_con = input_con), error = function(e) {
+                message("R parse error: ", conditionMessage(e))
+                NULL
+              })
+              if (!is.null(exprs)) {
+                tryCatch({
+                  path <- bebel_console_save_plot(exprs, session$context$env, cwd = session$context$cwd)
+                  cat("Plot saved to: ", path, "\n", sep = "")
+                }, error = function(e) {
+                  message("R plot error: ", conditionMessage(e))
                 })
               }
             } else if (cmd == "/transcript") {
@@ -715,14 +788,14 @@ bebel_r_agent_console <- function(session, prompt = "bebel> ", max_steps = 4L, s
 #'
 #' Convenience wrapper for loading a model, creating a [bebel_r_agent()], and
 #' entering [bebel_r_agent_console()]. This keeps the loaded model object local
-#' to the launcher while the agent tools and `/r` command share `env`.
+#' to the launcher while the agent tools, `/r`, and `/rplot` commands share `env`.
 #'
 #' @param weights GGUF weights file. Defaults to `BEBELM_WEIGHTS_FILE`, then
 #'   `"LFM2.5-8B-A1B-Q4_K_M.gguf"` in the working directory.
 #' @param num_threads Optional Rayon thread count passed to [bebel_model_load()].
-#' @param env Environment shared by `/r`, `r_objects`, and optional `r_eval`.
-#' @param cwd Working directory for file tools.
-#' @param allow_eval Whether to include an `r_eval` tool that the model can call.
+#' @param env Environment shared by `/r`, `/rplot`, `r_objects`, and optional code-evaluation tools.
+#' @param cwd Working directory for file tools and `/rplot` output.
+#' @param allow_eval Whether to include `r_eval` and `r_plot` tools that the model can call.
 #' @param greedy,max_gen,max_context,max_think,temperature,top_k,repeat_penalty
 #'   Generation options passed to [bebel_r_agent()].
 #' @param prompt Prompt string for [bebel_r_agent_console()].

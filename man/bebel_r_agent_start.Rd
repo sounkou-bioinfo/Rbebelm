@@ -30,11 +30,11 @@ bebel_r_agent_start(
 
 \item{num_threads}{Optional Rayon thread count passed to \code{\link[=bebel_model_load]{bebel_model_load()}}.}
 
-\item{env}{Environment shared by \verb{/r}, \code{r_objects}, and optional \code{r_eval}.}
+\item{env}{Environment shared by \verb{/r}, \verb{/rplot}, \code{r_objects}, and optional code-evaluation tools.}
 
-\item{cwd}{Working directory for file tools.}
+\item{cwd}{Working directory for file tools and \verb{/rplot} output.}
 
-\item{allow_eval}{Whether to include an \code{r_eval} tool that the model can call.}
+\item{allow_eval}{Whether to include \code{r_eval} and \code{r_plot} tools that the model can call.}
 
 \item{greedy, max_gen, max_context, max_think, temperature, top_k, repeat_penalty}{Generation options passed to \code{\link[=bebel_r_agent]{bebel_r_agent()}}.}
 
@@ -54,5 +54,5 @@ Invisibly returns the \code{bebelRAgent} session after the console exits.
 \description{
 Convenience wrapper for loading a model, creating a \code{\link[=bebel_r_agent]{bebel_r_agent()}}, and
 entering \code{\link[=bebel_r_agent_console]{bebel_r_agent_console()}}. This keeps the loaded model object local
-to the launcher while the agent tools and \verb{/r} command share \code{env}.
+to the launcher while the agent tools, \verb{/r}, and \verb{/rplot} commands share \code{env}.
 }

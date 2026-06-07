@@ -80,14 +80,16 @@ agent_bin <- system.file("bin/rbebelm-agent", package = "Rbebelm")
 system2(agent_bin, "--help")
 ```
 
-Console commands include `/tools`, `/r`, `/transcript`, `/clear`, and `/quit`.
-The `/r` command evaluates R directly in the same environment used by the
-agent's R tools. For example, `/r x <- mtcars` creates an object that
+Console commands include `/tools`, `/r`, `/rplot`, `/transcript`, `/clear`, and
+`/quit`. The `/r` command evaluates R directly in the same environment used by
+the agent's R tools. For example, `/r x <- mtcars` creates an object that
 `r_objects()` can later see. Visible `/r` output is capped so large objects do
 not flood the chat prompt; assign objects or use summaries such as `/r str(x)`
-for inspection. The `r_eval` tool is only advertised to the model when the
-session is created with `allow_eval = TRUE`. The console prints a compact
-token/timing stats line after each user turn.
+for inspection. In an `Rscript` terminal, use `/rplot plot(mpg ~ cyl, mtcars)`
+to save graphics as PNG files under `rbebelm-plots/`. The `r_eval` and `r_plot`
+tools are only advertised to the model when the session is created with
+`allow_eval = TRUE`. The console prints a compact token/timing stats line after
+each user turn.
 
 ## JSON-RPC SDK surface
 

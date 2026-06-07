@@ -8,6 +8,7 @@ writeLines(c("alpha", "beta", "gamma alpha"), file.path(td, "a.txt"))
 
 readonly_tools <- bebel_default_r_tools(env = e, cwd = td, allow_eval = FALSE, max_chars = 1000L)
 expect_true(!"r_eval" %in% names(readonly_tools))
+expect_true(!"r_plot" %in% names(readonly_tools))
 expect_true("r_objects" %in% names(readonly_tools))
 
 out <- Rbebelm:::invoke_bebel_tool(
@@ -18,7 +19,7 @@ out <- Rbebelm:::invoke_bebel_tool(
 expect_true(grepl("x:", out, fixed = TRUE))
 
 tools <- bebel_default_r_tools(env = e, cwd = td, allow_eval = TRUE, max_chars = 1000L)
-expect_true(all(c("r_objects", "r_eval", "r_help", "list_files", "read_file", "grep_files") %in% names(tools)))
+expect_true(all(c("r_objects", "r_eval", "r_plot", "r_help", "list_files", "read_file", "grep_files") %in% names(tools)))
 expect_true(all(vapply(tools, inherits, logical(1), "bebelAgentTool")))
 
 catalog <- bebel_agent_tool_catalog(tools)
@@ -33,6 +34,15 @@ out <- Rbebelm:::invoke_bebel_tool(
   ctx
 )
 expect_true(grepl("6", out, fixed = TRUE))
+
+out <- Rbebelm:::invoke_bebel_tool(
+  tools$r_plot$tool,
+  list(name = "r_plot", arguments = list(code = "plot(x, x)", width = 400L, height = 300L)),
+  ctx
+)
+plot_path <- sub("^Plot saved to: ", "", out)
+expect_true(file.exists(plot_path))
+expect_true(grepl("rbebelm-plots", plot_path, fixed = TRUE))
 
 out <- Rbebelm:::invoke_bebel_tool(
   tools$read_file$tool,
@@ -70,6 +80,9 @@ expect_true(Rbebelm:::bebel_console_input_complete("x <- 1"))
 expect_false(Rbebelm:::bebel_console_input_complete("if (TRUE) {"))
 Rbebelm:::bebel_console_eval_r(parse(text = "y <- sum(x)"), e)
 expect_equal(e$y, 6L)
+plot_path2 <- Rbebelm:::bebel_console_save_plot(parse(text = "plot(x, x)"), e, cwd = td, width = 300L, height = 250L)
+expect_true(file.exists(plot_path2))
+expect_true(grepl("\\.png$", plot_path2))
 cap_out <- capture.output(Rbebelm:::bebel_console_print_capped(as.character(1:5), max_lines = 2L, max_chars = 100L))
 expect_true(any(grepl("R output truncated", cap_out, fixed = TRUE)))
 expect_true("1" %in% cap_out)
