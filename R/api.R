@@ -529,7 +529,22 @@ bebel_agent_run <- function(
     if (!length(tool_blocks)) break
 
     for (block in tool_blocks) {
-      call <- parse_tool_call(block)
+      call <- tryCatch(
+        parse_tool_call(block),
+        error = function(e) {
+          preview <- block
+          if (nchar(preview) > 500L) preview <- paste0(substr(preview, 1L, 500L), "...")
+          simpleError(paste0("cannot parse tool call ", sQuote(preview), ": ", conditionMessage(e)))
+        }
+      )
+      if (inherits(call, "error")) {
+        err <- call
+        call <- list(name = "parse_tool_call", arguments = list(raw = block), raw = block)
+        calls[[length(calls) + 1L]] <- call
+        call_bebel_hook(hooks, "tool_error", call = call, error = err, context = context, agent = agent, step = step)
+        bebel_append_tool_result(agent, format_bebel_tool_result(call, NULL, err))
+        next
+      }
       calls[[length(calls) + 1L]] <- call
       call_bebel_hook(hooks, "tool_request", call = call, context = context, agent = agent, step = step)
       tool <- tools[[call$name]]

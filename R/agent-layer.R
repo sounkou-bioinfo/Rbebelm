@@ -592,7 +592,11 @@ bebel_r_agent_console <- function(session, prompt = "bebel> ", max_steps = 4L) {
       tool_error = function(call, error, ...) cat(sprintf("[tool error] %s: %s\n", call$name, conditionMessage(error)))
     )
     cat("[generating]\n")
-    bebel_r_agent_turn(session, line, max_steps = max_steps, on_event = bebel_console_event(), hooks = hooks)
+    turn <- bebel_r_agent_turn(session, line, max_steps = max_steps, on_event = bebel_console_event(), hooks = hooks)
+    last_turn <- if (length(turn$run$turns)) turn$run$turns[[length(turn$run$turns)]] else NULL
+    if (!is.null(last_turn) && identical(last_turn$stop, "max_new")) {
+      cat("\n[stopped at max_gen; recreate the agent with a larger max_gen for longer replies]\n")
+    }
     cat("\n")
   }
   invisible(session)
