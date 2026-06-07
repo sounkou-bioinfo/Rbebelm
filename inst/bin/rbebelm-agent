@@ -1,0 +1,58 @@
+#!/usr/bin/env Rscript
+
+args <- commandArgs(trailingOnly = TRUE)
+
+usage <- function(status = 0L) {
+  cat("Usage: rbebelm-agent [weights.gguf] [options]\n\n",
+      "Options:\n",
+      "  --weights PATH       GGUF weights file (default: BEBELM_WEIGHTS_FILE)\n",
+      "  --threads N          number of model threads (default: BEBELM_NUM_THREADS or 2)\n",
+      "  --max-gen N          max generated tokens per assistant turn (default: 256)\n",
+      "  --max-think N        max thinking tokens per assistant turn (default: 48)\n",
+      "  --max-steps N        max assistant/tool iterations per user prompt (default: 4)\n",
+      "  --no-eval            do not expose r_eval to the model\n",
+      "  --sample             use sampling instead of greedy decoding\n",
+      "  --full-prompt        include full tool parameter descriptions in system prompt\n",
+      "  --no-stats           hide token/timing stats after each turn\n",
+      "  -h, --help           show this help\n",
+      sep = "")
+  quit(status = status)
+}
+
+if (any(args %in% c("-h", "--help"))) usage(0L)
+
+flag <- function(name) name %in% args
+value <- function(name, default = NULL) {
+  prefix <- paste0(name, "=")
+  hit <- args[startsWith(args, prefix)]
+  if (length(hit)) return(sub(prefix, "", hit[[length(hit)]] , fixed = TRUE))
+  idx <- match(name, args)
+  if (!is.na(idx) && idx < length(args)) return(args[[idx + 1L]])
+  default
+}
+
+positionals <- args[!startsWith(args, "--")]
+weights <- value("--weights", NULL)
+if (is.null(weights) && length(positionals)) weights <- positionals[[1L]]
+if (is.null(weights) || !nzchar(weights)) {
+  weights <- Sys.getenv("BEBELM_WEIGHTS_FILE", "LFM2.5-8B-A1B-Q4_K_M.gguf")
+}
+
+as_int <- function(x, default) {
+  out <- suppressWarnings(as.integer(x))
+  if (is.na(out)) default else out
+}
+
+suppressPackageStartupMessages(library(Rbebelm))
+
+Rbebelm::bebel_r_agent_start(
+  weights = weights,
+  num_threads = as_int(value("--threads", Sys.getenv("BEBELM_NUM_THREADS", "2")), 2L),
+  allow_eval = !flag("--no-eval"),
+  greedy = !flag("--sample"),
+  max_gen = as_int(value("--max-gen", Sys.getenv("BEBELM_AGENT_MAX_GEN", "256")), 256L),
+  max_think = as_int(value("--max-think", Sys.getenv("BEBELM_AGENT_MAX_THINK", "48")), 48L),
+  max_steps = as_int(value("--max-steps", "4"), 4L),
+  show_stats = !flag("--no-stats"),
+  prompt_style = if (flag("--full-prompt")) "full" else "compact"
+)

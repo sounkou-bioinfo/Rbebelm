@@ -67,11 +67,27 @@ For interactive use, start the console loop:
 bebel_r_agent_console(agent)
 ```
 
+Or use the one-call launcher, which loads the model and then enters the console:
+
+```{r, eval=FALSE}
+bebel_r_agent_start(Sys.getenv("BEBELM_WEIGHTS_FILE", "LFM2.5-8B-A1B-Q4_K_M.gguf"))
+```
+
+The package also installs a small helper script in `inst/bin`:
+
+```{r, eval=FALSE}
+agent_bin <- system.file("bin/rbebelm-agent", package = "Rbebelm")
+system2(agent_bin, "--help")
+```
+
 Console commands include `/tools`, `/r`, `/transcript`, `/clear`, and `/quit`.
 The `/r` command evaluates R directly in the same environment used by the
 agent's R tools. For example, `/r x <- mtcars` creates an object that
-`r_objects()` can later see. The `r_eval` tool is only advertised to the model
-when the session is created with `allow_eval = TRUE`.
+`r_objects()` can later see. Visible `/r` output is capped so large objects do
+not flood the chat prompt; assign objects or use summaries such as `/r str(x)`
+for inspection. The `r_eval` tool is only advertised to the model when the
+session is created with `allow_eval = TRUE`. The console prints a compact
+token/timing stats line after each user turn.
 
 ## JSON-RPC SDK surface
 

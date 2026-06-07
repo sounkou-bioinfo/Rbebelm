@@ -4,7 +4,12 @@
 \alias{bebel_r_agent_console}
 \title{Start an interactive Rbebelm console agent}
 \usage{
-bebel_r_agent_console(session, prompt = "bebel> ", max_steps = 4L)
+bebel_r_agent_console(
+  session,
+  prompt = "bebel> ",
+  max_steps = 4L,
+  show_stats = TRUE
+)
 }
 \arguments{
 \item{session}{A \code{bebelRAgent}.}
@@ -12,6 +17,8 @@ bebel_r_agent_console(session, prompt = "bebel> ", max_steps = 4L)
 \item{prompt}{Prompt string.}
 
 \item{max_steps}{Maximum assistant/tool iterations per user prompt.}
+
+\item{show_stats}{Whether to print token/timing stats after each turn.}
 }
 \value{
 Invisibly returns \code{session}.

@@ -43,6 +43,7 @@ reference:
       - bebel_r_agent
       - bebel_r_agent_turn
       - bebel_r_agent_console
+      - bebel_r_agent_start
       - bebel_r_agent_rpc_server
       - bebel_r_agent_clear
       - bebel_default_r_tools

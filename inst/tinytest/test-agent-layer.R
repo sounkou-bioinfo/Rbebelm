@@ -53,13 +53,36 @@ schema <- Rbebelm:::bebel_agent_tool_schema(tools$read_file$params)
 expect_equal(schema$type, "object")
 expect_true("path" %in% unlist(schema$required))
 
+fake_run <- list(
+  turns = list(
+    list(stop = "eos", prompt_tokens = 10L, generated_tokens = 5L, prefill_seconds = 1, decode_seconds = 0.5),
+    list(stop = "max_new", prompt_tokens = 3L, generated_tokens = 2L, prefill_seconds = 0.5, decode_seconds = 0.25)
+  ),
+  tool_calls = list(list(name = "r_objects"))
+)
+stats <- Rbebelm:::bebel_agent_run_stats(fake_run)
+expect_equal(stats$prompt_tokens, 13L)
+expect_equal(stats$generated_tokens, 7L)
+expect_equal(stats$tool_calls, 1L)
+expect_true(grepl("decode=", Rbebelm:::bebel_format_agent_run_stats(fake_run), fixed = TRUE))
+
 expect_true(Rbebelm:::bebel_console_input_complete("x <- 1"))
 expect_false(Rbebelm:::bebel_console_input_complete("if (TRUE) {"))
 Rbebelm:::bebel_console_eval_r(parse(text = "y <- sum(x)"), e)
 expect_equal(e$y, 6L)
+cap_out <- capture.output(Rbebelm:::bebel_console_print_capped(as.character(1:5), max_lines = 2L, max_chars = 100L))
+expect_true(any(grepl("R output truncated", cap_out, fixed = TRUE)))
+expect_true("1" %in% cap_out)
+expect_true("2" %in% cap_out)
+expect_true(!"5" %in% cap_out)
 
 resp <- Rbebelm:::bebel_rpc_response(1L, result = list(ok = TRUE))
 expect_equal(resp$jsonrpc, "2.0")
 expect_true(resp$result$ok)
+
+agent_bin <- system.file("bin/rbebelm-agent", package = "Rbebelm")
+expect_true(file.exists(agent_bin))
+help_out <- system2(agent_bin, "--help", stdout = TRUE)
+expect_true(any(grepl("Usage: rbebelm-agent", help_out, fixed = TRUE)))
 
 unlink(td, recursive = TRUE)

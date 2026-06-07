@@ -523,14 +523,77 @@ bebel_console_read_r <- function(seed = "") {
   }
 }
 
+bebel_console_print_capped <- function(lines, max_lines = getOption("Rbebelm.console.r_output_lines", 20L), max_chars = getOption("Rbebelm.console.r_output_chars", 4000L)) {
+  if (!length(lines)) return(invisible(FALSE))
+  max_lines <- as.integer(max_lines %||% 20L)
+  if (is.na(max_lines) || max_lines < 1L) max_lines <- 20L
+  max_chars <- as.integer(max_chars %||% 4000L)
+  if (is.na(max_chars) || max_chars < 1L) max_chars <- 4000L
+
+  text <- paste(lines, collapse = "\n")
+  truncated_lines <- length(lines) > max_lines
+  truncated_chars <- nchar(text, type = "chars") > max_chars
+  if (truncated_lines) {
+    lines <- utils::head(lines, max_lines)
+    text <- paste(lines, collapse = "\n")
+  }
+  if (nchar(text, type = "chars") > max_chars) {
+    text <- substr(text, 1L, max_chars)
+    truncated_chars <- TRUE
+  }
+  cat(text, "\n", sep = "")
+  if (truncated_lines || truncated_chars) {
+    cat(sprintf("[R output truncated: showing first %d line(s), %d char(s); assign large objects with /r x <- value]\n", max_lines, max_chars))
+  }
+  invisible(TRUE)
+}
+
 bebel_console_eval_r <- function(exprs, envir) {
   value <- NULL
   for (expr in exprs) {
-    result <- withVisible(eval(expr, envir = envir))
-    value <- result$value
-    if (isTRUE(result$visible)) print(result$value)
+    result <- NULL
+    output <- utils::capture.output({
+      result <- withVisible(eval(expr, envir = envir))
+      value <- result$value
+      if (isTRUE(result$visible)) print(result$value)
+    }, type = "output")
+    bebel_console_print_capped(output)
   }
   invisible(value)
+}
+
+bebel_agent_run_stats <- function(run) {
+  turns <- run$turns %||% list()
+  if (!length(turns)) {
+    return(list(stop = NA_character_, prompt_tokens = 0L, generated_tokens = 0L,
+                prefill_seconds = 0, decode_seconds = 0, prefill_tps = NA_real_,
+                decode_tps = NA_real_, turns = 0L, tool_calls = length(run$tool_calls %||% list())))
+  }
+  nums <- function(name) vapply(turns, function(x) as.numeric(x[[name]] %||% 0), numeric(1))
+  prompt_tokens <- sum(nums("prompt_tokens"))
+  generated_tokens <- sum(nums("generated_tokens"))
+  prefill_seconds <- sum(nums("prefill_seconds"))
+  decode_seconds <- sum(nums("decode_seconds"))
+  list(
+    stop = turns[[length(turns)]]$stop %||% NA_character_,
+    prompt_tokens = as.integer(prompt_tokens),
+    generated_tokens = as.integer(generated_tokens),
+    prefill_seconds = prefill_seconds,
+    decode_seconds = decode_seconds,
+    prefill_tps = if (prefill_seconds > 0) prompt_tokens / prefill_seconds else NA_real_,
+    decode_tps = if (decode_seconds > 0) generated_tokens / decode_seconds else NA_real_,
+    turns = length(turns),
+    tool_calls = length(run$tool_calls %||% list())
+  )
+}
+
+bebel_format_agent_run_stats <- function(run) {
+  s <- bebel_agent_run_stats(run)
+  sprintf(
+    "[stats] stop=%s; turns=%d; tools=%d; tokens=%d generated, %d prompt; prefill=%.1f tok/s; decode=%.2f tok/s",
+    s$stop, s$turns, s$tool_calls, s$generated_tokens, s$prompt_tokens,
+    s$prefill_tps, s$decode_tps
+  )
 }
 
 #' Start an interactive Rbebelm console agent
@@ -538,11 +601,12 @@ bebel_console_eval_r <- function(exprs, envir) {
 #' @param session A `bebelRAgent`.
 #' @param prompt Prompt string.
 #' @param max_steps Maximum assistant/tool iterations per user prompt.
+#' @param show_stats Whether to print token/timing stats after each turn.
 #' @return Invisibly returns `session`.
 #' @export
-bebel_r_agent_console <- function(session, prompt = "bebel> ", max_steps = 4L) {
+bebel_r_agent_console <- function(session, prompt = "bebel> ", max_steps = 4L, show_stats = TRUE) {
   bebel_agent_layer_stopif(inherits(session, "bebelRAgent"), "session must be a bebelRAgent")
-  if (!interactive()) stop("bebel_r_agent_console() requires an interactive R session", call. = FALSE)
+  if (!interactive() && !isatty(stdin())) stop("bebel_r_agent_console() requires an interactive terminal", call. = FALSE)
   cat("RbebelM R agent. Commands: /help, /tools, /r, /transcript, /clear, /quit\n")
   repeat {
     line <- readline(prompt)
@@ -555,6 +619,7 @@ bebel_r_agent_console <- function(session, prompt = "bebel> ", max_steps = 4L) {
       if (cmd == "/help") {
         cat("Commands: /help /tools /r /transcript /clear /quit\n")
         cat("Use /r <code> to evaluate R directly in the configured environment.\n")
+        cat("Large /r output is truncated; assign objects with /r x <- value.\n")
         next
       }
       if (cmd == "/tools") {
@@ -594,11 +659,70 @@ bebel_r_agent_console <- function(session, prompt = "bebel> ", max_steps = 4L) {
     cat("[generating]\n")
     turn <- bebel_r_agent_turn(session, line, max_steps = max_steps, on_event = bebel_console_event(), hooks = hooks)
     last_turn <- if (length(turn$run$turns)) turn$run$turns[[length(turn$run$turns)]] else NULL
+    if (isTRUE(show_stats)) cat("\n", bebel_format_agent_run_stats(turn$run), "\n", sep = "")
     if (!is.null(last_turn) && identical(last_turn$stop, "max_new")) {
-      cat("\n[stopped at max_gen; recreate the agent with a larger max_gen for longer replies]\n")
+      cat("[stopped at max_gen; recreate the agent with a larger max_gen for longer replies]\n")
     }
     cat("\n")
   }
+  invisible(session)
+}
+
+#' Launch an R-native Rbebelm console from weights
+#'
+#' Convenience wrapper for loading a model, creating a [bebel_r_agent()], and
+#' entering [bebel_r_agent_console()]. This keeps the loaded model object local
+#' to the launcher while the agent tools and `/r` command share `env`.
+#'
+#' @param weights GGUF weights file. Defaults to `BEBELM_WEIGHTS_FILE`, then
+#'   `"LFM2.5-8B-A1B-Q4_K_M.gguf"` in the working directory.
+#' @param num_threads Optional Rayon thread count passed to [bebel_model_load()].
+#' @param env Environment shared by `/r`, `r_objects`, and optional `r_eval`.
+#' @param cwd Working directory for file tools.
+#' @param allow_eval Whether to include an `r_eval` tool that the model can call.
+#' @param greedy,max_gen,max_context,max_think,temperature,top_k,repeat_penalty
+#'   Generation options passed to [bebel_r_agent()].
+#' @param prompt Prompt string for [bebel_r_agent_console()].
+#' @param max_steps Maximum assistant/tool iterations per user prompt.
+#' @param show_stats Whether to print token/timing stats after each turn.
+#' @param prompt_style Tool prompt verbosity passed to [bebel_r_agent()].
+#' @return Invisibly returns the `bebelRAgent` session after the console exits.
+#' @export
+bebel_r_agent_start <- function(
+  weights = Sys.getenv("BEBELM_WEIGHTS_FILE", "LFM2.5-8B-A1B-Q4_K_M.gguf"),
+  num_threads = as.integer(Sys.getenv("BEBELM_NUM_THREADS", "2")),
+  env = .GlobalEnv,
+  cwd = getwd(),
+  allow_eval = TRUE,
+  greedy = TRUE,
+  max_gen = as.integer(Sys.getenv("BEBELM_AGENT_MAX_GEN", "256")),
+  max_context = 4096,
+  max_think = as.integer(Sys.getenv("BEBELM_AGENT_MAX_THINK", "48")),
+  temperature = 0.8,
+  top_k = 50,
+  repeat_penalty = 1.1,
+  prompt = "bebel> ",
+  max_steps = 4L,
+  show_stats = TRUE,
+  prompt_style = c("compact", "full")
+) {
+  prompt_style <- match.arg(prompt_style)
+  model <- bebel_model_load(weights, num_threads = num_threads)
+  session <- bebel_r_agent(
+    model,
+    env = env,
+    cwd = cwd,
+    allow_eval = allow_eval,
+    greedy = greedy,
+    max_gen = max_gen,
+    max_context = max_context,
+    max_think = max_think,
+    temperature = temperature,
+    top_k = top_k,
+    repeat_penalty = repeat_penalty,
+    prompt_style = prompt_style
+  )
+  bebel_r_agent_console(session, prompt = prompt, max_steps = max_steps, show_stats = show_stats)
   invisible(session)
 }
 
