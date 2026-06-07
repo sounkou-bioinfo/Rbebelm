@@ -26,6 +26,7 @@ bebel_r_agent_start(
   prompt = "bebel> ",
   max_steps = 4L,
   show_stats = TRUE,
+  blank_limit = 10L,
   prompt_style = c("compact", "full")
 )
 ```
@@ -72,6 +73,11 @@ bebel_r_agent_start(
 - show_stats:
 
   Whether to print token/timing stats after each turn.
+
+- blank_limit:
+
+  Number of consecutive blank inputs before exiting the console. Set to
+  `Inf` to never auto-exit on blanks.
 
 - prompt_style:
 
