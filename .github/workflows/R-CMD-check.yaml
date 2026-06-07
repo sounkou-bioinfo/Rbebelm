@@ -54,5 +54,15 @@ jobs:
           extra-packages: any::rcmdcheck, any::knitr, any::rmarkdown, any::tinytest
           needs: check
 
+      - name: Windows Rust/Rtools diagnostics
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          rustc -vV
+          cargo -vV
+          which x86_64-w64-mingw32.static.posix-gcc.exe || true
+          x86_64-w64-mingw32.static.posix-gcc.exe -print-search-dirs || true
+          echo "R_HOME=${R_HOME}"
+
       - name: R CMD check
         run: make CARGO_BUILD_JOBS=2 check
