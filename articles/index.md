@@ -10,5 +10,5 @@
   adapters](https://sounkou-bioinfo.github.io/Rbebelm/articles/events-and-adapters.md):
 - [Backends and
   webR](https://sounkou-bioinfo.github.io/Rbebelm/articles/backend-and-webr.md):
-- [Model claims
-  benchmark](https://sounkou-bioinfo.github.io/Rbebelm/articles/model-claims-benchmark.md):
+- [Model evaluation with
+  vitals](https://sounkou-bioinfo.github.io/Rbebelm/articles/model-claims-benchmark.md):
