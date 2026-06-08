@@ -25,6 +25,9 @@ local-model backend.
   The R package uses [`savvy`](https://github.com/yutannihilation/savvy)
   for the R/Rust boundary and a runtime backend layout for portable SIMD
   dispatch.
+- The native search layer vendors FFF and exposes persistent fuzzy file
+  indexes for agents, consoles, RPC clients, and future TUIs via
+  `bebel_file_finder()` and `bebel_file_search()`.
 
 The intended architecture is loop-first: the agent loop owns lifecycle,
 queues, tools, extensions, events, and sessions; consoles, RPC servers,
@@ -66,7 +69,10 @@ Source installs require Cargo/rustc and GNU make. On Linux, macOS, and
 Windows, `Rbebelm` builds separate Rust backend libraries when possible:
 scalar, AVX2, and AVX-512 on x86_64; scalar and NEON on arm64. The
 dispatcher selects the best installed backend supported by the current
-CPU/runtime before loading model code.
+CPU/runtime before loading model code. Scalar x86_64 artifacts are
+compiled with an explicit baseline target rather than inheriting
+`target-cpu=native`; optimized model and FFF/`neo_frizbee` SIMD paths
+are used only through backend selection or runtime feature checks.
 
 The model weights are not bundled with the R package. Download the GGUF
 weights from the upstream model source documented by
@@ -98,8 +104,8 @@ turn1
 #> <BebeLM assistant turn>
 #>   stop: eos
 #>   tokens: 27 generated; 19 prompt
-#>   prefill: 10.3 tok/s
-#>   decode: 10.47 tok/s
+#>   prefill: 11.3 tok/s
+#>   decode: 11.90 tok/s
 #>   text:
 #> <think>
 #> The user asks: "What is the capital of Mali? Answer briefly."</think>
@@ -108,8 +114,8 @@ turn2
 #> <BebeLM assistant turn>
 #>   stop: eos
 #>   tokens: 26 generated; 14 prompt
-#>   prefill: 10.5 tok/s
-#>   decode: 10.70 tok/s
+#>   prefill: 12.0 tok/s
+#>   decode: 11.63 tok/s
 #>   text:
 #> <think>
 #> The user asks: "What about Italy? Answer briefly." Likely they</think>
@@ -202,8 +208,8 @@ result
 #> <BebeLM chat result>
 #>   stop: max_new
 #>   tokens: 48 generated; 22 prompt
-#>   prefill: 10.4 tok/s
-#>   decode: 10.81 tok/s
+#>   prefill: 11.4 tok/s
+#>   decode: 11.67 tok/s
 #>   text:
 #> <think>
 #> The user asks: "In one concise sentence, what does runtime SIMD</think>
@@ -227,8 +233,8 @@ raw_result
 #> <BebeLM generation result>
 #>   stop: max_new
 #>   tokens: 24 generated; 8 prompt
-#>   prefill: 10.7 tok/s
-#>   decode: 11.15 tok/s
+#>   prefill: 11.5 tok/s
+#>   decode: 12.03 tok/s
 #>   text:
 #>  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However
 ```
@@ -315,8 +321,8 @@ run
 #> <BebeLM assistant turn>
 #>   stop: eos
 #>   tokens: 18 generated; 13 prompt
-#>   prefill: 10.2 tok/s
-#>   decode: 10.32 tok/s
+#>   prefill: 11.7 tok/s
+#>   decode: 11.56 tok/s
 #>   text:
 #> lookup_capital({"country":"Italy"}) returned Rome as the capital of Italy.
 ctx$log
@@ -365,10 +371,10 @@ bebel_session_append_message(
   model = "demo-model",
   stopReason = "stop"
 )
-#> [1] "2cd92948"
+#> [1] "d643da8a"
 
 bebel_session_leaf_id(store)
-#> <bebelSessionLeafId> 2cd92948
+#> <bebelSessionLeafId> d643da8a
 bebel_session_context(store)$messages
 #> [[1]]
 #> [[1]]$role
@@ -502,9 +508,9 @@ bebel_file_search(finder, "agent", limit = 5)
 #>                path
 #>  src/bamako_agent.R
 #>                                                         absolute_path
-#>  /tmp/RtmpJ1nQGU/rbebelm-fff-readme-3561df6d004817/src/bamako_agent.R
+#>  /tmp/Rtmp4zcp5J/rbebelm-fff-readme-39084d1e9f2761/src/bamako_agent.R
 #>       file_name git_status size            modified score base_score
-#>  bamako_agent.R      clean    5 2026-06-08 21:38:35    74         64
+#>  bamako_agent.R      clean    5 2026-06-08 22:47:05    74         64
 #>      match_type exact_match is_binary
 #>  fuzzy_filename       FALSE     FALSE
 ```
