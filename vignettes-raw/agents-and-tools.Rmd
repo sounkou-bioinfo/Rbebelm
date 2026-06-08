@@ -45,9 +45,10 @@ substr(bebel_transcript(agent), 1, 80)
 agent$clear()[c("history_tokens", "processed_tokens", "kv_tokens")]
 ```
 
-Use `bebel_append_system()` for a ChatML system-role instruction. Raw appends do
-not add user framing, so the low-level `bebel_append()` form below is equivalent
-apart from being more explicit about the tokens.
+Use `bebel_append_system()` for an upstream-rendered ChatML system turn. With no
+tools, the low-level `bebel_append()` form below is equivalent apart from being
+more explicit about the tokens. When `tools` are supplied, BebeLM renders its
+`List of tools: [...]` system preamble.
 
 ```{r, eval=has_weights}
 system_agent <- bebel_agent(model)
@@ -93,13 +94,13 @@ tools <- list(
 tools$lookup_capital
 ```
 
-The default parser accepts JSON calls, simple function calls, and BebeLM's
-bracketed tool-call form.
+The default parser delegates BebeLM's bracketed Pythonic tool-call form to
+upstream, including multiple calls. JSON object calls remain optional legacy
+compatibility when `jsonlite` is installed.
 
 ```{r}
-bebel_parse_tool_call('{"name":"lookup_capital","arguments":{"country":"Italy"}}')
-bebel_parse_tool_call('lookup_capital({"country":"Italy"})')
 bebel_parse_tool_call('[lookup_capital(country="Italy")]')
+bebel_parse_tool_calls('[lookup_capital(country="Mali"), lookup_capital(country="Italy")]')
 ```
 
 ## Run a tool loop

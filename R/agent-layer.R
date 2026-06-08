@@ -181,18 +181,13 @@ bebel_agent_tools_prompt <- function(tools, detail = c("compact", "full")) {
 bebel_agent_default_system <- function(tools, detail = c("compact", "full")) {
   detail <- match.arg(detail)
   if (identical(detail, "compact")) {
-    return(paste(
-      "Concise R assistant. Use tools only when needed; never invent tool results.",
-      bebel_agent_tools_prompt(tools, detail = detail),
-      sep = "\n"
-    ))
+    return("Concise R assistant. Use tools only when needed; never invent tool results.")
   }
 
   paste(
     "You are an R-native assistant running inside the user's R session.",
     "Be concise and use tools only when they are needed to inspect files, R objects, documentation, or code results.",
-    "Do not invent tool results. If a tool is needed, emit only a tool call in the documented format.",
-    bebel_agent_tools_prompt(tools, detail = detail),
+    "Do not invent tool results. If a tool is needed, emit only the tool call in the format advertised by the system tool list.",
     sep = "\n\n"
   )
 }
@@ -453,7 +448,7 @@ bebel_r_agent <- function(
     top_k = top_k,
     repeat_penalty = repeat_penalty
   )
-  bebel_append_system(agent, system_prompt)
+  bebel_append_system(agent, system_prompt, tools = tools)
 
   x <- new.env(parent = emptyenv())
   x$model <- model
@@ -527,7 +522,7 @@ print.bebelRAgentTurn <- function(x, ...) {
 bebel_r_agent_clear <- function(session) {
   bebel_agent_layer_stopif(inherits(session, "bebelRAgent"), "session must be a bebelRAgent")
   bebel_clear(session$agent)
-  bebel_append_system(session$agent, session$system_prompt)
+  bebel_append_system(session$agent, session$system_prompt, tools = session$tools)
   session$history <- list()
   session$turns <- list()
   invisible(session)

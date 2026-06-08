@@ -142,7 +142,7 @@ impl TensorInfo {
     }
 }
 
-/// Backing storage for the file bytes.
+/// Backing storage for the file bytes: an mmap in production, an owned buffer in tests.
 enum Backing {
     #[cfg(not(target_os = "emscripten"))]
     Mmap(Mmap),

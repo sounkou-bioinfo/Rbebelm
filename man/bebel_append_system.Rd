@@ -2,21 +2,22 @@
 % Please edit documentation in R/api.R
 \name{bebel_append_system}
 \alias{bebel_append_system}
-\title{Append a ChatML system turn to a BebeLM agent transcript}
+\title{Append an upstream BebeLM system turn to an agent transcript}
 \usage{
-bebel_append_system(agent, message)
+bebel_append_system(agent, message, tools = NULL)
 }
 \arguments{
 \item{agent}{A \code{BebelAgent} object.}
 
 \item{message}{System instruction text.}
+
+\item{tools}{Optional list of \code{bebel_tool()} objects or named functions to advertise.}
 }
 \value{
 Invisibly returns \code{agent}.
 }
 \description{
-Appends \verb{<|im_start|>system\\n...<|im_end|>} framing. BebeLM upstream does
-not expose a separate system-prompt channel; this helper provides the ChatML
-system-role form for users who want to place an instruction before user
-turns.
+Delegates ChatML system-turn rendering to upstream BebeLM. When \code{tools} are
+supplied, their schemas are rendered in upstream's \verb{List of tools: [...]}
+system-block preamble before \code{message}.
 }

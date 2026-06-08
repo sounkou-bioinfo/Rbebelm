@@ -207,20 +207,26 @@ bebel_append <- function(agent, text) {
   invisible(agent)
 }
 
-#' Append a ChatML system turn to a BebeLM agent transcript
+#' Append an upstream BebeLM system turn to an agent transcript
 #'
-#' Appends `<|im_start|>system\n...<|im_end|>` framing. BebeLM upstream does
-#' not expose a separate system-prompt channel; this helper provides the ChatML
-#' system-role form for users who want to place an instruction before user
-#' turns.
+#' Delegates ChatML system-turn rendering to upstream BebeLM. When `tools` are
+#' supplied, their schemas are rendered in upstream's `List of tools: [...]`
+#' system-block preamble before `message`.
 #'
 #' @param agent A `BebelAgent` object.
 #' @param message System instruction text.
+#' @param tools Optional list of `bebel_tool()` objects or named functions to advertise.
 #' @return Invisibly returns `agent`.
 #' @export
-bebel_append_system <- function(agent, message) {
+bebel_append_system <- function(agent, message, tools = NULL) {
   check_bebel_agent(agent)
-  agent$append_system(message)
+  tools <- normalize_bebel_tools(tools)
+  if (length(tools)) {
+    schemas <- vapply(tools, bebel_tool_schema_json, character(1))
+    agent$append_system_with_tools(message, names(tools), schemas)
+  } else {
+    agent$append_system(message)
+  }
   invisible(agent)
 }
 
@@ -272,6 +278,24 @@ bebel_assistant_turn <- function(agent, on_event = bebel_console_event(), check_
   check_bebel_agent(agent)
   on_event <- normalize_bebel_on_event(on_event)
   out <- agent$assistant_turn(check_interrupt = check_interrupt, on_event = on_event)
+  class(out) <- c("bebelAssistantTurnResult", "bebelGeneration", class(out))
+  out
+}
+
+#' Open an assistant turn and stop when a tool call closes
+#'
+#' This low-level variant mirrors upstream BebeLM's tool driver stop semantics:
+#' generation stops with `stop == "tool_call"` after `<|tool_call_end|>` so the
+#' caller can execute the requested tool(s) and append one tool-result turn.
+#' Most users should prefer [bebel_agent_run()].
+#'
+#' @inheritParams bebel_assistant_turn
+#' @return A `bebelAssistantTurnResult` list.
+#' @export
+bebel_assistant_turn_tool_stop <- function(agent, on_event = bebel_console_event(), check_interrupt = TRUE) {
+  check_bebel_agent(agent)
+  on_event <- normalize_bebel_on_event(on_event)
+  out <- agent$assistant_turn_tool_stop(check_interrupt = check_interrupt, on_event = on_event)
   class(out) <- c("bebelAssistantTurnResult", "bebelGeneration", class(out))
   out
 }
@@ -378,69 +402,132 @@ normalize_bebel_tools <- function(tools) {
   out
 }
 
+#' Render a BebeLM tool schema
+#'
+#' Converts an R [bebel_tool()] declaration into upstream BebeLM's JSON-like
+#' tool schema string for the system `List of tools: [...]` preamble. This is
+#' normally called by [bebel_append_system()] when `tools` are supplied.
+#'
+#' @param tool A `bebelTool` object created by [bebel_tool()].
+#' @return A character scalar containing the upstream-rendered tool schema.
+#' @export
+bebel_tool_schema_json <- function(tool) {
+  schema <- tool$schema
+  if (is.character(schema) && length(schema) == 1L && nzchar(schema)) return(schema)
 
-parse_bebel_call_args <- function(args) {
-  args <- trimws(args)
-  if (!nzchar(args)) return(list())
-  if (grepl("^\\s*\\{", args)) {
-    return(rbebelm_json_parse(args))
+  params <- list()
+  if (is.list(schema) && identical(schema$type, "object") && is.list(schema$properties)) {
+    required <- unlist(schema$required %||% list(), use.names = FALSE)
+    params <- lapply(names(schema$properties), function(nm) {
+      x <- schema$properties[[nm]]
+      list(
+        name = nm,
+        type = as.character(x$type %||% "string"),
+        description = as.character(x$description %||% ""),
+        required = nm %in% required
+      )
+    })
   }
-  parts <- strsplit(args, "\\s*,\\s*", perl = TRUE)[[1]]
-  out <- list()
-  for (part in parts) {
-    m <- regexec("^([A-Za-z_][A-Za-z0-9_.-]*)\\s*=\\s*(.*)$", trimws(part), perl = TRUE)
-    hit <- regmatches(part, m)[[1]]
-    if (!length(hit)) return(args)
-    value <- trimws(hit[3])
-    if (grepl('^".*"$', value) || grepl("^'.*'$", value)) {
-      value <- substr(value, 2L, nchar(value) - 1L)
-    } else if (grepl("^-?[0-9]+$", value)) {
-      value <- as.integer(value)
-    } else if (grepl("^-?[0-9]+\\.[0-9]+$", value)) {
-      value <- as.numeric(value)
-    } else if (identical(tolower(value), "true") || identical(tolower(value), "false")) {
-      value <- identical(tolower(value), "true")
-    }
-    out[[hit[2]]] <- value
-  }
-  out
+  names <- vapply(params, `[[`, character(1), "name")
+  types <- vapply(params, `[[`, character(1), "type")
+  descriptions <- vapply(params, `[[`, character(1), "description")
+  required <- vapply(params, `[[`, logical(1), "required")
+  rbebelm_tool_schema_json(
+    tool$name,
+    as.character(tool$description %||% tool$name),
+    names,
+    types,
+    descriptions,
+    required
+  )
 }
 
-#' Parse a BebeLM tool call block
+
+coerce_bebel_tool_value <- function(value) {
+  if (!is.character(value) || length(value) != 1L) return(value)
+  x <- trimws(value)
+  if (identical(x, "True") || identical(x, "true")) return(TRUE)
+  if (identical(x, "False") || identical(x, "false")) return(FALSE)
+  if (grepl("^-?[0-9]+$", x)) return(as.integer(x))
+  if (grepl("^-?[0-9]+\\.[0-9]+$", x)) return(as.numeric(x))
+  value
+}
+
+normalize_upstream_tool_call <- function(call) {
+  if (is.list(call$arguments)) {
+    call$arguments <- lapply(call$arguments, coerce_bebel_tool_value)
+  }
+  call
+}
+
+parse_json_tool_call <- function(x, raw) {
+  if (!requireNamespace("jsonlite", quietly = TRUE)) {
+    stop("JSON tool-call compatibility requires optional package 'jsonlite'; upstream BebeLM tool calls use Pythonic syntax", call. = FALSE)
+  }
+  obj <- jsonlite::fromJSON(x, simplifyVector = FALSE)
+  name <- obj$name %||% obj$tool %||% (obj[["function"]] %||% list())$name
+  args <- obj$arguments %||% obj$args %||% obj$input %||% list()
+  if (is.character(args) && length(args) == 1L && grepl("^\\s*\\{", args)) {
+    args <- tryCatch(jsonlite::fromJSON(args, simplifyVector = FALSE), error = function(e) args)
+  }
+  if (is.null(name) || !nzchar(name)) stop("JSON tool call has no name/tool/function.name", call. = FALSE)
+  list(name = name, arguments = args, raw = raw)
+}
+
+#' Parse BebeLM tool calls
 #'
-#' The default parser accepts JSON objects such as `{\"name\": \"tool\", \"arguments\": {...}}`,
-#' simple `name({...})` calls, and bracketed BebeLM calls such as
-#' `[name(key=\"value\")]`. Pass a custom parser to
-#' `bebel_agent_run()` for model- or prompt-specific formats.
+#' Delegates Pythonic BebeLM tool-call parsing (`[name(arg='value')]`, including
+#' multiple calls) to upstream BebeLM. JSON call objects and legacy `name({...})`
+#' calls remain supported only when optional package `jsonlite` is installed.
 #'
 #' @param content Accumulated content between BebeLM tool-call delimiters.
-#' @return A list with `name`, `arguments`, and `raw`.
+#' @return A list of calls, each with `name`, `arguments`, and `raw`.
 #' @export
-bebel_parse_tool_call <- function(content) {
+bebel_parse_tool_calls <- function(content) {
   raw <- paste(content, collapse = "")
   x <- trimws(raw)
   if (!nzchar(x)) stop("empty tool call", call. = FALSE)
-  if (grepl("^\\[.*\\]$", x)) x <- trimws(substr(x, 2L, nchar(x) - 1L))
 
-  if (grepl("^\\s*\\{", x)) {
-    obj <- rbebelm_json_parse(x)
-    name <- obj$name %||% obj$tool %||% (obj[["function"]] %||% list())$name
-    args <- obj$arguments %||% obj$args %||% obj$input %||% list()
-    if (is.character(args) && length(args) == 1L && grepl("^\\s*\\{", args)) {
-      args <- tryCatch(rbebelm_json_parse(args), error = function(e) args)
+  if (grepl("^\\s*\\{", x)) return(list(parse_json_tool_call(x, raw)))
+
+  m_json_arg <- regexec("^([A-Za-z_][A-Za-z0-9_.-]*)\\s*\\((\\s*\\{.*\\}\\s*)\\)$", x, perl = TRUE)
+  hit_json_arg <- regmatches(x, m_json_arg)[[1]]
+  if (length(hit_json_arg)) {
+    if (!requireNamespace("jsonlite", quietly = TRUE)) {
+      stop("JSON tool-call compatibility requires optional package 'jsonlite'; upstream BebeLM tool calls use Pythonic syntax", call. = FALSE)
     }
-    if (is.null(name) || !nzchar(name)) stop("JSON tool call has no name/tool/function.name", call. = FALSE)
-    return(list(name = name, arguments = args, raw = raw))
+    return(list(list(name = hit_json_arg[2], arguments = jsonlite::fromJSON(hit_json_arg[3], simplifyVector = FALSE), raw = raw)))
   }
 
-  m <- regexec("^([A-Za-z_][A-Za-z0-9_.-]*)\\s*\\((.*)\\)$", x, perl = TRUE)
-  hit <- regmatches(x, m)[[1]]
-  if (length(hit)) {
-    parsed <- parse_bebel_call_args(hit[3])
-    return(list(name = hit[2], arguments = parsed, raw = raw))
-  }
+  calls <- rbebelm_parse_tool_calls(x)
+  calls <- lapply(calls, normalize_upstream_tool_call)
+  if (!length(calls)) stop("cannot parse tool call; provide a custom parse_tool_call function", call. = FALSE)
+  calls
+}
 
-  stop("cannot parse tool call; provide a custom parse_tool_call function", call. = FALSE)
+#' Parse a single BebeLM tool call block
+#'
+#' This compatibility wrapper returns the first call from [bebel_parse_tool_calls()].
+#' Prefer [bebel_parse_tool_calls()] when multiple calls may be present.
+#'
+#' @inheritParams bebel_parse_tool_calls
+#' @return A list with `name`, `arguments`, and `raw`.
+#' @export
+bebel_parse_tool_call <- function(content) {
+  calls <- bebel_parse_tool_calls(content)
+  calls[[1L]]
+}
+
+format_bebel_tool_result <- function(call, result, error = NULL) {
+  if (!is.null(error)) return(paste0("Error: ", conditionMessage(error)))
+  if (is.null(result)) return("")
+  paste(result, collapse = "\n")
+}
+
+normalize_parsed_bebel_calls <- function(parsed) {
+  if (is.list(parsed) && !is.null(parsed$name)) return(list(parsed))
+  if (is.list(parsed) && all(vapply(parsed, function(x) is.list(x) && !is.null(x$name), logical(1)))) return(parsed)
+  stop("parse_tool_call must return a call or a list of calls", call. = FALSE)
 }
 
 call_bebel_hook <- function(hooks, name, ...) {
@@ -467,15 +554,6 @@ invoke_bebel_tool <- function(tool, call, context) {
   fun(call$arguments)
 }
 
-format_bebel_tool_result <- function(call, result, error = NULL) {
-  rbebelm_json_tool_result(
-    call$name,
-    is.null(error),
-    if (is.null(error) && !is.null(result)) paste(result, collapse = "\n") else NULL,
-    if (!is.null(error)) conditionMessage(error) else NULL
-  )
-}
-
 #' Run a BebeLM agent with R tool dispatch
 #'
 #' This is an Agent-first orchestration loop. It observes `tool_call_end` events,
@@ -487,7 +565,7 @@ format_bebel_tool_result <- function(call, result, error = NULL) {
 #' @param context Private run context passed to tools and hooks but not appended to the model transcript.
 #' @param hooks Optional named list of hooks: `turn_start`, `event`, `tool_request`,
 #'   `tool_result`, `tool_error`, `turn_end`.
-#' @param parse_tool_call Function converting tool-call content to `list(name, arguments, raw)`.
+#' @param parse_tool_call Function converting tool-call content to either one `list(name, arguments, raw)` or a list of such calls.
 #' @param max_steps Maximum assistant/tool iterations.
 #' @param on_event Optional event callback or handler list for model events.
 #' @param check_interrupt Check for Ctrl-C during generation.
@@ -498,7 +576,7 @@ bebel_agent_run <- function(
   tools = list(),
   context = new.env(parent = emptyenv()),
   hooks = list(),
-  parse_tool_call = bebel_parse_tool_call,
+  parse_tool_call = bebel_parse_tool_calls,
   max_steps = 4,
   on_event = NULL,
   check_interrupt = TRUE
@@ -526,7 +604,11 @@ bebel_agent_run <- function(
     )
 
     call_bebel_hook(hooks, "turn_start", context = context, agent = agent, step = step)
-    turn <- bebel_assistant_turn(agent, on_event = collector, check_interrupt = check_interrupt)
+    if (length(tools)) {
+      turn <- bebel_assistant_turn_tool_stop(agent, on_event = collector, check_interrupt = check_interrupt)
+    } else {
+      turn <- bebel_assistant_turn(agent, on_event = collector, check_interrupt = check_interrupt)
+    }
     turns[[length(turns) + 1L]] <- turn
     call_bebel_hook(hooks, "turn_end", turn = turn, context = context, agent = agent, step = step)
 
@@ -549,26 +631,31 @@ bebel_agent_run <- function(
         bebel_append_tool_result(agent, format_bebel_tool_result(call, NULL, err))
         next
       }
-      calls[[length(calls) + 1L]] <- call
-      call_bebel_hook(hooks, "tool_request", call = call, context = context, agent = agent, step = step)
-      tool <- tools[[call$name]]
-      if (is.null(tool)) {
-        err <- simpleError(paste0("unknown tool: ", call$name))
-        call_bebel_hook(hooks, "tool_error", call = call, error = err, context = context, agent = agent, step = step)
-        bebel_append_tool_result(agent, format_bebel_tool_result(call, NULL, err))
-        next
+      parsed_calls <- normalize_parsed_bebel_calls(call)
+      block_results <- character()
+      for (call in parsed_calls) {
+        calls[[length(calls) + 1L]] <- call
+        call_bebel_hook(hooks, "tool_request", call = call, context = context, agent = agent, step = step)
+        tool <- tools[[call$name]]
+        if (is.null(tool)) {
+          err <- simpleError(paste0("unknown tool: ", call$name))
+          call_bebel_hook(hooks, "tool_error", call = call, error = err, context = context, agent = agent, step = step)
+          block_results <- c(block_results, format_bebel_tool_result(call, NULL, err))
+          next
+        }
+        result <- tryCatch(
+          invoke_bebel_tool(tool, call, context),
+          error = function(e) e
+        )
+        if (inherits(result, "error")) {
+          call_bebel_hook(hooks, "tool_error", call = call, error = result, context = context, agent = agent, step = step)
+          block_results <- c(block_results, format_bebel_tool_result(call, NULL, result))
+        } else {
+          call_bebel_hook(hooks, "tool_result", call = call, result = result, context = context, agent = agent, step = step)
+          block_results <- c(block_results, format_bebel_tool_result(call, result))
+        }
       }
-      result <- tryCatch(
-        invoke_bebel_tool(tool, call, context),
-        error = function(e) e
-      )
-      if (inherits(result, "error")) {
-        call_bebel_hook(hooks, "tool_error", call = call, error = result, context = context, agent = agent, step = step)
-        bebel_append_tool_result(agent, format_bebel_tool_result(call, NULL, result))
-      } else {
-        call_bebel_hook(hooks, "tool_result", call = call, result = result, context = context, agent = agent, step = step)
-        bebel_append_tool_result(agent, format_bebel_tool_result(call, result))
-      }
+      bebel_append_tool_result(agent, paste(block_results, collapse = "\n"))
     }
   }
 

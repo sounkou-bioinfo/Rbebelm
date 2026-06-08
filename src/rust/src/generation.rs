@@ -5,7 +5,8 @@ use bebelm::cache::Cache;
 use bebelm::model::Model;
 use bebelm::sampler::Sampler;
 use bebelm::tokenizer::{
-    Tokenizer, TOKEN_BOS, TOKEN_ENDOFTEXT, TOKEN_IM_START, TOKEN_PAD, TOKEN_THINK, TOKEN_THINK_END,
+    TOKEN_BOS, TOKEN_ENDOFTEXT, TOKEN_IM_START, TOKEN_PAD, TOKEN_THINK, TOKEN_THINK_END,
+    TOKEN_TOOL_CALL_END,
 };
 use savvy::{FunctionSexp, OwnedListSexp};
 
@@ -22,12 +23,11 @@ pub fn trim_context(cache: &mut Cache, max_context: usize) {
     }
 }
 
-pub fn run_generation(model: &Model, tok: Tokenizer, history: Vec<u32>, opts: &mut GenerationOptions) -> savvy::Result<Turn> {
+pub fn run_generation(model: &Model, history: Vec<u32>, opts: &mut GenerationOptions) -> savvy::Result<Turn> {
     let mut cache = Cache::new();
     let mut history = history;
     run_state(
         model,
-        &tok,
         &mut cache,
         &mut history,
         &mut opts.sampler,
@@ -36,13 +36,13 @@ pub fn run_generation(model: &Model, tok: Tokenizer, history: Vec<u32>, opts: &m
         opts.max_gen,
         opts.max_context,
         opts.max_think,
+        false,
     )
 }
 
 #[allow(clippy::too_many_arguments)]
 pub fn run_state(
     model: &Model,
-    tok: &Tokenizer,
     cache: &mut Cache,
     history: &mut Vec<u32>,
     sampler: &mut Sampler,
@@ -51,6 +51,7 @@ pub fn run_state(
     max_gen: usize,
     max_context: usize,
     max_think: usize,
+    stop_on_tool_call: bool,
 ) -> savvy::Result<Turn> {
     if history.is_empty() {
         return Err(err("prompt must produce at least one token"));
@@ -98,7 +99,7 @@ pub fn run_state(
             logits[TOKEN_THINK as usize] = f32::NEG_INFINITY;
         }
         if require_answer {
-            logits[tok.eos as usize] = f32::NEG_INFINITY;
+            logits[model.tokenizer().eos as usize] = f32::NEG_INFINITY;
             for &t in &STOP_TOKENS {
                 logits[t as usize] = f32::NEG_INFINITY;
             }
@@ -111,7 +112,7 @@ pub fn run_state(
         } else {
             sampler.sample(&mut logits, history)
         };
-        if next == tok.eos || STOP_TOKENS.contains(&next) {
+        if next == model.tokenizer().eos || STOP_TOKENS.contains(&next) {
             break StopReason::Eos;
         }
         match next {
@@ -128,10 +129,13 @@ pub fn run_state(
         }
 
         let index = ids.len() + 1;
-        let piece = tok.decode(&[next]);
+        let piece = model.tokenizer().decode(&[next]);
         stream.token(index, next, &piece)?;
         ids.push(next);
         history.push(next);
+        if stop_on_tool_call && next == TOKEN_TOOL_CALL_END {
+            break StopReason::ToolCall;
+        }
         if ids.len() >= max_gen {
             break StopReason::MaxNew;
         }
@@ -141,7 +145,7 @@ pub fn run_state(
 
     let decode = t_decode.elapsed();
     let generated_tokens = ids.len();
-    let text = tok.decode(&ids);
+    let text = model.tokenizer().decode(&ids);
     stream.finish(stop, &text, generated_tokens)?;
     Ok(Turn {
         ids,
@@ -160,6 +164,7 @@ pub fn turn_to_list(turn: Turn) -> savvy::Result<savvy::Sexp> {
     let stop = match turn.stop {
         StopReason::Eos => "eos",
         StopReason::MaxNew => "max_new",
+        StopReason::ToolCall => "tool_call",
     };
     let mut out = OwnedListSexp::new(9, true)?;
     out.set_name_and_value(0, "text", str_scalar(&turn.text)?)?;

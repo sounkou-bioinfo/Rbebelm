@@ -174,9 +174,10 @@ raw_result <- bebel_generate(
 raw_result
 ```
 
-Use `bebel_append_system()` for a ChatML system-role instruction. Raw appends do
-not add user framing, so the low-level `bebel_append()` form below is equivalent
-apart from being more explicit about the tokens.
+Use `bebel_append_system()` for an upstream-rendered ChatML system turn. With no
+tools, the low-level `bebel_append()` form below is equivalent apart from being
+more explicit about the tokens. When `tools` are supplied, BebeLM renders its
+`List of tools: [...]` system preamble.
 
 ```{r agent-system, eval=has_weights}
 system_agent <- bebel_agent(model)

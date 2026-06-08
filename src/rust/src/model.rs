@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use bebelm::model::Model;
-use bebelm::tokenizer::Tokenizer;
 use savvy::{savvy, FunctionSexp, IntegerSexp, OwnedListSexp};
 
 use crate::chatml::{user_turn, ASSISTANT_OPEN};
@@ -43,16 +42,14 @@ impl BebelModel {
     /// Tokenize text with the model tokenizer.
     /// @export
     fn encode(&self, text: &str, add_bos: bool) -> savvy::Result<savvy::Sexp> {
-        let tok = Tokenizer::from_gguf(self.inner.gguf()).map_err(|e| err(format!("cannot create BebeLM tokenizer: {e}")))?;
-        ids_to_sexp(&tok.encode(text, add_bos))?.into()
+        ids_to_sexp(&self.inner.tokenizer().encode(text, add_bos))?.into()
     }
 
     /// Decode token ids with the model tokenizer.
     /// @export
     fn decode(&self, ids: IntegerSexp) -> savvy::Result<savvy::Sexp> {
-        let tok = Tokenizer::from_gguf(self.inner.gguf()).map_err(|e| err(format!("cannot create BebeLM tokenizer: {e}")))?;
         let ids = ids_from_integer(ids)?;
-        str_scalar(&tok.decode(&ids))?.into()
+        str_scalar(&self.inner.tokenizer().decode(&ids))?.into()
     }
 
     /// Generate a raw continuation from a prompt.
@@ -71,9 +68,8 @@ impl BebelModel {
         repeat_penalty: Option<f64>,
     ) -> savvy::Result<savvy::Sexp> {
         let mut opts = GenerationOptions::new(greedy, check_interrupt, on_event, max_gen, max_context, max_think, temperature, top_k, repeat_penalty)?;
-        let tok = Tokenizer::from_gguf(self.inner.gguf()).map_err(|e| err(format!("cannot create BebeLM tokenizer: {e}")))?;
-        let history = tok.encode(prompt, true);
-        let turn = run_generation(self.inner.as_ref(), tok, history, &mut opts)?;
+        let history = self.inner.tokenizer().encode(prompt, true);
+        let turn = run_generation(self.inner.as_ref(), history, &mut opts)?;
         turn_to_list(turn)
     }
 
@@ -93,10 +89,9 @@ impl BebelModel {
         repeat_penalty: Option<f64>,
     ) -> savvy::Result<savvy::Sexp> {
         let mut opts = GenerationOptions::new(greedy, check_interrupt, on_event, max_gen, max_context, max_think, temperature, top_k, repeat_penalty)?;
-        let tok = Tokenizer::from_gguf(self.inner.gguf()).map_err(|e| err(format!("cannot create BebeLM tokenizer: {e}")))?;
-        let mut history = tok.encode(&user_turn(message), true);
-        history.extend(tok.encode(ASSISTANT_OPEN, false));
-        let turn = run_generation(self.inner.as_ref(), tok, history, &mut opts)?;
+        let mut history = self.inner.tokenizer().encode(&user_turn(message), true);
+        history.extend(self.inner.tokenizer().encode(ASSISTANT_OPEN, false));
+        let turn = run_generation(self.inner.as_ref(), history, &mut opts)?;
         turn_to_list(turn)
     }
 }

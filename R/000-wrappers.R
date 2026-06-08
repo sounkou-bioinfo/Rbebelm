@@ -55,16 +55,22 @@ NULL
   .Call(savvy_rbebelm_backend_features__impl)
 }
 
-#' Parse JSON into base R vectors/lists.
+#' Parse upstream BebeLM Pythonic tool calls.
 #' @keywords internal
-`rbebelm_json_parse` <- function(`text`) {
-  .Call(savvy_rbebelm_json_parse__impl, `text`)
+`rbebelm_parse_tool_calls` <- function(`text`) {
+  .Call(savvy_rbebelm_parse_tool_calls__impl, `text`)
 }
 
-#' Format a tool-result object as JSON.
+#' Render an upstream BebeLM ChatML system turn, optionally with tool schemas.
 #' @keywords internal
-`rbebelm_json_tool_result` <- function(`tool`, `ok`, `result` = NULL, `error` = NULL) {
-  .Call(savvy_rbebelm_json_tool_result__impl, `tool`, `ok`, `result`, `error`)
+`rbebelm_render_system_turn` <- function(`message`, `tool_names`, `tool_schemas`) {
+  .Call(savvy_rbebelm_render_system_turn__impl, `message`, `tool_names`, `tool_schemas`)
+}
+
+#' Render an upstream BebeLM tool schema from parameter vectors.
+#' @keywords internal
+`rbebelm_tool_schema_json` <- function(`name`, `description`, `param_names`, `param_types`, `param_descriptions`, `param_required`) {
+  .Call(savvy_rbebelm_tool_schema_json__impl, `name`, `description`, `param_names`, `param_types`, `param_descriptions`, `param_required`)
 }
 
 ### wrapper functions for BebelAgent
@@ -78,6 +84,12 @@ NULL
 `BebelAgent_append_system` <- function(self) {
   function(`message`) {
     .Call(savvy_BebelAgent_append_system__impl, `self`, `message`)
+  }
+}
+
+`BebelAgent_append_system_with_tools` <- function(self) {
+  function(`message`, `tool_names`, `tool_schemas`) {
+    .Call(savvy_BebelAgent_append_system_with_tools__impl, `self`, `message`, `tool_names`, `tool_schemas`)
   }
 }
 
@@ -102,6 +114,12 @@ NULL
 `BebelAgent_assistant_turn` <- function(self) {
   function(`check_interrupt`, `on_event` = NULL) {
     .Call(savvy_BebelAgent_assistant_turn__impl, `self`, `check_interrupt`, `on_event`)
+  }
+}
+
+`BebelAgent_assistant_turn_tool_stop` <- function(self) {
+  function(`check_interrupt`, `on_event` = NULL) {
+    .Call(savvy_BebelAgent_assistant_turn_tool_stop__impl, `self`, `check_interrupt`, `on_event`)
   }
 }
 
@@ -146,10 +164,12 @@ NULL
   e$.ptr <- ptr
   e$`append` <- `BebelAgent_append`(ptr)
   e$`append_system` <- `BebelAgent_append_system`(ptr)
+  e$`append_system_with_tools` <- `BebelAgent_append_system_with_tools`(ptr)
   e$`append_tokens` <- `BebelAgent_append_tokens`(ptr)
   e$`append_tool_result` <- `BebelAgent_append_tool_result`(ptr)
   e$`append_user` <- `BebelAgent_append_user`(ptr)
   e$`assistant_turn` <- `BebelAgent_assistant_turn`(ptr)
+  e$`assistant_turn_tool_stop` <- `BebelAgent_assistant_turn_tool_stop`(ptr)
   e$`clear` <- `BebelAgent_clear`(ptr)
   e$`configure` <- `BebelAgent_configure`(ptr)
   e$`generate` <- `BebelAgent_generate`(ptr)

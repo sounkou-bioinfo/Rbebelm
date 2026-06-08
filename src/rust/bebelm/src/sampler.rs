@@ -9,6 +9,7 @@
 const DEFAULT_SEED: u64 = 0x853C_49E6_748F_EA9B;
 
 /// Sampling configuration + PRNG state.
+#[derive(Clone)]
 pub struct Sampler {
     /// `0.0` ⇒ greedy (deterministic argmax).
     pub temperature: f32,
@@ -50,6 +51,14 @@ impl Sampler {
     /// repeat-penalty 1.05.
     pub fn recommended() -> Self {
         Self::new(0.2, 80, 1.05, DEFAULT_SEED)
+    }
+
+    /// Clear the internal state (repetition-penalty passes and candidate buffer) while keeping
+    /// the sampling parameters (temperature, etc.) and RNG state.
+    pub fn reset(&mut self) {
+        self.pass = 0;
+        self.last_pass.clear();
+        self.cand.clear();
     }
 
     /// Pick the next token id from `logits` (mutated in place by the penalty/temperature).
@@ -199,5 +208,20 @@ mod tests {
             assert!(t == 0 || t == 1, "sampled outside top-2: {t}");
         }
         let _ = &mut logits;
+    }
+
+    #[test]
+    fn reset_clears_penalty_state() {
+        let mut s = Sampler::new(0.0, 0, 2.0, 0);
+        let mut logits = [10.0f32, 9.0];
+        // After one sample with history [0], token 0 is penalized.
+        s.sample(&mut logits, &[0]);
+        assert_eq!(s.pass, 1);
+        assert!(!s.last_pass.is_empty());
+
+        s.reset();
+        assert_eq!(s.pass, 0);
+        assert!(s.last_pass.is_empty());
+        assert!(s.cand.is_empty());
     }
 }

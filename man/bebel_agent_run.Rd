@@ -9,7 +9,7 @@ bebel_agent_run(
   tools = list(),
   context = new.env(parent = emptyenv()),
   hooks = list(),
-  parse_tool_call = bebel_parse_tool_call,
+  parse_tool_call = bebel_parse_tool_calls,
   max_steps = 4,
   on_event = NULL,
   check_interrupt = TRUE
@@ -25,7 +25,7 @@ bebel_agent_run(
 \item{hooks}{Optional named list of hooks: \code{turn_start}, \code{event}, \code{tool_request},
 \code{tool_result}, \code{tool_error}, \code{turn_end}.}
 
-\item{parse_tool_call}{Function converting tool-call content to \code{list(name, arguments, raw)}.}
+\item{parse_tool_call}{Function converting tool-call content to either one \code{list(name, arguments, raw)} or a list of such calls.}
 
 \item{max_steps}{Maximum assistant/tool iterations.}
 

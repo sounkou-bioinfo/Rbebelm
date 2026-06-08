@@ -3,14 +3,15 @@ use std::sync::Arc;
 use bebelm::cache::Cache;
 use bebelm::model::Model;
 use bebelm::sampler::Sampler;
-use bebelm::tokenizer::{Tokenizer, TOKEN_IM_END};
-use savvy::{savvy, FunctionSexp, IntegerSexp, OwnedListSexp};
+use bebelm::tokenizer::TOKEN_IM_END;
+use savvy::{savvy, FunctionSexp, IntegerSexp, OwnedListSexp, StringSexp};
 
-use crate::chatml::{system_turn, tool_turn, user_turn, ASSISTANT_OPEN};
+use crate::chatml::{tool_turn, user_turn, ASSISTANT_OPEN};
 use crate::generation::{run_state, turn_to_list};
 use crate::model::BebelModel;
 use crate::options::{maybe_update_sampler, GenerationOptions};
-use crate::util::{checked_positive_usize, checked_usize, err, ids_from_integer, ids_to_sexp, int_scalar, real_scalar, str_scalar};
+use crate::tools::render_system_turn;
+use crate::util::{checked_positive_usize, checked_usize, ids_from_integer, ids_to_sexp, int_scalar, real_scalar, str_scalar};
 
 /// Persistent BebeLM conversation agent with transcript and decode caches.
 /// @export
@@ -18,7 +19,6 @@ use crate::util::{checked_positive_usize, checked_usize, err, ids_from_integer, 
 pub struct BebelAgent {
     model: Arc<Model>,
     model_path: String,
-    tok: Tokenizer,
     cache: Cache,
     sampler: Sampler,
     history: Vec<u32>,
@@ -42,11 +42,9 @@ impl BebelAgent {
         repeat_penalty: Option<f64>,
     ) -> savvy::Result<Self> {
         let opts = GenerationOptions::new(greedy, true, None, max_gen, max_context, max_think, temperature, top_k, repeat_penalty)?;
-        let tok = Tokenizer::from_gguf(model.inner.gguf()).map_err(|e| err(format!("cannot create BebeLM tokenizer: {e}")))?;
         Ok(Self {
             model: Arc::clone(&model.inner),
             model_path: model.path.clone(),
-            tok,
             cache: Cache::new(),
             sampler: opts.sampler,
             history: Vec::new(),
@@ -102,15 +100,25 @@ impl BebelAgent {
     /// @export
     fn append(&mut self, text: &str) -> savvy::Result<savvy::Sexp> {
         let add_bos = self.history.is_empty();
-        let ids = self.tok.encode(text, add_bos);
+        let ids = self.model.tokenizer().encode(text, add_bos);
         self.history.extend(ids);
         self.info()
     }
 
-    /// Append a ChatML system turn to the transcript.
+    /// Append an upstream-rendered ChatML system turn to the transcript.
     /// @export
     fn append_system(&mut self, message: &str) -> savvy::Result<savvy::Sexp> {
-        self.append(&system_turn(message))
+        let block = render_system_turn(message, &[], &[])?;
+        self.append(&block)
+    }
+
+    /// Append an upstream-rendered ChatML system turn with tool schemas to the transcript.
+    /// @export
+    fn append_system_with_tools(&mut self, message: &str, tool_names: StringSexp, tool_schemas: StringSexp) -> savvy::Result<savvy::Sexp> {
+        let names = tool_names.to_vec();
+        let schemas = tool_schemas.to_vec();
+        let block = render_system_turn(message, &names, &schemas)?;
+        self.append(&block)
     }
 
     /// Append a ChatML user turn to the transcript.
@@ -138,7 +146,6 @@ impl BebelAgent {
     fn generate(&mut self, check_interrupt: bool, on_event: Option<FunctionSexp>) -> savvy::Result<savvy::Sexp> {
         let turn = run_state(
             self.model.as_ref(),
-            &self.tok,
             &mut self.cache,
             &mut self.history,
             &mut self.sampler,
@@ -147,6 +154,7 @@ impl BebelAgent {
             self.max_gen,
             self.max_context,
             self.max_think,
+            false,
         )?;
         turn_to_list(turn)
     }
@@ -154,23 +162,13 @@ impl BebelAgent {
     /// Open an assistant ChatML turn, generate it, then close the assistant turn.
     /// @export
     fn assistant_turn(&mut self, check_interrupt: bool, on_event: Option<FunctionSexp>) -> savvy::Result<savvy::Sexp> {
-        self.append(ASSISTANT_OPEN)?;
-        let turn = run_state(
-            self.model.as_ref(),
-            &self.tok,
-            &mut self.cache,
-            &mut self.history,
-            &mut self.sampler,
-            check_interrupt,
-            &on_event,
-            self.max_gen,
-            self.max_context,
-            self.max_think,
-        )?;
-        self.history.push(TOKEN_IM_END);
-        let newline = self.tok.encode("\n", false);
-        self.history.extend(newline);
-        turn_to_list(turn)
+        self.assistant_turn_impl(check_interrupt, on_event, false)
+    }
+
+    /// Open an assistant turn and stop when the model closes a tool call.
+    /// @export
+    fn assistant_turn_tool_stop(&mut self, check_interrupt: bool, on_event: Option<FunctionSexp>) -> savvy::Result<savvy::Sexp> {
+        self.assistant_turn_impl(check_interrupt, on_event, true)
     }
 
     /// Clear transcript and caches, keeping weights and generation configuration.
@@ -178,6 +176,7 @@ impl BebelAgent {
     fn clear(&mut self) -> savvy::Result<savvy::Sexp> {
         self.history.clear();
         self.cache = Cache::new();
+        self.sampler.reset();
         self.info()
     }
 
@@ -190,6 +189,28 @@ impl BebelAgent {
     /// Decode the current token transcript.
     /// @export
     fn transcript(&self) -> savvy::Result<savvy::Sexp> {
-        str_scalar(&self.tok.decode(&self.history))?.into()
+        str_scalar(&self.model.tokenizer().decode(&self.history))?.into()
+    }
+}
+
+impl BebelAgent {
+    fn assistant_turn_impl(&mut self, check_interrupt: bool, on_event: Option<FunctionSexp>, stop_on_tool_call: bool) -> savvy::Result<savvy::Sexp> {
+        self.append(ASSISTANT_OPEN)?;
+        let turn = run_state(
+            self.model.as_ref(),
+            &mut self.cache,
+            &mut self.history,
+            &mut self.sampler,
+            check_interrupt,
+            &on_event,
+            self.max_gen,
+            self.max_context,
+            self.max_think,
+            stop_on_tool_call,
+        )?;
+        self.history.push(TOKEN_IM_END);
+        let newline = self.model.tokenizer().encode("\n", false);
+        self.history.extend(newline);
+        turn_to_list(turn)
     }
 }

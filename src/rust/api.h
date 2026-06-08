@@ -1,16 +1,19 @@
 SEXP savvy_bebel_event_types__ffi(void);
 SEXP savvy_bebel_token_ids__ffi(void);
 SEXP savvy_rbebelm_backend_features__ffi(void);
-SEXP savvy_rbebelm_json_parse__ffi(SEXP c_arg__text);
-SEXP savvy_rbebelm_json_tool_result__ffi(SEXP c_arg__tool, SEXP c_arg__ok, SEXP c_arg__result, SEXP c_arg__error);
+SEXP savvy_rbebelm_parse_tool_calls__ffi(SEXP c_arg__text);
+SEXP savvy_rbebelm_render_system_turn__ffi(SEXP c_arg__message, SEXP c_arg__tool_names, SEXP c_arg__tool_schemas);
+SEXP savvy_rbebelm_tool_schema_json__ffi(SEXP c_arg__name, SEXP c_arg__description, SEXP c_arg__param_names, SEXP c_arg__param_types, SEXP c_arg__param_descriptions, SEXP c_arg__param_required);
 
 // methods and associated functions for BebelAgent
 SEXP savvy_BebelAgent_append__ffi(SEXP self__, SEXP c_arg__text);
 SEXP savvy_BebelAgent_append_system__ffi(SEXP self__, SEXP c_arg__message);
+SEXP savvy_BebelAgent_append_system_with_tools__ffi(SEXP self__, SEXP c_arg__message, SEXP c_arg__tool_names, SEXP c_arg__tool_schemas);
 SEXP savvy_BebelAgent_append_tokens__ffi(SEXP self__, SEXP c_arg__ids);
 SEXP savvy_BebelAgent_append_tool_result__ffi(SEXP self__, SEXP c_arg__content);
 SEXP savvy_BebelAgent_append_user__ffi(SEXP self__, SEXP c_arg__message);
 SEXP savvy_BebelAgent_assistant_turn__ffi(SEXP self__, SEXP c_arg__check_interrupt, SEXP c_arg__on_event);
+SEXP savvy_BebelAgent_assistant_turn_tool_stop__ffi(SEXP self__, SEXP c_arg__check_interrupt, SEXP c_arg__on_event);
 SEXP savvy_BebelAgent_clear__ffi(SEXP self__);
 SEXP savvy_BebelAgent_configure__ffi(SEXP self__, SEXP c_arg__greedy, SEXP c_arg__max_gen, SEXP c_arg__max_context, SEXP c_arg__max_think, SEXP c_arg__temperature, SEXP c_arg__top_k, SEXP c_arg__repeat_penalty);
 SEXP savvy_BebelAgent_generate__ffi(SEXP self__, SEXP c_arg__check_interrupt, SEXP c_arg__on_event);

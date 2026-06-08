@@ -58,7 +58,7 @@ fn cmd_generate(path: &str, args: &[String]) -> Cmd {
     }
 
     let model = Model::load(path)?;
-    let mut agent = opts.apply(Agent::new(&model)?);
+    let mut agent = opts.apply(Agent::new(&model));
     agent.append(&text);
     let prompt = agent.history().to_vec();
     eprintln!("prompt = {} tokens; generating (cached, multi-threaded)...", prompt.len());
@@ -119,7 +119,7 @@ impl AgentOptions {
 /// returning the options plus any leftover positional arguments (e.g. a prompt).
 ///
 /// `--num-threads N` is handled here rather than via [`AgentOptions`]: it sizes rayon's global
-/// pool (a process-wide setting), so it's applied as a side effect on sight — before
+/// pool (a process-wide, one-shot setting), so it's applied as a side effect on sight — before
 /// any model load or parallel work — rather than threaded through the per-agent options.
 fn parse_agent_options(args: &[String]) -> Result<(AgentOptions, Vec<String>), Box<dyn Error>> {
     let mut opts = AgentOptions::default();
@@ -143,7 +143,7 @@ fn parse_agent_options(args: &[String]) -> Result<(AgentOptions, Vec<String>), B
                 if n == 0 {
                     return Err("--num-threads must be >= 1".into());
                 }
-                // Size rayon's global pool right here: it is process-wide, so
+                // Size rayon's global pool right here: it's a one-shot, process-wide setting, so
                 // applying it on sight keeps the change local and guarantees it lands before any
                 // parallel work. Omitting the flag leaves rayon's default (one worker per core).
                 rayon::ThreadPoolBuilder::new().num_threads(n).build_global()?;

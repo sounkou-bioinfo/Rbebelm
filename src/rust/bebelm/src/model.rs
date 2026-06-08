@@ -16,10 +16,11 @@ use crate::kernels::activation::{sigmoid_slice, swiglu};
 use crate::kernels::attention::attention_decode;
 use crate::kernels::conv::conv_step;
 use crate::kernels::elementwise::{add_assign, add_scaled};
-use crate::kernels::matmul::{matvec, matvec_fused_batch, FusedJob};
+use crate::kernels::matmul::{matvec, matvec_fused_batch, quantize_q8, FusedJob, Q8Vec};
 use crate::kernels::rmsnorm::rmsnorm;
 use crate::kernels::rope::rope_neox;
 use crate::tensor::GgmlType;
+use crate::tokenizer::Tokenizer;
 
 /// A loaded, validated model: the mmapped GGUF plus a name → tensor index, plus the small
 /// F32 tensors (norm gains, conv filters, expert biases) pre-dequantized once (9b).
@@ -27,6 +28,7 @@ pub struct Model {
     gguf: GgufFile,
     by_name: HashMap<String, usize>,
     f32_cache: HashMap<String, Vec<f32>>,
+    tokenizer: Tokenizer,
 }
 
 impl Model {
@@ -40,7 +42,8 @@ impl Model {
             .enumerate()
             .map(|(i, t)| (t.name.clone(), i))
             .collect();
-        let mut model = Model { gguf, by_name, f32_cache: HashMap::new() };
+        let tokenizer = Tokenizer::from_gguf(&gguf)?;
+        let mut model = Model { gguf, by_name, f32_cache: HashMap::new(), tokenizer };
         model.check_tensors()?;
         model.precompute_f32();
         Ok(model)
@@ -82,9 +85,9 @@ impl Model {
         self.gguf.tensor_data(t)
     }
 
-    /// The underlying GGUF (e.g. to build a [`crate::tokenizer::Tokenizer`] from the same mmap).
-    pub fn gguf(&self) -> &GgufFile {
-        &self.gguf
+    /// The model's tokenizer.
+    pub fn tokenizer(&self) -> &Tokenizer {
+        &self.tokenizer
     }
 
     // --- forward pass (single-token, cached) ---
@@ -246,17 +249,21 @@ impl Model {
 
         // Gate + up for all selected experts in one parallel region (2·N_EXPERTS_USED fused
         // matvecs sharing input `x`): gate rows first, then up rows. Each expert's matrix is
-        // small, so pooling their rows under a single fork/join keeps every core busy.
+        // small, so pooling their rows under a single fork/join keeps every core busy. All
+        // gate/up experts share `x`, so quantize it to Q8 once for their integer dot.
+        let x_q8 = quantize_q8(x);
         let gate_data = self.data(gate_exps);
         let up_data = self.data(up_exps);
         let mut jobs = Vec::with_capacity(2 * N_EXPERTS_USED);
         for &e in sel {
             let w = &gate_data[e * gate_stride..(e + 1) * gate_stride];
-            jobs.push(FusedJob { dtype: gate_exps.ggml_type, w, n_in: HIDDEN, n_out: MOE_FF, x });
+            let qx = (gate_exps.ggml_type == GgmlType::Q4_K).then_some(&x_q8);
+            jobs.push(FusedJob { dtype: gate_exps.ggml_type, w, n_in: HIDDEN, n_out: MOE_FF, x, qx });
         }
         for &e in sel {
             let w = &up_data[e * up_stride..(e + 1) * up_stride];
-            jobs.push(FusedJob { dtype: up_exps.ggml_type, w, n_in: HIDDEN, n_out: MOE_FF, x });
+            let qx = (up_exps.ggml_type == GgmlType::Q4_K).then_some(&x_q8);
+            jobs.push(FusedJob { dtype: up_exps.ggml_type, w, n_in: HIDDEN, n_out: MOE_FF, x, qx });
         }
         let mut gate_up = vec![0.0f32; 2 * N_EXPERTS_USED * MOE_FF];
         matvec_fused_batch(&jobs, &mut gate_up);
@@ -270,8 +277,14 @@ impl Model {
         }
 
         // Down projection for all experts in one parallel region (each consumes its own
-        // activation row), then weighted-sum the results in selection order (as before).
+        // activation row), then weighted-sum the results in selection order (as before). Each
+        // expert has a distinct activation, so quantize them one-per-expert (when down is Q4_K).
         let down_data = self.data(down_exps);
+        let down_q8: Vec<Q8Vec> = if down_exps.ggml_type == GgmlType::Q4_K {
+            (0..N_EXPERTS_USED).map(|i| quantize_q8(&act_all[i * MOE_FF..(i + 1) * MOE_FF])).collect()
+        } else {
+            Vec::new()
+        };
         let down_jobs: Vec<FusedJob> = sel
             .iter()
             .enumerate()
@@ -281,6 +294,7 @@ impl Model {
                 n_in: MOE_FF,
                 n_out: HIDDEN,
                 x: &act_all[i * MOE_FF..(i + 1) * MOE_FF],
+                qx: down_q8.get(i),
             })
             .collect();
         let mut down_all = vec![0.0f32; N_EXPERTS_USED * HIDDEN];

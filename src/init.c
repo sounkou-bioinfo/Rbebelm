@@ -54,13 +54,18 @@ SEXP savvy_rbebelm_backend_features__impl(void) {
     return handle_result(res);
 }
 
-SEXP savvy_rbebelm_json_parse__impl(SEXP c_arg__text) {
-    SEXP res = Rbebelm_json_parse_ffi(c_arg__text);
+SEXP savvy_rbebelm_parse_tool_calls__impl(SEXP c_arg__text) {
+    SEXP res = Rbebelm_parse_tool_calls_ffi(c_arg__text);
     return handle_result(res);
 }
 
-SEXP savvy_rbebelm_json_tool_result__impl(SEXP c_arg__tool, SEXP c_arg__ok, SEXP c_arg__result, SEXP c_arg__error) {
-    SEXP res = Rbebelm_json_tool_result_ffi(c_arg__tool, c_arg__ok, c_arg__result, c_arg__error);
+SEXP savvy_rbebelm_render_system_turn__impl(SEXP c_arg__message, SEXP c_arg__tool_names, SEXP c_arg__tool_schemas) {
+    SEXP res = Rbebelm_render_system_turn_ffi(c_arg__message, c_arg__tool_names, c_arg__tool_schemas);
+    return handle_result(res);
+}
+
+SEXP savvy_rbebelm_tool_schema_json__impl(SEXP c_arg__name, SEXP c_arg__description, SEXP c_arg__param_names, SEXP c_arg__param_types, SEXP c_arg__param_descriptions, SEXP c_arg__param_required) {
+    SEXP res = Rbebelm_tool_schema_json_ffi(c_arg__name, c_arg__description, c_arg__param_names, c_arg__param_types, c_arg__param_descriptions, c_arg__param_required);
     return handle_result(res);
 }
 
@@ -71,6 +76,11 @@ SEXP savvy_BebelAgent_append__impl(SEXP self__, SEXP c_arg__text) {
 
 SEXP savvy_BebelAgent_append_system__impl(SEXP self__, SEXP c_arg__message) {
     SEXP res = Rbebelm_BebelAgent_append_system_ffi(self__, c_arg__message);
+    return handle_result(res);
+}
+
+SEXP savvy_BebelAgent_append_system_with_tools__impl(SEXP self__, SEXP c_arg__message, SEXP c_arg__tool_names, SEXP c_arg__tool_schemas) {
+    SEXP res = Rbebelm_BebelAgent_append_system_with_tools_ffi(self__, c_arg__message, c_arg__tool_names, c_arg__tool_schemas);
     return handle_result(res);
 }
 
@@ -91,6 +101,11 @@ SEXP savvy_BebelAgent_append_user__impl(SEXP self__, SEXP c_arg__message) {
 
 SEXP savvy_BebelAgent_assistant_turn__impl(SEXP self__, SEXP c_arg__check_interrupt, SEXP c_arg__on_event) {
     SEXP res = Rbebelm_BebelAgent_assistant_turn_ffi(self__, c_arg__check_interrupt, c_arg__on_event);
+    return handle_result(res);
+}
+
+SEXP savvy_BebelAgent_assistant_turn_tool_stop__impl(SEXP self__, SEXP c_arg__check_interrupt, SEXP c_arg__on_event) {
+    SEXP res = Rbebelm_BebelAgent_assistant_turn_tool_stop_ffi(self__, c_arg__check_interrupt, c_arg__on_event);
     return handle_result(res);
 }
 
@@ -164,14 +179,17 @@ static const R_CallMethodDef CallEntries[] = {
     {"savvy_bebel_event_types__impl", (DL_FUNC) &savvy_bebel_event_types__impl, 0},
     {"savvy_bebel_token_ids__impl", (DL_FUNC) &savvy_bebel_token_ids__impl, 0},
     {"savvy_rbebelm_backend_features__impl", (DL_FUNC) &savvy_rbebelm_backend_features__impl, 0},
-    {"savvy_rbebelm_json_parse__impl", (DL_FUNC) &savvy_rbebelm_json_parse__impl, 1},
-    {"savvy_rbebelm_json_tool_result__impl", (DL_FUNC) &savvy_rbebelm_json_tool_result__impl, 4},
+    {"savvy_rbebelm_parse_tool_calls__impl", (DL_FUNC) &savvy_rbebelm_parse_tool_calls__impl, 1},
+    {"savvy_rbebelm_render_system_turn__impl", (DL_FUNC) &savvy_rbebelm_render_system_turn__impl, 3},
+    {"savvy_rbebelm_tool_schema_json__impl", (DL_FUNC) &savvy_rbebelm_tool_schema_json__impl, 6},
     {"savvy_BebelAgent_append__impl", (DL_FUNC) &savvy_BebelAgent_append__impl, 2},
     {"savvy_BebelAgent_append_system__impl", (DL_FUNC) &savvy_BebelAgent_append_system__impl, 2},
+    {"savvy_BebelAgent_append_system_with_tools__impl", (DL_FUNC) &savvy_BebelAgent_append_system_with_tools__impl, 4},
     {"savvy_BebelAgent_append_tokens__impl", (DL_FUNC) &savvy_BebelAgent_append_tokens__impl, 2},
     {"savvy_BebelAgent_append_tool_result__impl", (DL_FUNC) &savvy_BebelAgent_append_tool_result__impl, 2},
     {"savvy_BebelAgent_append_user__impl", (DL_FUNC) &savvy_BebelAgent_append_user__impl, 2},
     {"savvy_BebelAgent_assistant_turn__impl", (DL_FUNC) &savvy_BebelAgent_assistant_turn__impl, 3},
+    {"savvy_BebelAgent_assistant_turn_tool_stop__impl", (DL_FUNC) &savvy_BebelAgent_assistant_turn_tool_stop__impl, 3},
     {"savvy_BebelAgent_clear__impl", (DL_FUNC) &savvy_BebelAgent_clear__impl, 1},
     {"savvy_BebelAgent_configure__impl", (DL_FUNC) &savvy_BebelAgent_configure__impl, 8},
     {"savvy_BebelAgent_generate__impl", (DL_FUNC) &savvy_BebelAgent_generate__impl, 3},

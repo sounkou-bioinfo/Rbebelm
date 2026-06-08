@@ -225,9 +225,10 @@ raw_result
 #>  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However
 ```
 
-Use `bebel_append_system()` for a ChatML system-role instruction. Raw
-appends do not add user framing, so the low-level `bebel_append()` form
-below is equivalent apart from being more explicit about the tokens.
+Use `bebel_append_system()` for an upstream-rendered ChatML system turn.
+With no tools, the low-level `bebel_append()` form below is equivalent
+apart from being more explicit about the tokens. When `tools` are
+supplied, BebeLM renders its `List of tools: [...]` system preamble.
 
 ``` r
 system_agent <- bebel_agent(model)

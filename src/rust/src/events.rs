@@ -134,6 +134,7 @@ fn done_event(stop: StopReason, text: &str, generated_tokens: usize) -> savvy::R
     let stop = match stop {
         StopReason::Eos => "eos",
         StopReason::MaxNew => "max_new",
+        StopReason::ToolCall => "tool_call",
     };
     let mut event = OwnedListSexp::new(4, true)?;
     event.set_name_and_value(0, "type", str_scalar("done")?)?;

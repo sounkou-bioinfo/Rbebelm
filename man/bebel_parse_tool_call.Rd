@@ -2,7 +2,7 @@
 % Please edit documentation in R/api.R
 \name{bebel_parse_tool_call}
 \alias{bebel_parse_tool_call}
-\title{Parse a BebeLM tool call block}
+\title{Parse a single BebeLM tool call block}
 \usage{
 bebel_parse_tool_call(content)
 }
@@ -13,8 +13,6 @@ bebel_parse_tool_call(content)
 A list with \code{name}, \code{arguments}, and \code{raw}.
 }
 \description{
-The default parser accepts JSON objects such as \verb{\{\\"name\\": \\"tool\\", \\"arguments\\": \{...\}\}},
-simple \code{name({...})} calls, and bracketed BebeLM calls such as
-\verb{[name(key=\\"value\\")]}. Pass a custom parser to
-\code{bebel_agent_run()} for model- or prompt-specific formats.
+This compatibility wrapper returns the first call from \code{\link[=bebel_parse_tool_calls]{bebel_parse_tool_calls()}}.
+Prefer \code{\link[=bebel_parse_tool_calls]{bebel_parse_tool_calls()}} when multiple calls may be present.
 }
