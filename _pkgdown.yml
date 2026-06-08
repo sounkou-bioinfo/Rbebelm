@@ -38,6 +38,34 @@ reference:
       - bebel_live_console
       - BebelModel
       - BebelAgent
+  - title: Generic agent and frontend framework
+    contents:
+      - AgentBackend
+      - AgentExtension
+      - SkillProvider
+      - PromptTemplateProvider
+      - bebel_agent_loop
+      - bebel_r_agent_loop
+      - bebel_loop_policy
+      - bebel_loop_run
+      - bebel_loop_prompt
+      - bebel_loop_steer
+      - bebel_loop_follow_up
+      - bebel_loop_state
+      - bebel_loop_events
+      - bebel_loop_command
+      - bebel_loop_command_catalog
+      - bebel_extension
+      - bebel_extension_manifest
+      - agent_session_create
+      - agent_session_open
+      - agent_session_fork
+      - agent_session_context
+      - agent_session_tree
+      - agent_skill_provider
+      - agent_prompt_template_provider
+      - agent_system_prompt
+      - agent_append_system_prompt
   - title: R-native agent layer
     contents:
       - bebel_r_agent
@@ -65,6 +93,7 @@ articles:
     contents:
       - getting-started
       - agents-and-tools
+      - agent-framework
       - r-native-agent-layer
       - events-and-adapters
       - backend-and-webr

@@ -9,6 +9,7 @@
 ^.*\.tgz$
 ^.*\.Rcheck$
 ^README\.html$
+^AGENTS\.md$
 ^docs$
 ^\.github$
 ^vignettes-raw$

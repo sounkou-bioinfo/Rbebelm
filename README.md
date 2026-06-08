@@ -11,18 +11,26 @@
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
-`Rbebelm` provides experimental R bindings for upstream
-[`maximecb/bebelm`](https://github.com/maximecb/bebelm), a pure-Rust
-CPU-only implementation of [Liquid AI
-LFM2.5-8B-A1B](https://www.liquid.ai/blog/lfm2-5-8b-a1b) inference. The
-R package uses [`savvy`](https://github.com/yutannihilation/savvy) for
-the R/Rust boundary and a runtime backend layout for portable SIMD
-dispatch.
+`Rbebelm` is both a generic R agent framework and a concrete native
+local-model backend.
 
-The package is designed for interactive LLM use: generation streams
-tokens to the R console as soon as they are decoded, while the function
-still returns the final text, token ids, stop reason, and timing
-statistics.
+- The framework layer provides backend-agnostic `S7`/`s7contract`
+  interfaces for LLM providers, extensions, skills, prompt templates,
+  loop events, frontend/TUI command catalogs, and Pi-inspired
+  append-only JSONL session trees.
+- The concrete backend wraps upstream
+  [`maximecb/bebelm`](https://github.com/maximecb/bebelm), a pure-Rust
+  CPU-only implementation of [Liquid AI
+  LFM2.5-8B-A1B](https://www.liquid.ai/blog/lfm2-5-8b-a1b) inference.
+  The R package uses [`savvy`](https://github.com/yutannihilation/savvy)
+  for the R/Rust boundary and a runtime backend layout for portable SIMD
+  dispatch.
+
+The intended architecture is loop-first: the agent loop owns lifecycle,
+queues, tools, extensions, events, and sessions; consoles, RPC servers,
+and future TUIs consume that loop instead of owning agent business
+logic. BebeLM is the bundled native provider, not a requirement of the
+framework contracts.
 
 ## Installation
 
@@ -90,8 +98,8 @@ turn1
 #> <BebeLM assistant turn>
 #>   stop: eos
 #>   tokens: 27 generated; 19 prompt
-#>   prefill: 10.0 tok/s
-#>   decode: 11.44 tok/s
+#>   prefill: 11.1 tok/s
+#>   decode: 11.28 tok/s
 #>   text:
 #> <think>
 #> The user asks: "What is the capital of Mali? Answer briefly."</think>
@@ -100,8 +108,8 @@ turn2
 #> <BebeLM assistant turn>
 #>   stop: eos
 #>   tokens: 26 generated; 14 prompt
-#>   prefill: 11.6 tok/s
-#>   decode: 11.24 tok/s
+#>   prefill: 11.1 tok/s
+#>   decode: 11.36 tok/s
 #>   text:
 #> <think>
 #> The user asks: "What about Italy? Answer briefly." Likely they</think>
@@ -194,8 +202,8 @@ result
 #> <BebeLM chat result>
 #>   stop: max_new
 #>   tokens: 48 generated; 22 prompt
-#>   prefill: 11.4 tok/s
-#>   decode: 11.71 tok/s
+#>   prefill: 11.6 tok/s
+#>   decode: 11.76 tok/s
 #>   text:
 #> <think>
 #> The user asks: "In one concise sentence, what does runtime SIMD</think>
@@ -219,8 +227,8 @@ raw_result
 #> <BebeLM generation result>
 #>   stop: max_new
 #>   tokens: 24 generated; 8 prompt
-#>   prefill: 11.8 tok/s
-#>   decode: 12.13 tok/s
+#>   prefill: 11.7 tok/s
+#>   decode: 11.99 tok/s
 #>   text:
 #>  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However
 ```
@@ -307,14 +315,173 @@ run
 #> <BebeLM assistant turn>
 #>   stop: eos
 #>   tokens: 18 generated; 13 prompt
-#>   prefill: 11.8 tok/s
-#>   decode: 11.71 tok/s
+#>   prefill: 11.9 tok/s
+#>   decode: 11.56 tok/s
 #>   text:
 #> lookup_capital({"country":"Italy"}) returned Rome as the capital of Italy.
 ctx$log
 #> [1] "request lookup_capital"     "tool lookup_capital Italy" 
 #> [3] "result lookup_capital Rome"
 ```
+
+## Generic agent and frontend/TUI framework
+
+The BebeLM bindings are one implementation of a more generic R
+agent/frontend framework. The loop itself is backend-agnostic: it talks
+to objects that implement the `AgentBackend` S7/s7contract interface.
+BebeLM implements that contract today; other local or remote providers
+can implement the same generics later.
+
+The core backend contract is intentionally small:
+
+- `agent_append_user(agent, message)`
+- `agent_append_system(agent, message, tools = NULL)`
+- `agent_append_tool_result(agent, content)`
+- `agent_assistant_turn(agent, on_event, check_interrupt, stop_on_tool_call)`
+- `agent_info(agent)`, `agent_transcript(agent)`, and
+  `agent_clear(agent)`
+
+`bebel_agent_loop()` owns policy, queues, event emission, tool dispatch,
+and session persistence. A console, RPC server, or future Rust TUI
+should consume the loop; it should not own agent logic. The queue
+semantics mirror Pi’s vocabulary: `bebel_loop_steer()`,
+`bebel_loop_follow_up()`, `steering_mode`, and `follow_up_mode`.
+
+``` r
+library(Rbebelm)
+
+store <- agent_session_create(
+  cwd = tempdir(),
+  session_dir = file.path(tempdir(), "rbebelm-readme-sessions"),
+  name = "README demo"
+)
+
+user_id <- agent_session_append_message(store, "user", "Hello from R")
+agent_session_append_message(
+  store,
+  "assistant",
+  list(list(type = "text", text = "Hello.")),
+  provider = "demo",
+  model = "demo-model",
+  stopReason = "stop"
+)
+#> [1] "8402c35d"
+
+agent_session_leaf_id(store)
+#> [1] "8402c35d"
+agent_session_context(store)$messages
+#> [[1]]
+#> [[1]]$role
+#> [1] "user"
+#> 
+#> [[1]]$content
+#> [1] "Hello from R"
+#> 
+#> 
+#> [[2]]
+#> [[2]]$role
+#> [1] "assistant"
+#> 
+#> [[2]]$content
+#> [[2]]$content[[1]]
+#> [[2]]$content[[1]]$type
+#> [1] "text"
+#> 
+#> [[2]]$content[[1]]$text
+#> [1] "Hello."
+#> 
+#> 
+#> 
+#> [[2]]$provider
+#> [1] "demo"
+#> 
+#> [[2]]$model
+#> [1] "demo-model"
+#> 
+#> [[2]]$stopReason
+#> [1] "stop"
+```
+
+Session files are append-only JSONL trees inspired by Pi’s session
+format. Each entry has an `id` and `parentId`, so `/tree`, `/fork`, and
+`/clone` style UIs can be built without rewriting history. By default,
+persisted sessions live under
+`tools::R_user_dir("Rbebelm", "data")/sessions/<encoded-cwd>/`; set
+`RBEBELM_SESSION_DIR` or pass `session_dir` to override that location.
+
+Extensions are also generic capability bundles. An object implementing
+`AgentExtension` contributes a manifest plus optional tools, commands,
+hooks, skill providers, prompt-template providers, and UI metadata. The
+loop registers those capabilities; frontends only render and invoke the
+catalog.
+
+``` r
+skills <- agent_skill_provider(list(
+  concise = "Prefer concise, direct answers."
+))
+
+prompts <- agent_prompt_template_provider(list(
+  system = "You are {{role}} working in {{place}}."
+))
+
+ext <- bebel_extension(
+  "readme-demo",
+  skill_providers = list(default = skills),
+  prompt_template_providers = list(default = prompts),
+  commands = list(info = bebel_loop_command("info", function(args, loop, context) {
+    bebel_loop_state(loop)
+  }))
+)
+
+bebel_extension_manifest(ext)
+#> $name
+#> [1] "readme-demo"
+#> 
+#> $tools
+#> NULL
+#> 
+#> $commands
+#> $commands$info
+#> $commands$info$name
+#> [1] "info"
+#> 
+#> $commands$info$description
+#> [1] "info"
+#> 
+#> $commands$info$usage
+#> [1] "/info"
+#> 
+#> 
+#> 
+#> $hooks
+#> NULL
+#> 
+#> $skill_providers
+#> [1] "default"
+#> 
+#> $prompt_template_providers
+#> [1] "default"
+#> 
+#> $keybindings
+#> list()
+#> 
+#> $widgets
+#> list()
+#> 
+#> $metadata
+#> list()
+agent_system_prompt(
+  prompts,
+  "system",
+  data = list(role = "an R agent", place = "Bamako"),
+  skill_provider = skills,
+  skills = "concise"
+)
+#> [1] "You are an R agent working in Bamako.\n\n# Loaded skills\n\n## Skill: concise\n\nPrefer concise, direct answers."
+```
+
+See the “Generic agent and frontend framework” vignette for a fake
+backend example and the full session-tree/forking API.
 
 ## R-native agent layer
 
