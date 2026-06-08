@@ -31,29 +31,52 @@ function parseDcf(text) {
   return fields;
 }
 
-function writePackagesIndex(repoDir, fields, fileName) {
+function packageFieldsForArchive(archivePath, extractRoot, index) {
+  const extractDir = path.join(extractRoot, `extract-${index}`);
+  fs.mkdirSync(extractDir, { recursive: true });
+  execFileSync("tar", ["-xzf", archivePath, "-C", extractDir], { stdio: "inherit" });
+  const dirs = fs.readdirSync(extractDir).filter((name) => fs.existsSync(path.join(extractDir, name, "DESCRIPTION")));
+  if (!dirs.length) throw new Error(`Could not find DESCRIPTION in ${archivePath}`);
+  const fields = parseDcf(fs.readFileSync(path.join(extractDir, dirs[0], "DESCRIPTION"), "utf8"));
+  if (!fields.Package || !fields.Version) throw new Error(`Unexpected DESCRIPTION in ${archivePath}`);
+  fields.File = path.basename(archivePath);
+  return fields;
+}
+
+function writePackagesIndex(repoDir, packageEntries) {
   fs.mkdirSync(repoDir, { recursive: true });
-  fs.copyFileSync(tgzPath, path.join(repoDir, fileName));
-  const keys = Object.keys(fields).filter((key) => fields[key] !== undefined && fields[key] !== "");
-  if (!keys.includes("File")) keys.push("File");
-  fields.File = fileName;
-  const packages = keys.map((key) => `${key}: ${fields[key]}`).join("\n") + "\n";
+  for (const entry of packageEntries) {
+    fs.copyFileSync(entry.archivePath, path.join(repoDir, path.basename(entry.archivePath)));
+  }
+  const packages = packageEntries
+    .map((entry) => {
+      const fields = { ...entry.fields, File: path.basename(entry.archivePath) };
+      const keys = Object.keys(fields).filter((key) => fields[key] !== undefined && fields[key] !== "");
+      return keys.map((key) => `${key}: ${fields[key]}`).join("\n");
+    })
+    .join("\n\n") + "\n";
   fs.writeFileSync(path.join(repoDir, "PACKAGES"), packages);
   fs.writeFileSync(path.join(repoDir, "PACKAGES.gz"), zlib.gzipSync(packages));
 }
 
 function createLocalRepo(tmpRoot, rSeries) {
-  const extractDir = path.join(tmpRoot, "extract");
-  fs.mkdirSync(extractDir, { recursive: true });
-  execFileSync("tar", ["-xzf", tgzPath, "-C", extractDir], { stdio: "inherit" });
-  const descPath = path.join(extractDir, "Rbebelm", "DESCRIPTION");
-  const fields = parseDcf(fs.readFileSync(descPath, "utf8"));
-  if (fields.Package !== "Rbebelm" || !fields.Version) {
-    throw new Error(`Unexpected DESCRIPTION in ${tgzPath}`);
+  const archiveDir = path.dirname(tgzPath);
+  const archives = fs.readdirSync(archiveDir)
+    .filter((file) => file.endsWith(".tgz"))
+    .map((file) => path.join(archiveDir, file));
+  if (!archives.includes(tgzPath)) archives.push(tgzPath);
+
+  const extractRoot = path.join(tmpRoot, "extract");
+  const packageEntries = archives.map((archivePath, index) => ({
+    archivePath,
+    fields: packageFieldsForArchive(archivePath, extractRoot, index),
+  }));
+  if (!packageEntries.some((entry) => entry.fields.Package === "Rbebelm")) {
+    throw new Error(`Local repo does not include Rbebelm archive ${tgzPath}`);
   }
-  const fileName = path.basename(tgzPath);
-  writePackagesIndex(path.join(tmpRoot, "repo", "src", "contrib"), { ...fields }, fileName);
-  writePackagesIndex(path.join(tmpRoot, "repo", "bin", "emscripten", "contrib", rSeries), { ...fields }, fileName);
+
+  writePackagesIndex(path.join(tmpRoot, "repo", "src", "contrib"), packageEntries);
+  writePackagesIndex(path.join(tmpRoot, "repo", "bin", "emscripten", "contrib", rSeries), packageEntries);
   return path.join(tmpRoot, "repo");
 }
 
@@ -108,11 +131,15 @@ function outputText(capture) {
     const repoUrl = `http://127.0.0.1:${server.address().port}`;
 
     console.log(`webR ${webR.version}; R ${webR.versionR}`);
-    await webR.installPackages(["Rbebelm"], { repos: [repoUrl], mount: false });
+    await webR.installPackages(["Rbebelm"], {
+      repos: [repoUrl, "https://repo.r-wasm.org"],
+      mount: false,
+    });
 
     const shelter = await new webR.Shelter();
     const capture = await shelter.captureR(`
 library(Rbebelm)
+stopifnot(requireNamespace("s7contract", quietly = TRUE))
 info <- rbebelm_backend_info()
 print(info)
 stopifnot(identical(info$dispatch_mode, "static"))

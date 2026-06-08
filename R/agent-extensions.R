@@ -71,9 +71,9 @@ bebel_validate_hook_list <- function(hooks, what = "hooks") {
 #' @param tools Optional list of `bebel_tool()` objects or named functions.
 #' @param commands Optional list of [bebel_loop_command()] objects or named functions.
 #' @param hooks Optional named hook list.
-#' @param skill_providers Optional named list of objects implementing [SkillProvider].
+#' @param skill_providers Optional named list of objects implementing `BebelSkillProvider`.
 #' @param prompt_template_providers Optional named list of objects implementing
-#'   [PromptTemplateProvider].
+#'   `BebelPromptTemplateProvider`.
 #' @param keybindings Optional metadata for TUI consumers.
 #' @param widgets Optional metadata for TUI consumers.
 #' @param metadata Optional extension metadata.
@@ -99,8 +99,8 @@ bebel_extension <- function(
       tools = normalize_bebel_tools(tools),
       commands = bebel_normalize_commands(commands),
       hooks = bebel_validate_hook_list(hooks),
-      skill_providers = bebel_validate_provider_list(skill_providers, SkillProvider, what = "skill_providers"),
-      prompt_template_providers = bebel_validate_provider_list(prompt_template_providers, PromptTemplateProvider, what = "prompt_template_providers"),
+      skill_providers = bebel_validate_provider_list(skill_providers, BebelSkillProvider, what = "skill_providers"),
+      prompt_template_providers = bebel_validate_provider_list(prompt_template_providers, BebelPromptTemplateProvider, what = "prompt_template_providers"),
       keybindings = keybindings,
       widgets = widgets,
       metadata = metadata
@@ -119,7 +119,7 @@ print.bebelExtension <- function(x, ...) {
 
 bebel_validate_provider_list <- function(providers, interface, what = "providers") {
   if (is.null(providers)) return(list())
-  if (!is.list(providers) || inherits(providers, "agentSkillProvider") || inherits(providers, "agentPromptTemplateProvider")) providers <- list(providers)
+  if (!is.list(providers) || inherits(providers, "bebelSkillProvider") || inherits(providers, "bebelPromptTemplateProvider")) providers <- list(providers)
   out <- list()
   for (i in seq_along(providers)) {
     provider <- providers[[i]]
@@ -138,8 +138,8 @@ bebel_normalize_extensions <- function(extensions) {
   out <- list()
   for (i in seq_along(extensions)) {
     ext <- extensions[[i]]
-    bebel_assert_implements(ext, AgentExtension, arg = "extensions")
-    manifest <- extension_manifest(ext)
+    bebel_assert_implements(ext, BebelAgentExtension, arg = "extensions")
+    manifest <- bebel_extension_manifest(ext)
     out[[manifest$name]] <- ext
   }
   out
@@ -158,25 +158,25 @@ bebel_merge_named_lists <- function(lists, what = "entries") {
 }
 
 bebel_extension_collect_tools <- function(extensions) {
-  bebel_merge_named_lists(lapply(extensions, extension_tools), what = "tool")
+  bebel_merge_named_lists(lapply(extensions, bebel_extension_tools), what = "tool")
 }
 
 bebel_extension_collect_commands <- function(extensions) {
-  bebel_merge_named_lists(lapply(extensions, extension_commands), what = "command")
+  bebel_merge_named_lists(lapply(extensions, bebel_extension_commands), what = "command")
 }
 
 bebel_extension_collect_skill_providers <- function(extensions) {
-  bebel_merge_named_lists(lapply(extensions, extension_skill_providers), what = "skill provider")
+  bebel_merge_named_lists(lapply(extensions, bebel_extension_skill_providers), what = "skill provider")
 }
 
 bebel_extension_collect_prompt_template_providers <- function(extensions) {
-  bebel_merge_named_lists(lapply(extensions, extension_prompt_template_providers), what = "prompt-template provider")
+  bebel_merge_named_lists(lapply(extensions, bebel_extension_prompt_template_providers), what = "prompt-template provider")
 }
 
 bebel_extension_collect_hooks <- function(extensions) {
   hooks <- list()
   for (ext in extensions) {
-    ext_hooks <- extension_hooks(ext)
+    ext_hooks <- bebel_extension_hooks(ext)
     for (nm in names(ext_hooks)) {
       hooks[[nm]] <- c(hooks[[nm]], list(ext_hooks[[nm]]))
     }
@@ -191,10 +191,10 @@ bebel_hooks_to_multi <- function(hooks) {
   out
 }
 
-bebel_combine_hook_lists <- function(user_hooks = list(), extension_hooks = list()) {
+bebel_combine_hook_lists <- function(user_hooks = list(), contributed_hooks = list()) {
   multi <- bebel_hooks_to_multi(user_hooks)
-  for (nm in names(extension_hooks)) {
-    multi[[nm]] <- c(multi[[nm]], extension_hooks[[nm]])
+  for (nm in names(contributed_hooks)) {
+    multi[[nm]] <- c(multi[[nm]], contributed_hooks[[nm]])
   }
   out <- list()
   for (nm in names(multi)) {
@@ -208,21 +208,11 @@ bebel_combine_hook_lists <- function(user_hooks = list(), extension_hooks = list
   out
 }
 
-bebel_collect_before_tool_call_hooks <- function(user_hooks = list(), extension_hooks = list()) {
+bebel_collect_before_tool_call_hooks <- function(user_hooks = list(), contributed_hooks = list()) {
   out <- list()
   if (!is.null(user_hooks$before_tool_call)) out <- c(out, list(user_hooks$before_tool_call))
-  if (!is.null(extension_hooks$before_tool_call)) out <- c(out, extension_hooks$before_tool_call)
+  if (!is.null(contributed_hooks$before_tool_call)) out <- c(out, contributed_hooks$before_tool_call)
   out
-}
-
-#' Return an extension manifest
-#'
-#' @param extension A `bebelExtension`.
-#' @return A list suitable for UI/RPC discovery.
-#' @export
-bebel_extension_manifest <- function(extension) {
-  bebel_assert_implements(extension, AgentExtension, arg = "extension")
-  extension_manifest(extension)
 }
 
 #' Return a loop's extension manifests

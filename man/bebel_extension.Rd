@@ -25,10 +25,10 @@ bebel_extension(
 
 \item{hooks}{Optional named hook list.}
 
-\item{skill_providers}{Optional named list of objects implementing \link{SkillProvider}.}
+\item{skill_providers}{Optional named list of objects implementing \code{BebelSkillProvider}.}
 
 \item{prompt_template_providers}{Optional named list of objects implementing
-\link{PromptTemplateProvider}.}
+\code{BebelPromptTemplateProvider}.}
 
 \item{keybindings}{Optional metadata for TUI consumers.}
 

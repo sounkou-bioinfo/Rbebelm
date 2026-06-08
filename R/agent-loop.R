@@ -122,16 +122,16 @@ bebel_loop_message_record <- function(text, source) {
 }
 
 bebel_loop_normalize_session <- function(session) {
-  if (isTRUE(session)) return(agent_session_create())
+  if (isTRUE(session)) return(bebel_session_create())
   if (is.null(session) || isFALSE(session)) return(NULL)
-  if (inherits(session, "agentSession")) return(session)
-  if (is.character(session) && length(session) == 1L) return(agent_session_open(session))
-  stop("session must be TRUE, FALSE, NULL, an agentSession, or a session JSONL path", call. = FALSE)
+  if (inherits(session, "bebelSession")) return(session)
+  if (is.character(session) && length(session) == 1L) return(bebel_session_open(session))
+  stop("session must be TRUE, FALSE, NULL, a bebelSession, or a session JSONL path", call. = FALSE)
 }
 
 bebel_loop_session_append_user <- function(loop, text, source) {
   if (is.null(loop$session)) return(invisible(NULL))
-  agent_session_append_message(
+  bebel_session_append_message(
     loop$session,
     role = "user",
     content = as.character(text),
@@ -141,7 +141,7 @@ bebel_loop_session_append_user <- function(loop, text, source) {
 
 bebel_loop_session_append_assistant <- function(loop, turn) {
   if (is.null(loop$session)) return(invisible(NULL))
-  info <- tryCatch(agent_info(loop$agent), error = function(e) list())
+  info <- tryCatch(bebel_backend_info(loop$agent), error = function(e) list())
   text <- as.character(turn$text %||% "")
   provider <- info$provider %||% info$backend %||% info$name %||% "unknown"
   model <- info$model %||% info$model_id %||% info$modelId %||% info$path %||% "unknown"
@@ -152,7 +152,7 @@ bebel_loop_session_append_assistant <- function(loop, turn) {
     cacheWrite = as.integer(turn$cache_write %||% 0L),
     totalTokens = as.integer((turn$prompt_tokens %||% turn$input_tokens %||% 0L) + (turn$tokens %||% turn$output_tokens %||% turn$generated_tokens %||% 0L))
   )
-  agent_session_append_message(
+  bebel_session_append_message(
     loop$session,
     role = "assistant",
     content = list(list(type = "text", text = text)),
@@ -160,13 +160,13 @@ bebel_loop_session_append_assistant <- function(loop, turn) {
     model = model,
     usage = usage,
     stopReason = turn$stop %||% "stop",
-    details = list(result = turn, agent_info = info)
+    details = list(result = turn, backend_info = info)
   )
 }
 
 bebel_loop_session_append_tool_result <- function(loop, call, text, ok = TRUE) {
   if (is.null(loop$session)) return(invisible(NULL))
-  agent_session_append_message(
+  bebel_session_append_message(
     loop$session,
     role = "toolResult",
     content = list(list(type = "text", text = as.character(text))),
@@ -182,7 +182,7 @@ bebel_loop_deliver_user_messages <- function(loop, messages, source) {
   for (text in messages) {
     message <- bebel_loop_message_record(text, source = source)
     bebel_loop_emit(loop, "message_start", message = message, source = source)
-    agent_append_user(loop$agent, text)
+    bebel_backend_append_user(loop$agent, text)
     bebel_loop_session_append_user(loop, text, source = source)
     loop$user_messages[[length(loop$user_messages) + 1L]] <- message
     bebel_loop_emit(loop, "message_end", message = message, source = source)
@@ -211,7 +211,7 @@ bebel_loop_deliver_follow_up <- function(loop) {
 #' queues, policy, hooks, and tool dispatch. Consoles, RPC handlers, and TUIs
 #' should consume this loop rather than embedding agent business logic.
 #'
-#' @param agent An object implementing [AgentBackend].
+#' @param agent An object implementing `BebelAgentBackend`.
 #' @param tools A list of `bebel_tool()` objects or named functions.
 #' @param context Private mutable context passed to tools and hooks.
 #' @param policy A [bebel_loop_policy()] object.
@@ -220,9 +220,9 @@ bebel_loop_deliver_follow_up <- function(loop) {
 #'   `tool_request`, `tool_result`, `tool_error`, `tool_denied`, `observation`,
 #'   `command_start`, `command_end`, and `loop_end`.
 #' @param extensions Optional list of [bebel_extension()] objects.
-#' @param session Session persistence setting. `TRUE` creates an `agentSession`
-#'   under `agent_session_dir()`, `FALSE`/`NULL` disables persistence, an
-#'   `agentSession` reuses that store, and a character path opens a JSONL session.
+#' @param session Session persistence setting. `TRUE` creates an `bebelSession`
+#'   under `bebel_session_dir()`, `FALSE`/`NULL` disables persistence, an
+#'   `bebelSession` reuses that store, and a character path opens a JSONL session.
 #' @param parse_tool_call Function converting tool-call text into one or more
 #'   call records.
 #' @param on_event Optional event callback or handler list for model stream events.
@@ -241,14 +241,14 @@ bebel_agent_loop <- function(
   on_event = NULL,
   check_interrupt = TRUE
 ) {
-  bebel_assert_implements(agent, AgentBackend, arg = "agent")
+  bebel_assert_implements(agent, BebelAgentBackend, arg = "agent")
   tools <- normalize_bebel_tools(tools)
   extensions <- bebel_normalize_extensions(extensions)
-  extension_tools <- bebel_extension_collect_tools(extensions)
-  extension_commands <- bebel_extension_collect_commands(extensions)
-  extension_skill_providers <- bebel_extension_collect_skill_providers(extensions)
-  extension_prompt_template_providers <- bebel_extension_collect_prompt_template_providers(extensions)
-  extension_hooks <- bebel_extension_collect_hooks(extensions)
+  contributed_tools <- bebel_extension_collect_tools(extensions)
+  contributed_commands <- bebel_extension_collect_commands(extensions)
+  contributed_skill_providers <- bebel_extension_collect_skill_providers(extensions)
+  contributed_prompt_template_providers <- bebel_extension_collect_prompt_template_providers(extensions)
+  contributed_hooks <- bebel_extension_collect_hooks(extensions)
   user_hooks <- bebel_validate_hook_list(hooks)
   if (!inherits(policy, "bebelLoopPolicy")) stop("policy must be a bebelLoopPolicy", call. = FALSE)
   if (!is.function(parse_tool_call)) stop("parse_tool_call must be a function", call. = FALSE)
@@ -256,16 +256,16 @@ bebel_agent_loop <- function(
 
   loop <- new.env(parent = emptyenv())
   loop$agent <- agent
-  loop$tools <- bebel_merge_named_lists(list(tools, extension_tools), what = "tool")
-  loop$commands <- extension_commands
-  loop$skill_providers <- extension_skill_providers
-  loop$prompt_template_providers <- extension_prompt_template_providers
+  loop$tools <- bebel_merge_named_lists(list(tools, contributed_tools), what = "tool")
+  loop$commands <- contributed_commands
+  loop$skill_providers <- contributed_skill_providers
+  loop$prompt_template_providers <- contributed_prompt_template_providers
   loop$extensions <- extensions
   loop$context <- context
   loop$session <- session
   loop$policy <- policy
-  loop$hooks <- bebel_combine_hook_lists(user_hooks, extension_hooks)
-  loop$before_tool_call_hooks <- bebel_collect_before_tool_call_hooks(user_hooks, extension_hooks)
+  loop$hooks <- bebel_combine_hook_lists(user_hooks, contributed_hooks)
+  loop$before_tool_call_hooks <- bebel_collect_before_tool_call_hooks(user_hooks, contributed_hooks)
   loop$parse_tool_call <- parse_tool_call
   loop$on_event <- on_event
   loop$check_interrupt <- check_interrupt
@@ -288,7 +288,7 @@ bebel_agent_loop <- function(
     extensions = names(loop$extensions),
     skill_providers = names(loop$skill_providers),
     prompt_template_providers = names(loop$prompt_template_providers),
-    session_file = if (!is.null(loop$session)) agent_session_file(loop$session) else NULL
+    session_file = if (!is.null(loop$session)) bebel_session_file(loop$session) else NULL
   )
   loop
 }
@@ -346,9 +346,9 @@ bebel_loop_state <- function(loop) {
     queue = loop$queue,
     steering_mode = loop$policy$steering_mode,
     follow_up_mode = loop$policy$follow_up_mode,
-    session_id = if (!is.null(loop$session)) agent_session_header(loop$session)$id else NULL,
-    session_file = if (!is.null(loop$session)) agent_session_file(loop$session) else NULL,
-    agent_info = agent_info(loop$agent)
+    session_id = if (!is.null(loop$session)) bebel_session_header(loop$session)$id else NULL,
+    session_file = if (!is.null(loop$session)) bebel_session_file(loop$session) else NULL,
+    backend_info = bebel_backend_info(loop$agent)
   )
 }
 
@@ -450,9 +450,9 @@ bebel_loop_step <- function(loop) {
   turn <- tryCatch(
     {
       if (length(loop$tools)) {
-        agent_assistant_turn(loop$agent, on_event = collector, check_interrupt = loop$check_interrupt, stop_on_tool_call = TRUE)
+        bebel_backend_assistant_turn(loop$agent, on_event = collector, check_interrupt = loop$check_interrupt, stop_on_tool_call = TRUE)
       } else {
-        agent_assistant_turn(loop$agent, on_event = collector, check_interrupt = loop$check_interrupt, stop_on_tool_call = FALSE)
+        bebel_backend_assistant_turn(loop$agent, on_event = collector, check_interrupt = loop$check_interrupt, stop_on_tool_call = FALSE)
       }
     },
     error = function(e) {
@@ -486,7 +486,7 @@ bebel_loop_step <- function(loop) {
       bebel_loop_emit(loop, "tool_error", call = call, error = parsed, step = step)
       text <- format_bebel_tool_result(call, NULL, parsed)
       bebel_loop_record_observation(loop, call, text, ok = FALSE)
-      agent_append_tool_result(loop$agent, text)
+      bebel_backend_append_tool_result(loop$agent, text)
       next
     }
 
@@ -534,7 +534,7 @@ bebel_loop_step <- function(loop) {
         bebel_loop_record_observation(loop, call, text, ok = TRUE)
       }
     }
-    agent_append_tool_result(loop$agent, paste(block_results, collapse = "\n"))
+    bebel_backend_append_tool_result(loop$agent, paste(block_results, collapse = "\n"))
   }
   bebel_loop_set_state(loop, "idle")
   list(turn = turn, tool_blocks = tool_blocks, done = FALSE, had_tool_calls = TRUE)
@@ -554,7 +554,7 @@ bebel_loop_run <- function(loop, prompt = NULL, max_steps = NULL) {
     prompt <- as.character(prompt)[[1L]]
     if (bebel_loop_execute_command(loop, prompt)) {
       return(structure(
-        list(turns = list(), tool_calls = list(), context = loop$context, agent_info = agent_info(loop$agent), events = bebel_loop_slice_since(loop$events, start_events), loop = loop, done = TRUE),
+        list(turns = list(), tool_calls = list(), context = loop$context, backend_info = bebel_backend_info(loop$agent), events = bebel_loop_slice_since(loop$events, start_events), loop = loop, done = TRUE),
         class = c("bebelAgentLoopRun", "bebelAgentRun")
       ))
     }
@@ -586,7 +586,7 @@ bebel_loop_run <- function(loop, prompt = NULL, max_steps = NULL) {
       turns = bebel_loop_slice_since(loop$turns, start_turns),
       tool_calls = bebel_loop_slice_since(loop$tool_calls, start_calls),
       context = loop$context,
-      agent_info = agent_info(loop$agent),
+      backend_info = bebel_backend_info(loop$agent),
       events = bebel_loop_slice_since(loop$events, start_events),
       loop = loop,
       done = done

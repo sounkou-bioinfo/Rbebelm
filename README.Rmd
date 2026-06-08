@@ -258,16 +258,16 @@ ctx$log
 
 The BebeLM bindings are one implementation of a more generic R agent/frontend framework.
 The loop itself is backend-agnostic: it talks to objects that implement the
-`AgentBackend` S7/s7contract interface. BebeLM implements that contract today;
+`BebelAgentBackend` S7/s7contract interface. BebeLM implements that contract today;
 other local or remote providers can implement the same generics later.
 
 The core backend contract is intentionally small:
 
-- `agent_append_user(agent, message)`
-- `agent_append_system(agent, message, tools = NULL)`
-- `agent_append_tool_result(agent, content)`
-- `agent_assistant_turn(agent, on_event, check_interrupt, stop_on_tool_call)`
-- `agent_info(agent)`, `agent_transcript(agent)`, and `agent_clear(agent)`
+- `bebel_backend_append_user(agent, message)`
+- `bebel_backend_append_system(agent, message, tools = NULL)`
+- `bebel_backend_append_tool_result(agent, content)`
+- `bebel_backend_assistant_turn(agent, on_event, check_interrupt, stop_on_tool_call)`
+- `bebel_backend_info(agent)`, `bebel_backend_transcript(agent)`, and `bebel_backend_clear(agent)`
 
 `bebel_agent_loop()` owns policy, queues, event emission, tool dispatch, and
 session persistence. A console, RPC server, or future Rust TUI should consume the
@@ -278,14 +278,14 @@ loop; it should not own agent logic. The queue semantics mirror Pi's vocabulary:
 ```{r generic-session}
 library(Rbebelm)
 
-store <- agent_session_create(
+store <- bebel_session_create(
   cwd = tempdir(),
   session_dir = file.path(tempdir(), "rbebelm-readme-sessions"),
   name = "README demo"
 )
 
-user_id <- agent_session_append_message(store, "user", "Hello from R")
-agent_session_append_message(
+user_id <- bebel_session_append_message(store, "user", "Hello from R")
+bebel_session_append_message(
   store,
   "assistant",
   list(list(type = "text", text = "Hello.")),
@@ -294,8 +294,8 @@ agent_session_append_message(
   stopReason = "stop"
 )
 
-agent_session_leaf_id(store)
-agent_session_context(store)$messages
+bebel_session_leaf_id(store)
+bebel_session_context(store)$messages
 ```
 
 Session files are append-only JSONL trees inspired by Pi's session format. Each
@@ -305,16 +305,16 @@ be built without rewriting history. By default, persisted sessions live under
 `RBEBELM_SESSION_DIR` or pass `session_dir` to override that location.
 
 Extensions are also generic capability bundles. An object implementing
-`AgentExtension` contributes a manifest plus optional tools, commands, hooks,
+`BebelAgentExtension` contributes a manifest plus optional tools, commands, hooks,
 skill providers, prompt-template providers, and UI metadata. The loop registers
 those capabilities; frontends only render and invoke the catalog.
 
 ```{r extension-provider-demo}
-skills <- agent_skill_provider(list(
+skills <- bebel_skill_provider(list(
   concise = "Prefer concise, direct answers."
 ))
 
-prompts <- agent_prompt_template_provider(list(
+prompts <- bebel_prompt_template_provider(list(
   system = "You are {{role}} working in {{place}}."
 ))
 
@@ -328,7 +328,7 @@ ext <- bebel_extension(
 )
 
 bebel_extension_manifest(ext)
-agent_system_prompt(
+bebel_system_prompt(
   prompts,
   "system",
   data = list(role = "an R agent", place = "Bamako"),
@@ -339,6 +339,30 @@ agent_system_prompt(
 
 See the "Generic agent and frontend framework" vignette for a fake backend
 example and the full session-tree/forking API.
+
+## Native FFF fuzzy file search
+
+Rbebelm uses the FFF engine behind `fff-c` as its native fuzzy file search
+primitive. A persistent `BebelFileFinder` indexes a project once; consoles, RPC
+clients, default file tools, and future TUIs can reuse it for low-latency file
+picking.
+
+```{r fff-file-search}
+search_root <- tempfile("rbebelm-fff-readme-")
+dir.create(file.path(search_root, "src"), recursive = TRUE)
+writeLines("demo", file.path(search_root, "src", "bamako_agent.R"))
+writeLines("notes", file.path(search_root, "README.md"))
+
+finder <- bebel_file_finder(search_root, watch = FALSE)
+bebel_file_search(finder, "agent", limit = 5)
+```
+
+The native FFF dependency is not loaded in webR/wasm; the package still loads
+there, and file-search creation reports that native FFF is unavailable. SIMD is
+handled with the same care as the BebeLM backend: Rbebelm builds scalar and
+optimized native dylibs separately, and FFF/`neo_frizbee` SIMD kernels are only
+entered through runtime CPU-feature checks or the already-selected optimized
+backend.
 
 ## R-native agent layer
 

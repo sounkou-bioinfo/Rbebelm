@@ -15,12 +15,26 @@ BebeLM should implement the framework provider contracts.
 
 ## Architecture rules
 
-- `AgentBackend` is the generic LLM-provider contract. BebeLM is one
-  implementation, not the framework itself.
+- `BebelAgentBackend` is the generic LLM-provider contract. It is expressed as
+  S7/s7contract interfaces. BebeLM is one implementation, not the framework
+  itself.
 - `bebel_agent_loop()` owns lifecycle, queues, events, tool dispatch,
   extensions, and session persistence.
 - Consoles, RPC handlers, and future TUIs consume the loop; they must not own or
   duplicate agent logic.
+- Native fuzzy file search is based on the vendored FFF engine (`fff-c`/
+  `fff-search`) through `bebel_file_finder()` and `bebel_file_search()`. Keep it
+  native-only and preserve webR package loadability with explicit unsupported
+  diagnostics rather than hard wasm linkage. Be strict about SIMD: FFF and
+  `neo_frizbee` SIMD must remain either backend-selected by Rbebelm's existing
+  dylib dispatcher or runtime-guarded by CPU feature checks before
+  `#[target_feature]` kernels. Never compile portable/scalar artifacts with
+  `target-cpu=native` or unguarded AVX/AVX512/dotprod assumptions.
+- Do not add a Pi-style core `/reload`: S7/s7contract method registration and
+  extension objects should compose without a reload concept. Refresh/reload
+  commands belong only to frontends or side-effecting extension consumers such
+  as a TUI rebuilding keybindings/widgets, command palettes, watcher state, or
+  file-search handles.
 - Use Pi vocabulary for interactive queues: `steer`, `followUp`,
   `steering_mode`, and `follow_up_mode`.
 - Extensions are backend-agnostic capability bundles registered into the loop.
@@ -55,7 +69,10 @@ BebeLM should implement the framework provider contracts.
 
 - JSON handling uses imported `yyjsonr`; do not reintroduce `jsonlite` or an ad
   hoc parser.
-- Keep `nanonext`, `ellmer`, and `vitals` optional.
+- Keep `nanonext`, `ellmer`, and `vitals` optional. `S7`, `s7contract`, and
+  `yyjsonr` are hard runtime dependencies, including for webR; if webR fails,
+  fix the wasm dependency repository/build path rather than weakening the
+  contract layer.
 - Do not add TerminalR, rcurses, or eventloop as hard dependencies for the core
   framework.
 - For a serious terminal TUI, prefer a separate Rust frontend using

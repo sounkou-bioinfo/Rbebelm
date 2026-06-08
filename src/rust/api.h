@@ -21,6 +21,12 @@ SEXP savvy_BebelAgent_info__ffi(SEXP self__);
 SEXP savvy_BebelAgent_new__ffi(SEXP c_arg__model, SEXP c_arg__greedy, SEXP c_arg__max_gen, SEXP c_arg__max_context, SEXP c_arg__max_think, SEXP c_arg__temperature, SEXP c_arg__top_k, SEXP c_arg__repeat_penalty);
 SEXP savvy_BebelAgent_transcript__ffi(SEXP self__);
 
+// methods and associated functions for BebelFileFinder
+SEXP savvy_BebelFileFinder_info__ffi(SEXP self__);
+SEXP savvy_BebelFileFinder_new__ffi(SEXP c_arg__base_path, SEXP c_arg__frecency_db_path, SEXP c_arg__history_db_path, SEXP c_arg__enable_mmap_cache, SEXP c_arg__enable_content_indexing, SEXP c_arg__watch, SEXP c_arg__ai_mode, SEXP c_arg__wait_timeout_ms);
+SEXP savvy_BebelFileFinder_search__ffi(SEXP self__, SEXP c_arg__query, SEXP c_arg__current_file, SEXP c_arg__max_threads, SEXP c_arg__offset, SEXP c_arg__limit, SEXP c_arg__combo_boost_score_multiplier, SEXP c_arg__min_combo_count, SEXP c_arg__wait_timeout_ms);
+SEXP savvy_BebelFileFinder_wait__ffi(SEXP self__, SEXP c_arg__timeout_ms);
+
 // methods and associated functions for BebelModel
 SEXP savvy_BebelModel_chat__ffi(SEXP self__, SEXP c_arg__message, SEXP c_arg__greedy, SEXP c_arg__check_interrupt, SEXP c_arg__on_event, SEXP c_arg__max_gen, SEXP c_arg__max_context, SEXP c_arg__max_think, SEXP c_arg__temperature, SEXP c_arg__top_k, SEXP c_arg__repeat_penalty);
 SEXP savvy_BebelModel_decode__ffi(SEXP self__, SEXP c_arg__ids);

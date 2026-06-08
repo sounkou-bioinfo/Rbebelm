@@ -195,6 +195,56 @@ class(`BebelAgent`) <- c("Rbebelm::BebelAgent__bundle", "savvy_Rbebelm__sealed")
   cat('Rbebelm::BebelAgent\n')
 }
 
+### wrapper functions for BebelFileFinder
+
+`BebelFileFinder_info` <- function(self) {
+  function() {
+    .Call(savvy_BebelFileFinder_info__impl, `self`)
+  }
+}
+
+`BebelFileFinder_search` <- function(self) {
+  function(`query`, `current_file`, `max_threads` = NULL, `offset` = NULL, `limit` = NULL, `combo_boost_score_multiplier` = NULL, `min_combo_count` = NULL, `wait_timeout_ms` = NULL) {
+    .Call(savvy_BebelFileFinder_search__impl, `self`, `query`, `current_file`, `max_threads`, `offset`, `limit`, `combo_boost_score_multiplier`, `min_combo_count`, `wait_timeout_ms`)
+  }
+}
+
+`BebelFileFinder_wait` <- function(self) {
+  function(`timeout_ms` = NULL) {
+    .Call(savvy_BebelFileFinder_wait__impl, `self`, `timeout_ms`)
+  }
+}
+
+`.savvy_wrap_BebelFileFinder` <- function(ptr) {
+  e <- new.env(parent = emptyenv())
+  e$.ptr <- ptr
+  e$`info` <- `BebelFileFinder_info`(ptr)
+  e$`search` <- `BebelFileFinder_search`(ptr)
+  e$`wait` <- `BebelFileFinder_wait`(ptr)
+
+  class(e) <- c("Rbebelm::BebelFileFinder", "BebelFileFinder", "savvy_Rbebelm__sealed")
+  e
+}
+
+
+#' Persistent native FFF fuzzy file finder.
+#' @export
+`BebelFileFinder` <- new.env(parent = emptyenv())
+
+### associated functions for BebelFileFinder
+
+`BebelFileFinder`$`new` <- function(`base_path`, `frecency_db_path`, `history_db_path`, `enable_mmap_cache`, `enable_content_indexing`, `watch`, `ai_mode`, `wait_timeout_ms` = NULL) {
+  .savvy_wrap_BebelFileFinder(.Call(savvy_BebelFileFinder_new__impl, `base_path`, `frecency_db_path`, `history_db_path`, `enable_mmap_cache`, `enable_content_indexing`, `watch`, `ai_mode`, `wait_timeout_ms`))
+}
+
+
+class(`BebelFileFinder`) <- c("Rbebelm::BebelFileFinder__bundle", "savvy_Rbebelm__sealed")
+
+#' @export
+`print.Rbebelm::BebelFileFinder__bundle` <- function(x, ...) {
+  cat('Rbebelm::BebelFileFinder\n')
+}
+
 ### wrapper functions for BebelModel
 
 `BebelModel_chat` <- function(self) {

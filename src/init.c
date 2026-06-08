@@ -139,6 +139,26 @@ SEXP savvy_BebelAgent_transcript__impl(SEXP self__) {
     return handle_result(res);
 }
 
+SEXP savvy_BebelFileFinder_info__impl(SEXP self__) {
+    SEXP res = Rbebelm_BebelFileFinder_info_ffi(self__);
+    return handle_result(res);
+}
+
+SEXP savvy_BebelFileFinder_new__impl(SEXP c_arg__base_path, SEXP c_arg__frecency_db_path, SEXP c_arg__history_db_path, SEXP c_arg__enable_mmap_cache, SEXP c_arg__enable_content_indexing, SEXP c_arg__watch, SEXP c_arg__ai_mode, SEXP c_arg__wait_timeout_ms) {
+    SEXP res = Rbebelm_BebelFileFinder_new_ffi(c_arg__base_path, c_arg__frecency_db_path, c_arg__history_db_path, c_arg__enable_mmap_cache, c_arg__enable_content_indexing, c_arg__watch, c_arg__ai_mode, c_arg__wait_timeout_ms);
+    return handle_result(res);
+}
+
+SEXP savvy_BebelFileFinder_search__impl(SEXP self__, SEXP c_arg__query, SEXP c_arg__current_file, SEXP c_arg__max_threads, SEXP c_arg__offset, SEXP c_arg__limit, SEXP c_arg__combo_boost_score_multiplier, SEXP c_arg__min_combo_count, SEXP c_arg__wait_timeout_ms) {
+    SEXP res = Rbebelm_BebelFileFinder_search_ffi(self__, c_arg__query, c_arg__current_file, c_arg__max_threads, c_arg__offset, c_arg__limit, c_arg__combo_boost_score_multiplier, c_arg__min_combo_count, c_arg__wait_timeout_ms);
+    return handle_result(res);
+}
+
+SEXP savvy_BebelFileFinder_wait__impl(SEXP self__, SEXP c_arg__timeout_ms) {
+    SEXP res = Rbebelm_BebelFileFinder_wait_ffi(self__, c_arg__timeout_ms);
+    return handle_result(res);
+}
+
 SEXP savvy_BebelModel_chat__impl(SEXP self__, SEXP c_arg__message, SEXP c_arg__greedy, SEXP c_arg__check_interrupt, SEXP c_arg__on_event, SEXP c_arg__max_gen, SEXP c_arg__max_context, SEXP c_arg__max_think, SEXP c_arg__temperature, SEXP c_arg__top_k, SEXP c_arg__repeat_penalty) {
     SEXP res = Rbebelm_BebelModel_chat_ffi(self__, c_arg__message, c_arg__greedy, c_arg__check_interrupt, c_arg__on_event, c_arg__max_gen, c_arg__max_context, c_arg__max_think, c_arg__temperature, c_arg__top_k, c_arg__repeat_penalty);
     return handle_result(res);
@@ -191,6 +211,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"savvy_BebelAgent_info__impl", (DL_FUNC) &savvy_BebelAgent_info__impl, 1},
     {"savvy_BebelAgent_new__impl", (DL_FUNC) &savvy_BebelAgent_new__impl, 8},
     {"savvy_BebelAgent_transcript__impl", (DL_FUNC) &savvy_BebelAgent_transcript__impl, 1},
+    {"savvy_BebelFileFinder_info__impl", (DL_FUNC) &savvy_BebelFileFinder_info__impl, 1},
+    {"savvy_BebelFileFinder_new__impl", (DL_FUNC) &savvy_BebelFileFinder_new__impl, 8},
+    {"savvy_BebelFileFinder_search__impl", (DL_FUNC) &savvy_BebelFileFinder_search__impl, 9},
+    {"savvy_BebelFileFinder_wait__impl", (DL_FUNC) &savvy_BebelFileFinder_wait__impl, 2},
     {"savvy_BebelModel_chat__impl", (DL_FUNC) &savvy_BebelModel_chat__impl, 11},
     {"savvy_BebelModel_decode__impl", (DL_FUNC) &savvy_BebelModel_decode__impl, 2},
     {"savvy_BebelModel_encode__impl", (DL_FUNC) &savvy_BebelModel_encode__impl, 3},

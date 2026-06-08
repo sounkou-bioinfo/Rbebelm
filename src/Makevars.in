@@ -1,8 +1,9 @@
-TARGET_DIR = ./rust/target
-LIBDIR = $(TARGET_DIR)/release
-WASM_STATLIB = $(LIBDIR)/librbebelm_backend.a
+TMPDIR ?= /tmp
+TARGET_DIR = $(if $(RBEBELM_CARGO_TARGET_DIR),$(RBEBELM_CARGO_TARGET_DIR),$(TMPDIR)/rbebelm-rust-target-$(shell id -u)-$(notdir $(CURDIR)))
+WASM_LIBDIR = ./rust/target/release
+WASM_STATLIB = $(WASM_LIBDIR)/librbebelm_backend.a
 BACKEND_DIR = rbebelm-backends
-RUST_STAMP = $(TARGET_DIR)/rbebelm-build.stamp
+RUST_STAMP = rbebelm-build.stamp
 PKG_LIBS = @RBEBELM_PKG_LIBS@
 OBJECTS = init.o rbebelm_backend.o @RBEBELM_EMSCRIPTEN_OBJECTS@
 
@@ -28,7 +29,8 @@ $(RUST_STAMP):
 	RUST_HOST="$$(rustc -vV | sed -n 's/^host: //p')"; \
 	RUST_TARGET="$$RUST_HOST"; \
 	CARGO_TARGET_FLAG="--target=$$RUST_TARGET"; \
-	RUSTFLAGS_BASE="$(RUSTFLAGS)"; \
+	RUSTFLAGS_BASE="$${RBEBELM_UNSAFE_RUSTFLAGS:-}"; \
+	X86_64_BASELINE_RUSTFLAGS="-C target-cpu=x86-64 -C target-feature=-avx,-avx2,-avx512f,-avx512bw,-avx512cd,-avx512dq,-avx512vl,-fma,-bmi1,-bmi2,-sse3,-ssse3,-sse4.1,-sse4.2,-popcnt,-lzcnt"; \
 	RUSTFLAGS_ENV="CARGO_TARGET_$$(printf '%s' "$$RUST_TARGET" | tr '[:lower:]-' '[:upper:]_')_RUSTFLAGS"; \
 	DYLIB_EXT=".so"; \
 	DYLIB_RUSTFLAGS=""; \
@@ -49,7 +51,7 @@ $(RUST_STAMP):
 			*) BUILD_BACKENDS="scalar";; \
 		esac; \
 	fi; \
-	mkdir -p "$(BACKEND_DIR)" "$(TARGET_DIR)" "$(LIBDIR)"; \
+	mkdir -p "$(BACKEND_DIR)" "$(TARGET_DIR)"; \
 	build_backend() { \
 		backend="$$1"; features="$$2"; rustflags_extra="$$3"; \
 		target_dir="$(TARGET_DIR)/$$backend"; \
@@ -61,7 +63,7 @@ $(RUST_STAMP):
 			env "$$RUSTFLAGS_ENV=$$RUSTFLAGS_BASE $$rustflags_extra $$DYLIB_RUSTFLAGS" cargo build $$CARGO_FLAGS $$feature_args $$CARGO_TARGET_FLAG --lib --release --manifest-path=./rust/Cargo.toml --target-dir="$$target_dir"; \
 		fi; \
 		rel="$$target_dir/$$RUST_TARGET/release"; \
-		if [ "$$RUST_TARGET" = "wasm32-unknown-emscripten" ] && [ -f "$$rel/librbebelm_backend.a" ]; then cp "$$rel/librbebelm_backend.a" "$(WASM_STATLIB)"; fi; \
+		if [ "$$RUST_TARGET" = "wasm32-unknown-emscripten" ] && [ -f "$$rel/librbebelm_backend.a" ]; then mkdir -p "$(WASM_LIBDIR)"; cp "$$rel/librbebelm_backend.a" "$(WASM_STATLIB)"; fi; \
 		for dylib in "$$rel/librbebelm_backend$$DYLIB_EXT" "$$rel/rbebelm_backend$$DYLIB_EXT"; do \
 			if [ -f "$$dylib" ]; then cp "$$dylib" "$(BACKEND_DIR)/rbebelm_backend_$$backend$$DYLIB_EXT"; break; fi; \
 		done; \
@@ -70,7 +72,7 @@ $(RUST_STAMP):
 	for backend in $$BUILD_BACKENDS; do \
 		IFS="$$old_ifs"; \
 		case "$$backend" in \
-			scalar) case "$$RUST_HOST" in x86_64-*) build_backend scalar portable "-C target-cpu=x86-64";; *) build_backend scalar portable "";; esac;; \
+			scalar) case "$$RUST_HOST" in x86_64-*) build_backend scalar portable "$$X86_64_BASELINE_RUSTFLAGS";; *) build_backend scalar portable "";; esac;; \
 			avx2) build_backend avx2 native-simd "-C target-cpu=x86-64-v3";; \
 			avx512) build_backend avx512 native-simd "-C target-cpu=x86-64-v4";; \
 			neon) build_backend neon native-simd "";; \
@@ -84,4 +86,4 @@ $(RUST_STAMP):
 	touch "$(RUST_STAMP)"
 
 clean:
-	rm -Rf $(SHLIB) $(WASM_STATLIB) $(OBJECTS) $(RUST_STAMP) $(BACKEND_DIR) $(TARGET_DIR) .cargo vendor
+	rm -Rf $(SHLIB) $(WASM_STATLIB) $(OBJECTS) $(RUST_STAMP) $(BACKEND_DIR) $(TARGET_DIR) ./rust/target .cargo vendor

@@ -1,10 +1,10 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
-^target$
-^src/rust/target$
-^src/rbebelm-backends$
-^src/backends$
-^src/vendor$
+^target(/|$)
+^src/rust/target(/|$)
+^src/rbebelm-backends(/|$)
+^src/backends(/|$)
+^src/vendor(/|$)
 ^.*\.tar\.gz$
 ^.*\.tgz$
 ^.*\.Rcheck$
@@ -14,7 +14,9 @@
 ^\.github$
 ^vignettes-raw$
 
-^src/rust/\.cargo$
+^src/rust/\.cargo(/|$)
+^src/rust/vendor/fff/.*/tests(/|$)
 ^src/Makevars$
 ^src/Makevars\.win$
+^src/rbebelm-build\.stamp$
 ^LICENSE\.md$

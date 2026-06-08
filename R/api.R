@@ -668,7 +668,7 @@ bebel_agent_run <- function(
   }
 
   structure(
-    list(turns = turns, tool_calls = calls, context = context, agent_info = bebel_agent_info(agent)),
+    list(turns = turns, tool_calls = calls, context = context, backend_info = bebel_agent_info(agent)),
     class = "bebelAgentRun"
   )
 }

@@ -2,6 +2,7 @@ mod agent;
 mod backend;
 mod chatml;
 mod events;
+mod fuzzy_files;
 mod generation;
 mod model;
 mod options;

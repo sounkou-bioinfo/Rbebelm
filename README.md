@@ -98,8 +98,8 @@ turn1
 #> <BebeLM assistant turn>
 #>   stop: eos
 #>   tokens: 27 generated; 19 prompt
-#>   prefill: 11.1 tok/s
-#>   decode: 11.28 tok/s
+#>   prefill: 10.3 tok/s
+#>   decode: 10.47 tok/s
 #>   text:
 #> <think>
 #> The user asks: "What is the capital of Mali? Answer briefly."</think>
@@ -108,8 +108,8 @@ turn2
 #> <BebeLM assistant turn>
 #>   stop: eos
 #>   tokens: 26 generated; 14 prompt
-#>   prefill: 11.1 tok/s
-#>   decode: 11.36 tok/s
+#>   prefill: 10.5 tok/s
+#>   decode: 10.70 tok/s
 #>   text:
 #> <think>
 #> The user asks: "What about Italy? Answer briefly." Likely they</think>
@@ -202,8 +202,8 @@ result
 #> <BebeLM chat result>
 #>   stop: max_new
 #>   tokens: 48 generated; 22 prompt
-#>   prefill: 11.6 tok/s
-#>   decode: 11.76 tok/s
+#>   prefill: 10.4 tok/s
+#>   decode: 10.81 tok/s
 #>   text:
 #> <think>
 #> The user asks: "In one concise sentence, what does runtime SIMD</think>
@@ -227,8 +227,8 @@ raw_result
 #> <BebeLM generation result>
 #>   stop: max_new
 #>   tokens: 24 generated; 8 prompt
-#>   prefill: 11.7 tok/s
-#>   decode: 11.99 tok/s
+#>   prefill: 10.7 tok/s
+#>   decode: 11.15 tok/s
 #>   text:
 #>  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However
 ```
@@ -315,8 +315,8 @@ run
 #> <BebeLM assistant turn>
 #>   stop: eos
 #>   tokens: 18 generated; 13 prompt
-#>   prefill: 11.9 tok/s
-#>   decode: 11.56 tok/s
+#>   prefill: 10.2 tok/s
+#>   decode: 10.32 tok/s
 #>   text:
 #> lookup_capital({"country":"Italy"}) returned Rome as the capital of Italy.
 ctx$log
@@ -328,18 +328,18 @@ ctx$log
 
 The BebeLM bindings are one implementation of a more generic R
 agent/frontend framework. The loop itself is backend-agnostic: it talks
-to objects that implement the `AgentBackend` S7/s7contract interface.
-BebeLM implements that contract today; other local or remote providers
-can implement the same generics later.
+to objects that implement the `BebelAgentBackend` S7/s7contract
+interface. BebeLM implements that contract today; other local or remote
+providers can implement the same generics later.
 
 The core backend contract is intentionally small:
 
-- `agent_append_user(agent, message)`
-- `agent_append_system(agent, message, tools = NULL)`
-- `agent_append_tool_result(agent, content)`
-- `agent_assistant_turn(agent, on_event, check_interrupt, stop_on_tool_call)`
-- `agent_info(agent)`, `agent_transcript(agent)`, and
-  `agent_clear(agent)`
+- `bebel_backend_append_user(agent, message)`
+- `bebel_backend_append_system(agent, message, tools = NULL)`
+- `bebel_backend_append_tool_result(agent, content)`
+- `bebel_backend_assistant_turn(agent, on_event, check_interrupt, stop_on_tool_call)`
+- `bebel_backend_info(agent)`, `bebel_backend_transcript(agent)`, and
+  `bebel_backend_clear(agent)`
 
 `bebel_agent_loop()` owns policy, queues, event emission, tool dispatch,
 and session persistence. A console, RPC server, or future Rust TUI
@@ -350,14 +350,14 @@ semantics mirror Pi’s vocabulary: `bebel_loop_steer()`,
 ``` r
 library(Rbebelm)
 
-store <- agent_session_create(
+store <- bebel_session_create(
   cwd = tempdir(),
   session_dir = file.path(tempdir(), "rbebelm-readme-sessions"),
   name = "README demo"
 )
 
-user_id <- agent_session_append_message(store, "user", "Hello from R")
-agent_session_append_message(
+user_id <- bebel_session_append_message(store, "user", "Hello from R")
+bebel_session_append_message(
   store,
   "assistant",
   list(list(type = "text", text = "Hello.")),
@@ -365,11 +365,11 @@ agent_session_append_message(
   model = "demo-model",
   stopReason = "stop"
 )
-#> [1] "8402c35d"
+#> [1] "2cd92948"
 
-agent_session_leaf_id(store)
-#> [1] "8402c35d"
-agent_session_context(store)$messages
+bebel_session_leaf_id(store)
+#> <bebelSessionLeafId> 2cd92948
+bebel_session_context(store)$messages
 #> [[1]]
 #> [[1]]$role
 #> [1] "user"
@@ -410,17 +410,17 @@ persisted sessions live under
 `RBEBELM_SESSION_DIR` or pass `session_dir` to override that location.
 
 Extensions are also generic capability bundles. An object implementing
-`AgentExtension` contributes a manifest plus optional tools, commands,
-hooks, skill providers, prompt-template providers, and UI metadata. The
-loop registers those capabilities; frontends only render and invoke the
-catalog.
+`BebelAgentExtension` contributes a manifest plus optional tools,
+commands, hooks, skill providers, prompt-template providers, and UI
+metadata. The loop registers those capabilities; frontends only render
+and invoke the catalog.
 
 ``` r
-skills <- agent_skill_provider(list(
+skills <- bebel_skill_provider(list(
   concise = "Prefer concise, direct answers."
 ))
 
-prompts <- agent_prompt_template_provider(list(
+prompts <- bebel_prompt_template_provider(list(
   system = "You are {{role}} working in {{place}}."
 ))
 
@@ -470,7 +470,7 @@ bebel_extension_manifest(ext)
 #> 
 #> $metadata
 #> list()
-agent_system_prompt(
+bebel_system_prompt(
   prompts,
   "system",
   data = list(role = "an R agent", place = "Bamako"),
@@ -482,6 +482,39 @@ agent_system_prompt(
 
 See the “Generic agent and frontend framework” vignette for a fake
 backend example and the full session-tree/forking API.
+
+## Native FFF fuzzy file search
+
+Rbebelm uses the FFF engine behind `fff-c` as its native fuzzy file
+search primitive. A persistent `BebelFileFinder` indexes a project once;
+consoles, RPC clients, default file tools, and future TUIs can reuse it
+for low-latency file picking.
+
+``` r
+search_root <- tempfile("rbebelm-fff-readme-")
+dir.create(file.path(search_root, "src"), recursive = TRUE)
+writeLines("demo", file.path(search_root, "src", "bamako_agent.R"))
+writeLines("notes", file.path(search_root, "README.md"))
+
+finder <- bebel_file_finder(search_root, watch = FALSE)
+bebel_file_search(finder, "agent", limit = 5)
+#> <bebelFileSearchResult> 1 rows / 1 matched
+#>                path
+#>  src/bamako_agent.R
+#>                                                         absolute_path
+#>  /tmp/RtmpJ1nQGU/rbebelm-fff-readme-3561df6d004817/src/bamako_agent.R
+#>       file_name git_status size            modified score base_score
+#>  bamako_agent.R      clean    5 2026-06-08 21:38:35    74         64
+#>      match_type exact_match is_binary
+#>  fuzzy_filename       FALSE     FALSE
+```
+
+The native FFF dependency is not loaded in webR/wasm; the package still
+loads there, and file-search creation reports that native FFF is
+unavailable. SIMD is handled with the same care as the BebeLM backend:
+Rbebelm builds scalar and optimized native dylibs separately, and
+FFF/`neo_frizbee` SIMD kernels are only entered through runtime
+CPU-feature checks or the already-selected optimized backend.
 
 ## R-native agent layer
 
@@ -499,12 +532,18 @@ r_agent <- bebel_r_agent(
   max_think = 16
 )
 bebel_agent_tool_catalog(r_agent$tools)
-#>         name                                       description
-#> 1  r_objects     List objects in the configured R environment.
-#> 2     r_help Read R help for a topic, optionally in a package.
-#> 3 list_files                     List files under a directory.
-#> 4  read_file                                 Read a text file.
-#> 5 grep_files                       Search text files by regex.
+#>         name
+#> 1  r_objects
+#> 2     r_help
+#> 3 list_files
+#> 4  read_file
+#> 5 grep_files
+#>                                                              description
+#> 1                          List objects in the configured R environment.
+#> 2                      Read R help for a topic, optionally in a package.
+#> 3 Fuzzy-search files under a directory using the native FFF file finder.
+#> 4                                                      Read a text file.
+#> 5                                            Search text files by regex.
 ```
 
 Interactive console. The `/r` command is a direct R escape hatch into

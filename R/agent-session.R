@@ -12,7 +12,7 @@
 #' @param create Create the directory if needed?
 #' @return A session directory path.
 #' @export
-agent_session_dir <- function(cwd = getwd(), session_root = NULL, create = TRUE) {
+bebel_session_dir <- function(cwd = getwd(), session_root = NULL, create = TRUE) {
   root <- session_root %||% Sys.getenv("RBEBELM_SESSION_DIR", unset = NA_character_)
   if (is.na(root) || !nzchar(root)) {
     root <- file.path(tools::R_user_dir("Rbebelm", "data"), "sessions")
@@ -24,56 +24,56 @@ agent_session_dir <- function(cwd = getwd(), session_root = NULL, create = TRUE)
   dir
 }
 
-agent_session_timestamp <- function(time = Sys.time()) {
+bebel_session_timestamp <- function(time = Sys.time()) {
   format(as.POSIXct(time, tz = "UTC"), "%Y-%m-%dT%H:%M:%OS3Z", tz = "UTC")
 }
 
-agent_session_file_timestamp <- function(time = Sys.time()) {
-  gsub("[:.]", "-", agent_session_timestamp(time), perl = TRUE)
+bebel_session_file_timestamp <- function(time = Sys.time()) {
+  gsub("[:.]", "-", bebel_session_timestamp(time), perl = TRUE)
 }
 
-agent_session_random_hex <- function(n = 8L) {
+bebel_session_random_hex <- function(n = 8L) {
   paste(sample(c(0:9, letters[1:6]), n, replace = TRUE), collapse = "")
 }
 
-agent_session_id <- function() {
-  paste0(agent_session_random_hex(8L), "-", agent_session_random_hex(4L), "-", agent_session_random_hex(4L), "-", agent_session_random_hex(4L), "-", agent_session_random_hex(12L))
+bebel_session_id <- function() {
+  paste0(bebel_session_random_hex(8L), "-", bebel_session_random_hex(4L), "-", bebel_session_random_hex(4L), "-", bebel_session_random_hex(4L), "-", bebel_session_random_hex(12L))
 }
 
-agent_session_entry_id <- function(session) {
+bebel_session_entry_id <- function(session) {
   for (i in seq_len(100L)) {
-    id <- agent_session_random_hex(8L)
+    id <- bebel_session_random_hex(8L)
     if (is.null(session$by_id[[id]])) return(id)
   }
-  agent_session_id()
+  bebel_session_id()
 }
 
-agent_session_to_json <- function(x) {
+bebel_session_to_json <- function(x) {
   yyjsonr::write_json_str(x, opts = bebel_json_write_opts(auto_unbox = TRUE))
 }
 
-agent_session_from_json <- function(x) {
+bebel_session_from_json <- function(x) {
   yyjsonr::read_json_str(x, opts = bebel_json_read_opts())
 }
 
-agent_session_write_line <- function(path, entry, append = TRUE) {
-  cat(agent_session_to_json(entry), "\n", file = path, append = append, sep = "")
+bebel_session_write_line <- function(path, entry, append = TRUE) {
+  cat(bebel_session_to_json(entry), "\n", file = path, append = append, sep = "")
   invisible(path)
 }
 
-agent_session_load_entries <- function(path) {
+bebel_session_load_entries <- function(path) {
   if (!file.exists(path)) return(list())
   lines <- readLines(path, warn = FALSE, encoding = "UTF-8")
   out <- list()
   for (line in lines) {
     if (!nzchar(trimws(line))) next
-    entry <- tryCatch(agent_session_from_json(line), error = function(e) NULL)
+    entry <- tryCatch(bebel_session_from_json(line), error = function(e) NULL)
     if (!is.null(entry) && is.list(entry)) out[[length(out) + 1L]] <- entry
   }
   out
 }
 
-agent_session_index <- function(session) {
+bebel_session_index <- function(session) {
   session$by_id <- new.env(parent = emptyenv())
   session$leaf_id <- NULL
   session$labels <- new.env(parent = emptyenv())
@@ -92,7 +92,7 @@ agent_session_index <- function(session) {
   invisible(session)
 }
 
-agent_session_new_env <- function(cwd, session_dir, session_file, persist = TRUE) {
+bebel_session_new_env <- function(cwd, session_dir, session_file, persist = TRUE) {
   session <- new.env(parent = emptyenv())
   session$cwd <- normalizePath(cwd, winslash = "/", mustWork = FALSE)
   session$session_dir <- session_dir
@@ -102,7 +102,7 @@ agent_session_new_env <- function(cwd, session_dir, session_file, persist = TRUE
   session$by_id <- new.env(parent = emptyenv())
   session$labels <- new.env(parent = emptyenv())
   session$leaf_id <- NULL
-  class(session) <- c("agentSession", "environment")
+  class(session) <- c("bebelSession", "environment")
   session
 }
 
@@ -113,14 +113,14 @@ agent_session_new_env <- function(cwd, session_dir, session_file, persist = TRUE
 #'
 #' @param cwd Working directory stored in the session header.
 #' @param session_dir Optional concrete directory for the JSONL file. If `NULL`,
-#'   `agent_session_dir()` is used.
+#'   `bebel_session_dir()` is used.
 #' @param id Optional session id.
 #' @param parent_session Optional parent session file path for forks/clones.
 #' @param name Optional display name stored as a `session_info` entry.
 #' @param persist If `FALSE`, keep the session in memory only.
-#' @return An `agentSession` object.
+#' @return An `bebelSession` object.
 #' @export
-agent_session_create <- function(
+bebel_session_create <- function(
   cwd = getwd(),
   session_dir = NULL,
   id = NULL,
@@ -129,17 +129,17 @@ agent_session_create <- function(
   persist = TRUE
 ) {
   cwd <- normalizePath(cwd, winslash = "/", mustWork = FALSE)
-  id <- id %||% agent_session_id()
-  timestamp <- agent_session_timestamp()
-  dir <- session_dir %||% agent_session_dir(cwd)
+  id <- id %||% bebel_session_id()
+  timestamp <- bebel_session_timestamp()
+  dir <- session_dir %||% bebel_session_dir(cwd)
   if (isTRUE(persist)) dir.create(dir, recursive = TRUE, showWarnings = FALSE)
-  file <- if (isTRUE(persist)) file.path(dir, paste0(agent_session_file_timestamp(), "_", id, ".jsonl")) else NULL
-  session <- agent_session_new_env(cwd, dir, file, persist = persist)
+  file <- if (isTRUE(persist)) file.path(dir, paste0(bebel_session_file_timestamp(), "_", id, ".jsonl")) else NULL
+  session <- bebel_session_new_env(cwd, dir, file, persist = persist)
   header <- list(type = "session", version = 3L, id = id, timestamp = timestamp, cwd = cwd)
   if (!is.null(parent_session)) header$parentSession <- normalizePath(parent_session, winslash = "/", mustWork = FALSE)
   session$file_entries <- list(header)
-  if (isTRUE(persist)) agent_session_write_line(file, header, append = FALSE)
-  if (!is.null(name)) agent_session_append_session_info(session, name)
+  if (isTRUE(persist)) bebel_session_write_line(file, header, append = FALSE)
+  if (!is.null(name)) bebel_session_append_session_info(session, name)
   session
 }
 
@@ -148,71 +148,103 @@ agent_session_create <- function(
 #' @param path Session JSONL file.
 #' @param session_dir Optional session directory for future derived sessions.
 #' @param cwd Optional working-directory override.
-#' @return An `agentSession` object.
+#' @return An `bebelSession` object.
 #' @export
-agent_session_open <- function(path, session_dir = NULL, cwd = NULL) {
+bebel_session_open <- function(path, session_dir = NULL, cwd = NULL) {
   path <- normalizePath(path, winslash = "/", mustWork = FALSE)
-  entries <- agent_session_load_entries(path)
+  entries <- bebel_session_load_entries(path)
   if (!length(entries) || !identical(entries[[1L]]$type, "session")) {
     stop("session file has no valid session header", call. = FALSE)
   }
   header <- entries[[1L]]
   cwd <- cwd %||% header$cwd %||% getwd()
   dir <- session_dir %||% dirname(path)
-  session <- agent_session_new_env(cwd, dir, path, persist = TRUE)
+  session <- bebel_session_new_env(cwd, dir, path, persist = TRUE)
   session$file_entries <- entries
-  agent_session_index(session)
+  bebel_session_index(session)
   session
 }
 
-agent_session_check <- function(session) {
-  if (!inherits(session, "agentSession")) stop("session must be an agentSession", call. = FALSE)
+bebel_session_check <- function(session) {
+  if (!inherits(session, "bebelSession")) {
+    stop("session must be a bebelSession", call. = FALSE)
+  }
   invisible(session)
+}
+
+new_bebel_session_leaf_id <- function(id) {
+  structure(id %||% NA_character_, class = "bebelSessionLeafId")
+}
+
+bebel_session_leaf_id_value <- function(id) {
+  if (inherits(id, "bebelSessionLeafId")) {
+    id <- unclass(id)
+    if (!length(id) || is.na(id)) return(NULL)
+    return(as.character(id)[[1L]])
+  }
+  if (is.null(id)) return(NULL)
+  as.character(id)[[1L]]
+}
+
+#' @export
+as.character.bebelSessionLeafId <- function(x, ...) {
+  value <- unclass(x)
+  if (!length(value) || is.na(value)) return(NA_character_)
+  as.character(value)[[1L]]
+}
+
+#' @export
+print.bebelSessionLeafId <- function(x, ...) {
+  value <- as.character(x)
+  cat("<bebelSessionLeafId> ", if (is.na(value)) "<root>" else value, "\n", sep = "")
+  invisible(x)
 }
 
 #' Inspect agent session metadata
 #'
-#' @param session An `agentSession`.
-#' @param id Entry id for `agent_session_get_entry()`.
+#' @param session An `bebelSession`.
+#' @param id Entry id for `bebel_session_get_entry()`.
 #' @export
-agent_session_header <- function(session) {
-  agent_session_check(session)
+bebel_session_header <- function(session) {
+  bebel_session_check(session)
   session$file_entries[[1L]]
 }
 
-#' @rdname agent_session_header
+#' @rdname bebel_session_header
 #' @export
-agent_session_entries <- function(session) {
-  agent_session_check(session)
+bebel_session_entries <- function(session) {
+  bebel_session_check(session)
   Filter(function(x) !identical(x$type, "session"), session$file_entries)
 }
 
-#' @rdname agent_session_header
+#' @rdname bebel_session_header
 #' @export
-agent_session_leaf_id <- function(session) {
-  agent_session_check(session)
-  session$leaf_id
+bebel_session_leaf_id <- function(session) {
+  bebel_session_check(session)
+  new_bebel_session_leaf_id(session$leaf_id)
 }
 
-#' @rdname agent_session_header
+#' @rdname bebel_session_header
 #' @export
-agent_session_file <- function(session) {
-  agent_session_check(session)
+bebel_session_file <- function(session) {
+  bebel_session_check(session)
   session$session_file
 }
 
-#' @rdname agent_session_header
+#' @rdname bebel_session_header
 #' @export
-agent_session_get_entry <- function(session, id) {
-  agent_session_check(session)
+bebel_session_get_entry <- function(session, id) {
+  bebel_session_check(session)
+  id <- bebel_session_leaf_id_value(id)
   if (is.null(id)) return(NULL)
   session$by_id[[id]]
 }
 
-agent_session_append_entry <- function(session, type, fields = list(), parent_id = session$leaf_id) {
-  agent_session_check(session)
+bebel_session_append_entry <- function(session, type, fields = list(), parent_id = session$leaf_id) {
+  bebel_session_check(session)
   if (!is.list(fields)) stop("fields must be a list", call. = FALSE)
-  entry <- c(list(type = type, id = agent_session_entry_id(session), parentId = parent_id, timestamp = agent_session_timestamp()), fields)
+  parent_id <- bebel_session_leaf_id_value(parent_id)
+  entry <- c(list(type = type, id = bebel_session_entry_id(session), parentId = parent_id, timestamp = bebel_session_timestamp()), fields)
   session$file_entries[[length(session$file_entries) + 1L]] <- entry
   session$by_id[[entry$id]] <- entry
   session$leaf_id <- entry$id
@@ -223,13 +255,13 @@ agent_session_append_entry <- function(session, type, fields = list(), parent_id
       rm(list = entry$targetId, envir = session$labels)
     }
   }
-  if (isTRUE(session$persist) && !is.null(session$session_file)) agent_session_write_line(session$session_file, entry, append = TRUE)
+  if (isTRUE(session$persist) && !is.null(session$session_file)) bebel_session_write_line(session$session_file, entry, append = TRUE)
   entry$id
 }
 
 #' Append a message entry to an agent session
 #'
-#' @param session An `agentSession`.
+#' @param session An `bebelSession`.
 #' @param role Message role, e.g. `"user"`, `"assistant"`, or `"toolResult"`.
 #' @param content Message content. Strings or lists of content blocks are accepted.
 #' @param message Optional complete message object. If supplied, `role`, `content`,
@@ -238,15 +270,15 @@ agent_session_append_entry <- function(session, type, fields = list(), parent_id
 #'   `stopReason`, `toolName`, or `details`.
 #' @return The appended entry id.
 #' @export
-agent_session_append_message <- function(session, role, content, message = NULL, ...) {
+bebel_session_append_message <- function(session, role, content, message = NULL, ...) {
   fields <- list(...)
   if (is.null(message)) message <- c(list(role = role, content = content), fields)
-  agent_session_append_entry(session, "message", list(message = message))
+  bebel_session_append_entry(session, "message", list(message = message))
 }
 
 #' Append session metadata and extension entries
 #'
-#' @param session An `agentSession`.
+#' @param session An `bebelSession`.
 #' @param name Session display name.
 #' @param custom_type Extension or custom entry type.
 #' @param data Extension state data. Custom entries do not enter model context.
@@ -255,29 +287,29 @@ agent_session_append_message <- function(session, role, content, message = NULL,
 #' @param details Optional extension-specific metadata.
 #' @return The appended entry id.
 #' @export
-agent_session_append_session_info <- function(session, name) {
-  agent_session_append_entry(session, "session_info", list(name = trimws(as.character(name)[[1L]])))
+bebel_session_append_session_info <- function(session, name) {
+  bebel_session_append_entry(session, "session_info", list(name = trimws(as.character(name)[[1L]])))
 }
 
-#' @rdname agent_session_append_session_info
+#' @rdname bebel_session_append_session_info
 #' @export
-agent_session_append_custom <- function(session, custom_type, data = NULL) {
+bebel_session_append_custom <- function(session, custom_type, data = NULL) {
   fields <- list(customType = as.character(custom_type)[[1L]])
   if (!is.null(data)) fields$data <- data
-  agent_session_append_entry(session, "custom", fields)
+  bebel_session_append_entry(session, "custom", fields)
 }
 
-#' @rdname agent_session_append_session_info
+#' @rdname bebel_session_append_session_info
 #' @export
-agent_session_append_custom_message <- function(session, custom_type, content, display = TRUE, details = NULL) {
+bebel_session_append_custom_message <- function(session, custom_type, content, display = TRUE, details = NULL) {
   fields <- list(customType = as.character(custom_type)[[1L]], content = content, display = isTRUE(display))
   if (!is.null(details)) fields$details <- details
-  agent_session_append_entry(session, "custom_message", fields)
+  bebel_session_append_entry(session, "custom_message", fields)
 }
 
 #' Append model/thinking/compaction/branch metadata
 #'
-#' @param session An `agentSession`.
+#' @param session An `bebelSession`.
 #' @param provider Provider id.
 #' @param model_id Model id.
 #' @param thinking_level Thinking/reasoning level.
@@ -289,76 +321,78 @@ agent_session_append_custom_message <- function(session, custom_type, content, d
 #' @param from_id Branch source entry id.
 #' @return The appended entry id.
 #' @export
-agent_session_append_model_change <- function(session, provider, model_id) {
-  agent_session_append_entry(session, "model_change", list(provider = provider, modelId = model_id))
+bebel_session_append_model_change <- function(session, provider, model_id) {
+  bebel_session_append_entry(session, "model_change", list(provider = provider, modelId = model_id))
 }
 
-#' @rdname agent_session_append_model_change
+#' @rdname bebel_session_append_model_change
 #' @export
-agent_session_append_thinking_level_change <- function(session, thinking_level) {
-  agent_session_append_entry(session, "thinking_level_change", list(thinkingLevel = thinking_level))
+bebel_session_append_thinking_level_change <- function(session, thinking_level) {
+  bebel_session_append_entry(session, "thinking_level_change", list(thinkingLevel = thinking_level))
 }
 
-#' @rdname agent_session_append_model_change
+#' @rdname bebel_session_append_model_change
 #' @export
-agent_session_append_compaction <- function(session, summary, first_kept_entry_id, tokens_before, details = NULL, from_hook = FALSE) {
+bebel_session_append_compaction <- function(session, summary, first_kept_entry_id, tokens_before, details = NULL, from_hook = FALSE) {
   fields <- list(summary = summary, firstKeptEntryId = first_kept_entry_id, tokensBefore = as.integer(tokens_before), fromHook = isTRUE(from_hook))
   if (!is.null(details)) fields$details <- details
-  agent_session_append_entry(session, "compaction", fields)
+  bebel_session_append_entry(session, "compaction", fields)
 }
 
-#' @rdname agent_session_append_model_change
+#' @rdname bebel_session_append_model_change
 #' @export
-agent_session_append_branch_summary <- function(session, from_id, summary, details = NULL, from_hook = FALSE) {
-  agent_session_checkout(session, from_id)
+bebel_session_append_branch_summary <- function(session, from_id, summary, details = NULL, from_hook = FALSE) {
+  bebel_session_checkout(session, from_id)
   fields <- list(fromId = from_id %||% "root", summary = summary, fromHook = isTRUE(from_hook))
   if (!is.null(details)) fields$details <- details
-  agent_session_append_entry(session, "branch_summary", fields, parent_id = from_id)
+  bebel_session_append_entry(session, "branch_summary", fields, parent_id = from_id)
 }
 
 #' Append or clear a label on a session entry
 #'
-#' @param session An `agentSession`.
+#' @param session An `bebelSession`.
 #' @param target_id Entry id to label.
 #' @param label Label text, or `NULL`/empty string to clear.
 #' @export
-agent_session_append_label <- function(session, target_id, label = NULL) {
-  agent_session_check(session)
-  if (is.null(agent_session_get_entry(session, target_id))) stop("target entry not found", call. = FALSE)
-  agent_session_append_entry(session, "label", list(targetId = target_id, label = label %||% ""))
+bebel_session_append_label <- function(session, target_id, label = NULL) {
+  bebel_session_check(session)
+  if (is.null(bebel_session_get_entry(session, target_id))) stop("target entry not found", call. = FALSE)
+  bebel_session_append_entry(session, "label", list(targetId = target_id, label = label %||% ""))
 }
 
 #' Move the current session leaf
 #'
-#' @param session An `agentSession`.
+#' @param session An `bebelSession`.
 #' @param entry_id Entry id to continue from, or `NULL` to reset before the root.
 #' @return The session, invisibly.
 #' @export
-agent_session_checkout <- function(session, entry_id = NULL) {
-  agent_session_check(session)
-  if (!is.null(entry_id) && is.null(agent_session_get_entry(session, entry_id))) stop("entry not found", call. = FALSE)
+bebel_session_checkout <- function(session, entry_id = NULL) {
+  bebel_session_check(session)
+  entry_id <- bebel_session_leaf_id_value(entry_id)
+  if (!is.null(entry_id) && is.null(bebel_session_get_entry(session, entry_id))) stop("entry not found", call. = FALSE)
   session$leaf_id <- entry_id
   invisible(session)
 }
 
 #' Return the branch from root to a session entry
 #'
-#' @param session An `agentSession`.
+#' @param session An `bebelSession`.
 #' @param from_id Entry id. Defaults to the current leaf.
 #' @return A list of session entries in path order.
 #' @export
-agent_session_branch <- function(session, from_id = agent_session_leaf_id(session)) {
-  agent_session_check(session)
+bebel_session_branch <- function(session, from_id = bebel_session_leaf_id(session)) {
+  bebel_session_check(session)
+  from_id <- bebel_session_leaf_id_value(from_id)
   path <- list()
-  current <- if (is.null(from_id)) NULL else agent_session_get_entry(session, from_id)
+  current <- if (is.null(from_id)) NULL else bebel_session_get_entry(session, from_id)
   while (!is.null(current)) {
     path <- c(list(current), path)
-    current <- if (is.null(current$parentId)) NULL else agent_session_get_entry(session, current$parentId)
+    current <- if (is.null(current$parentId)) NULL else bebel_session_get_entry(session, current$parentId)
   }
   path
 }
 
-agent_session_message_from_entry <- function(entry) {
+bebel_session_message_from_entry <- function(entry) {
   if (identical(entry$type, "message")) return(entry$message)
   if (identical(entry$type, "custom_message")) {
     out <- list(role = "custom", customType = entry$customType, content = entry$content, display = isTRUE(entry$display))
@@ -371,11 +405,11 @@ agent_session_message_from_entry <- function(entry) {
 
 #' Build model context from the active session branch
 #'
-#' @param session An `agentSession`.
+#' @param session An `bebelSession`.
 #' @return A list with `messages`, `thinking_level`, `model`, and branch `entries`.
 #' @export
-agent_session_context <- function(session) {
-  path <- agent_session_branch(session)
+bebel_session_context <- function(session) {
+  path <- bebel_session_branch(session)
   thinking_level <- "off"
   model <- NULL
   compaction_index <- NA_integer_
@@ -390,7 +424,7 @@ agent_session_context <- function(session) {
   }
   messages <- list()
   append_entry <- function(entry) {
-    msg <- agent_session_message_from_entry(entry)
+    msg <- bebel_session_message_from_entry(entry)
     if (!is.null(msg)) messages[[length(messages) + 1L]] <<- msg
   }
   if (!is.na(compaction_index)) {
@@ -410,12 +444,12 @@ agent_session_context <- function(session) {
 
 #' Return an agent session tree
 #'
-#' @param session An `agentSession`.
+#' @param session An `bebelSession`.
 #' @return A nested list of tree nodes with `entry`, `children`, and optional `label`.
 #' @export
-agent_session_tree <- function(session) {
-  agent_session_check(session)
-  entries <- agent_session_entries(session)
+bebel_session_tree <- function(session) {
+  bebel_session_check(session)
+  entries <- bebel_session_entries(session)
   by_parent <- list()
   key <- function(x) if (is.null(x)) "__root__" else x
   for (entry in entries) {
@@ -432,46 +466,47 @@ agent_session_tree <- function(session) {
   lapply(by_parent[["__root__"]] %||% list(), build)
 }
 
-agent_session_copy_entries <- function(target, entries) {
+bebel_session_copy_entries <- function(target, entries) {
   for (entry in entries) {
     target$file_entries[[length(target$file_entries) + 1L]] <- entry
     target$by_id[[entry$id]] <- entry
     target$leaf_id <- entry$id
-    if (isTRUE(target$persist)) agent_session_write_line(target$session_file, entry, append = TRUE)
+    if (isTRUE(target$persist)) bebel_session_write_line(target$session_file, entry, append = TRUE)
   }
-  agent_session_index(target)
+  bebel_session_index(target)
   target
 }
 
 #' Fork an agent session file into a new session file
 #'
-#' `agent_session_fork()` copies all non-header entries from an existing JSONL
-#' file. `agent_session_clone_branch()` copies only the path from the root to a
+#' `bebel_session_fork()` copies all non-header entries from an existing JSONL
+#' file. `bebel_session_clone_branch()` copies only the path from the root to a
 #' selected leaf, matching Pi's active-branch clone behavior.
 #'
 #' @param source_path Source JSONL session file.
 #' @param cwd Target working directory for the new session.
 #' @param session_dir Optional concrete target session directory.
 #' @param id Optional new session id.
-#' @param session Source `agentSession` for branch cloning.
+#' @param session Source `bebelSession` for branch cloning.
 #' @param leaf_id Leaf entry id to clone. Defaults to the source session leaf.
-#' @return The opened forked/cloned `agentSession`.
+#' @return The opened forked/cloned `bebelSession`.
 #' @export
-agent_session_fork <- function(source_path, cwd = getwd(), session_dir = NULL, id = NULL) {
+bebel_session_fork <- function(source_path, cwd = getwd(), session_dir = NULL, id = NULL) {
   source_path <- normalizePath(source_path, winslash = "/", mustWork = FALSE)
-  source <- agent_session_open(source_path)
-  target <- agent_session_create(cwd = cwd, session_dir = session_dir, id = id, parent_session = source_path)
-  agent_session_copy_entries(target, agent_session_entries(source))
+  source <- bebel_session_open(source_path)
+  target <- bebel_session_create(cwd = cwd, session_dir = session_dir, id = id, parent_session = source_path)
+  bebel_session_copy_entries(target, bebel_session_entries(source))
 }
 
-#' @rdname agent_session_fork
+#' @rdname bebel_session_fork
 #' @export
-agent_session_clone_branch <- function(session, leaf_id = agent_session_leaf_id(session), cwd = session$cwd, session_dir = session$session_dir, id = NULL) {
-  agent_session_check(session)
-  parent <- agent_session_file(session)
-  target <- agent_session_create(cwd = cwd, session_dir = session_dir, id = id, parent_session = parent)
-  path <- agent_session_branch(session, leaf_id)
-  agent_session_copy_entries(target, path)
+bebel_session_clone_branch <- function(session, leaf_id = bebel_session_leaf_id(session), cwd = session$cwd, session_dir = session$session_dir, id = NULL) {
+  bebel_session_check(session)
+  leaf_id <- bebel_session_leaf_id_value(leaf_id)
+  parent <- bebel_session_file(session)
+  target <- bebel_session_create(cwd = cwd, session_dir = session_dir, id = id, parent_session = parent)
+  path <- bebel_session_branch(session, leaf_id)
+  bebel_session_copy_entries(target, path)
 }
 
 #' List agent session files
@@ -480,14 +515,14 @@ agent_session_clone_branch <- function(session, leaf_id = agent_session_leaf_id(
 #' @param session_dir Optional concrete directory to scan.
 #' @return A data frame with basic session metadata.
 #' @export
-agent_session_list <- function(cwd = getwd(), session_dir = NULL) {
-  dir <- session_dir %||% agent_session_dir(cwd, create = FALSE)
+bebel_session_list <- function(cwd = getwd(), session_dir = NULL) {
+  dir <- session_dir %||% bebel_session_dir(cwd, create = FALSE)
   if (!dir.exists(dir)) {
     return(data.frame(path = character(), id = character(), cwd = character(), name = character(), created = as.POSIXct(character()), modified = as.POSIXct(character()), entries = integer(), stringsAsFactors = FALSE))
   }
   files <- list.files(dir, pattern = "[.]jsonl$", full.names = TRUE)
   rows <- lapply(files, function(path) {
-    entries <- agent_session_load_entries(path)
+    entries <- bebel_session_load_entries(path)
     if (!length(entries) || !identical(entries[[1L]]$type, "session")) return(NULL)
     header <- entries[[1L]]
     name <- NA_character_
@@ -506,11 +541,12 @@ agent_session_list <- function(cwd = getwd(), session_dir = NULL) {
 }
 
 #' @export
-print.agentSession <- function(x, ...) {
-  header <- agent_session_header(x)
-  cat("<agentSession> ", header$id, "\n", sep = "")
-  cat("  file: ", agent_session_file(x) %||% "<memory>", "\n", sep = "")
-  cat("  entries: ", length(agent_session_entries(x)), "\n", sep = "")
-  cat("  leaf: ", agent_session_leaf_id(x) %||% "<root>", "\n", sep = "")
+print.bebelSession <- function(x, ...) {
+  header <- bebel_session_header(x)
+  cat("<bebelSession> ", header$id, "\n", sep = "")
+  cat("  file: ", bebel_session_file(x) %||% "<memory>", "\n", sep = "")
+  cat("  entries: ", length(bebel_session_entries(x)), "\n", sep = "")
+  leaf <- as.character(bebel_session_leaf_id(x))
+  cat("  leaf: ", if (is.na(leaf)) "<root>" else leaf, "\n", sep = "")
   invisible(x)
 }

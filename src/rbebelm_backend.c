@@ -95,18 +95,26 @@ typedef SEXP (*fn_019)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 static fn_019 p_019 = NULL;
 typedef SEXP (*fn_020)(SEXP);
 static fn_020 p_020 = NULL;
-typedef SEXP (*fn_021)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+typedef SEXP (*fn_021)(SEXP);
 static fn_021 p_021 = NULL;
-typedef SEXP (*fn_022)(SEXP, SEXP);
+typedef SEXP (*fn_022)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 static fn_022 p_022 = NULL;
-typedef SEXP (*fn_023)(SEXP, SEXP, SEXP);
+typedef SEXP (*fn_023)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 static fn_023 p_023 = NULL;
-typedef SEXP (*fn_024)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+typedef SEXP (*fn_024)(SEXP, SEXP);
 static fn_024 p_024 = NULL;
-typedef SEXP (*fn_025)(SEXP);
+typedef SEXP (*fn_025)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 static fn_025 p_025 = NULL;
 typedef SEXP (*fn_026)(SEXP, SEXP);
 static fn_026 p_026 = NULL;
+typedef SEXP (*fn_027)(SEXP, SEXP, SEXP);
+static fn_027 p_027 = NULL;
+typedef SEXP (*fn_028)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+static fn_028 p_028 = NULL;
+typedef SEXP (*fn_029)(SEXP);
+static fn_029 p_029 = NULL;
+typedef SEXP (*fn_030)(SEXP, SEXP);
+static fn_030 p_030 = NULL;
 
 #ifdef __EMSCRIPTEN__
 static void bind_static_backend_symbols(void) {
@@ -130,12 +138,16 @@ static void bind_static_backend_symbols(void) {
     p_018 = (fn_018)savvy_BebelAgent_info__ffi;
     p_019 = (fn_019)savvy_BebelAgent_new__ffi;
     p_020 = (fn_020)savvy_BebelAgent_transcript__ffi;
-    p_021 = (fn_021)savvy_BebelModel_chat__ffi;
-    p_022 = (fn_022)savvy_BebelModel_decode__ffi;
-    p_023 = (fn_023)savvy_BebelModel_encode__ffi;
-    p_024 = (fn_024)savvy_BebelModel_generate__ffi;
-    p_025 = (fn_025)savvy_BebelModel_info__ffi;
-    p_026 = (fn_026)savvy_BebelModel_load__ffi;
+    p_021 = (fn_021)savvy_BebelFileFinder_info__ffi;
+    p_022 = (fn_022)savvy_BebelFileFinder_new__ffi;
+    p_023 = (fn_023)savvy_BebelFileFinder_search__ffi;
+    p_024 = (fn_024)savvy_BebelFileFinder_wait__ffi;
+    p_025 = (fn_025)savvy_BebelModel_chat__ffi;
+    p_026 = (fn_026)savvy_BebelModel_decode__ffi;
+    p_027 = (fn_027)savvy_BebelModel_encode__ffi;
+    p_028 = (fn_028)savvy_BebelModel_generate__ffi;
+    p_029 = (fn_029)savvy_BebelModel_info__ffi;
+    p_030 = (fn_030)savvy_BebelModel_load__ffi;
 }
 #endif
 
@@ -504,12 +516,16 @@ static int try_load_backend(const char *backend, char *err, size_t err_size) {
     p_018 = (fn_018)load_symbol(handle, "savvy_BebelAgent_info__ffi");
     p_019 = (fn_019)load_symbol(handle, "savvy_BebelAgent_new__ffi");
     p_020 = (fn_020)load_symbol(handle, "savvy_BebelAgent_transcript__ffi");
-    p_021 = (fn_021)load_symbol(handle, "savvy_BebelModel_chat__ffi");
-    p_022 = (fn_022)load_symbol(handle, "savvy_BebelModel_decode__ffi");
-    p_023 = (fn_023)load_symbol(handle, "savvy_BebelModel_encode__ffi");
-    p_024 = (fn_024)load_symbol(handle, "savvy_BebelModel_generate__ffi");
-    p_025 = (fn_025)load_symbol(handle, "savvy_BebelModel_info__ffi");
-    p_026 = (fn_026)load_symbol(handle, "savvy_BebelModel_load__ffi");
+    p_021 = (fn_021)load_symbol(handle, "savvy_BebelFileFinder_info__ffi");
+    p_022 = (fn_022)load_symbol(handle, "savvy_BebelFileFinder_new__ffi");
+    p_023 = (fn_023)load_symbol(handle, "savvy_BebelFileFinder_search__ffi");
+    p_024 = (fn_024)load_symbol(handle, "savvy_BebelFileFinder_wait__ffi");
+    p_025 = (fn_025)load_symbol(handle, "savvy_BebelModel_chat__ffi");
+    p_026 = (fn_026)load_symbol(handle, "savvy_BebelModel_decode__ffi");
+    p_027 = (fn_027)load_symbol(handle, "savvy_BebelModel_encode__ffi");
+    p_028 = (fn_028)load_symbol(handle, "savvy_BebelModel_generate__ffi");
+    p_029 = (fn_029)load_symbol(handle, "savvy_BebelModel_info__ffi");
+    p_030 = (fn_030)load_symbol(handle, "savvy_BebelModel_load__ffi");
     snprintf(selected_backend, sizeof(selected_backend), "%s", backend);
     backend_loaded = 1;
     return 1;
@@ -588,12 +604,18 @@ SEXP Rbebelm_BebelAgent_history_ffi(SEXP self__) { Rbebelm_init_backend(); retur
 SEXP Rbebelm_BebelAgent_info_ffi(SEXP self__) { Rbebelm_init_backend(); return p_018(self__); }
 SEXP Rbebelm_BebelAgent_new_ffi(SEXP c_arg__model, SEXP c_arg__greedy, SEXP c_arg__max_gen, SEXP c_arg__max_context, SEXP c_arg__max_think, SEXP c_arg__temperature, SEXP c_arg__top_k, SEXP c_arg__repeat_penalty) { Rbebelm_init_backend(); return p_019(c_arg__model, c_arg__greedy, c_arg__max_gen, c_arg__max_context, c_arg__max_think, c_arg__temperature, c_arg__top_k, c_arg__repeat_penalty); }
 SEXP Rbebelm_BebelAgent_transcript_ffi(SEXP self__) { Rbebelm_init_backend(); return p_020(self__); }
-SEXP Rbebelm_BebelModel_chat_ffi(SEXP self__, SEXP c_arg__message, SEXP c_arg__greedy, SEXP c_arg__check_interrupt, SEXP c_arg__on_event, SEXP c_arg__max_gen, SEXP c_arg__max_context, SEXP c_arg__max_think, SEXP c_arg__temperature, SEXP c_arg__top_k, SEXP c_arg__repeat_penalty) { Rbebelm_init_backend(); return p_021(self__, c_arg__message, c_arg__greedy, c_arg__check_interrupt, c_arg__on_event, c_arg__max_gen, c_arg__max_context, c_arg__max_think, c_arg__temperature, c_arg__top_k, c_arg__repeat_penalty); }
-SEXP Rbebelm_BebelModel_decode_ffi(SEXP self__, SEXP c_arg__ids) { Rbebelm_init_backend(); return p_022(self__, c_arg__ids); }
-SEXP Rbebelm_BebelModel_encode_ffi(SEXP self__, SEXP c_arg__text, SEXP c_arg__add_bos) { Rbebelm_init_backend(); return p_023(self__, c_arg__text, c_arg__add_bos); }
-SEXP Rbebelm_BebelModel_generate_ffi(SEXP self__, SEXP c_arg__prompt, SEXP c_arg__greedy, SEXP c_arg__check_interrupt, SEXP c_arg__on_event, SEXP c_arg__max_gen, SEXP c_arg__max_context, SEXP c_arg__max_think, SEXP c_arg__temperature, SEXP c_arg__top_k, SEXP c_arg__repeat_penalty) { Rbebelm_init_backend(); return p_024(self__, c_arg__prompt, c_arg__greedy, c_arg__check_interrupt, c_arg__on_event, c_arg__max_gen, c_arg__max_context, c_arg__max_think, c_arg__temperature, c_arg__top_k, c_arg__repeat_penalty); }
-SEXP Rbebelm_BebelModel_info_ffi(SEXP self__) { Rbebelm_init_backend(); return p_025(self__); }
-SEXP Rbebelm_BebelModel_load_ffi(SEXP c_arg__path, SEXP c_arg__num_threads) { Rbebelm_init_backend(); return p_026(c_arg__path, c_arg__num_threads); }
+SEXP Rbebelm_BebelFileFinder_info_ffi(SEXP self__) { Rbebelm_init_backend(); return p_021(self__); }
+SEXP Rbebelm_BebelFileFinder_new_ffi(SEXP c_arg__base_path, SEXP c_arg__frecency_db_path, SEXP c_arg__history_db_path, SEXP c_arg__enable_mmap_cache, SEXP c_arg__enable_content_indexing, SEXP c_arg__watch, SEXP c_arg__ai_mode, SEXP c_arg__wait_timeout_ms) { Rbebelm_init_backend(); return p_022(c_arg__base_path, c_arg__frecency_db_path, c_arg__history_db_path, c_arg__enable_mmap_cache, c_arg__enable_content_indexing, c_arg__watch, c_arg__ai_mode, c_arg__wait_timeout_ms); }
+SEXP Rbebelm_BebelFileFinder_search_ffi(SEXP self__, SEXP c_arg__query, SEXP c_arg__current_file, SEXP c_arg__max_threads, SEXP c_arg__offset, SEXP c_arg__limit, SEXP c_arg__combo_boost_score_multiplier, SEXP c_arg__min_combo_count, SEXP c_arg__wait_timeout_ms) { Rbebelm_init_backend(); return p_023(self__, c_arg__query, c_arg__current_file, c_arg__max_threads, c_arg__offset, c_arg__limit, c_arg__combo_boost_score_multiplier, c_arg__min_combo_count, c_arg__wait_timeout_ms); }
+SEXP Rbebelm_BebelFileFinder_wait_ffi(SEXP self__, SEXP c_arg__timeout_ms) { Rbebelm_init_backend(); return p_024(self__, c_arg__timeout_ms); }
+SEXP Rbebelm_BebelModel_chat_ffi(SEXP self__, SEXP c_arg__message, SEXP c_arg__greedy, SEXP c_arg__check_interrupt, SEXP c_arg__on_event, SEXP c_arg__max_gen, SEXP c_arg__max_context, SEXP c_arg__max_think, SEXP c_arg__temperature, SEXP c_arg__top_k, SEXP c_arg__repeat_penalty) { Rbebelm_init_backend(); return p_025(self__, c_arg__message, c_arg__greedy, c_arg__check_interrupt, c_arg__on_event, c_arg__max_gen, c_arg__max_context, c_arg__max_think, c_arg__temperature, c_arg__top_k, c_arg__repeat_penalty); }
+SEXP Rbebelm_BebelModel_decode_ffi(SEXP self__, SEXP c_arg__ids) { Rbebelm_init_backend(); return p_026(self__, c_arg__ids); }
+SEXP Rbebelm_BebelModel_encode_ffi(SEXP self__, SEXP c_arg__text, SEXP c_arg__add_bos) { Rbebelm_init_backend(); return p_027(self__, c_arg__text, c_arg__add_bos); }
+SEXP Rbebelm_BebelModel_generate_ffi(SEXP self__, SEXP c_arg__prompt, SEXP c_arg__greedy, SEXP c_arg__check_interrupt, SEXP c_arg__on_event, SEXP c_arg__max_gen, SEXP c_arg__max_context, SEXP c_arg__max_think, SEXP c_arg__temperature, SEXP c_arg__top_k, SEXP c_arg__repeat_penalty) { Rbebelm_init_backend(); return p_028(self__, c_arg__prompt, c_arg__greedy, c_arg__check_interrupt, c_arg__on_event, c_arg__max_gen, c_arg__max_context, c_arg__max_think, c_arg__temperature, c_arg__top_k, c_arg__repeat_penalty); }
+SEXP Rbebelm_BebelModel_info_ffi(SEXP self__) { Rbebelm_init_backend(); return p_029(self__); }
+SEXP Rbebelm_BebelModel_load_ffi(SEXP c_arg__path, SEXP c_arg__num_threads) { Rbebelm_init_backend(); return p_030(c_arg__path, c_arg__num_threads); }
+
+
 
 
 

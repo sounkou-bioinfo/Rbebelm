@@ -1,4 +1,4 @@
-agent_front_matter <- function(text) {
+bebel_front_matter <- function(text) {
   lines <- strsplit(text, "\n", fixed = TRUE)[[1L]]
   if (length(lines) < 3L || !identical(trimws(lines[[1L]]), "---")) return(list(fields = list(), body = text))
   end <- which(trimws(lines[-1L]) == "---")
@@ -28,22 +28,22 @@ agent_front_matter <- function(text) {
 #' @param description Optional description.
 #' @param metadata Optional metadata list.
 #' @param path Optional source path.
-#' @return An `agentSkill` object.
+#' @return An `bebelSkill` object.
 #' @export
-agent_skill <- function(name, content, description = NULL, metadata = list(), path = NULL) {
+bebel_skill <- function(name, content, description = NULL, metadata = list(), path = NULL) {
   if (!is.character(name) || length(name) != 1L || !nzchar(name)) stop("skill name must be a non-empty string", call. = FALSE)
   structure(
     list(name = name, description = description %||% name, content = as.character(content)[[1L]], metadata = metadata, path = path),
-    class = "agentSkill"
+    class = "bebelSkill"
   )
 }
 
-agent_skill_from_file <- function(path) {
+bebel_skill_from_file <- function(path) {
   text <- paste(readLines(path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  parsed <- agent_front_matter(text)
+  parsed <- bebel_front_matter(text)
   name <- parsed$fields$name %||% tools::file_path_sans_ext(basename(path))
   if (identical(basename(path), "SKILL.md")) name <- basename(dirname(path))
-  agent_skill(
+  bebel_skill(
     name = name,
     content = parsed$body,
     description = parsed$fields$description %||% name,
@@ -52,26 +52,26 @@ agent_skill_from_file <- function(path) {
   )
 }
 
-agent_normalize_skills <- function(skills = list(), paths = character()) {
+bebel_normalize_skills <- function(skills = list(), paths = character()) {
   if (is.null(skills)) skills <- list()
-  if (inherits(skills, "agentSkill") || is.character(skills)) skills <- list(skills)
+  if (inherits(skills, "bebelSkill") || is.character(skills)) skills <- list(skills)
   out <- list()
   for (i in seq_along(skills)) {
     skill <- skills[[i]]
-    if (inherits(skill, "agentSkill")) {
+    if (inherits(skill, "bebelSkill")) {
       out[[skill$name]] <- skill
     } else if (is.character(skill) && length(skill) == 1L) {
       nm <- names(skills)[i]
       if (is.null(nm) || !nzchar(nm)) stop("character skills must be named", call. = FALSE)
-      out[[nm]] <- agent_skill(nm, skill)
+      out[[nm]] <- bebel_skill(nm, skill)
     } else {
-      stop("skills must contain agentSkill objects or named character content", call. = FALSE)
+      stop("skills must contain bebelSkill objects or named character content", call. = FALSE)
     }
   }
   for (path in paths %||% character()) {
     candidates <- if (dir.exists(path)) list.files(path, pattern = "(^SKILL[.]md$|[.]md$)", recursive = TRUE, full.names = TRUE) else path
     for (candidate in candidates[file.exists(candidates)]) {
-      skill <- agent_skill_from_file(candidate)
+      skill <- bebel_skill_from_file(candidate)
       out[[skill$name]] <- skill
     }
   }
@@ -80,19 +80,19 @@ agent_normalize_skills <- function(skills = list(), paths = character()) {
 
 #' Create a skill provider
 #'
-#' @param skills `agentSkill` objects or named character skill bodies.
+#' @param skills `bebelSkill` objects or named character skill bodies.
 #' @param paths Skill markdown files or directories to scan. `SKILL.md` files use
 #'   their parent directory name as the skill name.
 #' @param name Provider name.
-#' @return An `agentSkillProvider` implementing [SkillProvider].
+#' @return An `bebelSkillProvider` implementing `BebelSkillProvider`.
 #' @export
-agent_skill_provider <- function(skills = list(), paths = character(), name = "default") {
-  structure(list(name = name, skills = agent_normalize_skills(skills, paths)), class = "agentSkillProvider")
+bebel_skill_provider <- function(skills = list(), paths = character(), name = "default") {
+  structure(list(name = name, skills = bebel_normalize_skills(skills, paths)), class = "bebelSkillProvider")
 }
 
-AgentSkillProviderS3 <- S7::new_S3_class("agentSkillProvider")
+BebelSkillProviderS3 <- S7::new_S3_class("bebelSkillProvider")
 
-S7::method(skill_list, AgentSkillProviderS3) <- function(provider) {
+S7::method(bebel_skill_list, BebelSkillProviderS3) <- function(provider) {
   data.frame(
     name = names(provider$skills),
     description = vapply(provider$skills, function(x) x$description %||% "", character(1)),
@@ -102,7 +102,7 @@ S7::method(skill_list, AgentSkillProviderS3) <- function(provider) {
   )
 }
 
-S7::method(skill_load, AgentSkillProviderS3) <- function(provider, name) {
+S7::method(bebel_skill_load, BebelSkillProviderS3) <- function(provider, name) {
   skill <- provider$skills[[as.character(name)[[1L]]]]
   if (is.null(skill)) stop("unknown skill: ", name, call. = FALSE)
   skill
@@ -119,20 +119,20 @@ S7::method(skill_load, AgentSkillProviderS3) <- function(provider, name) {
 #' @param description Optional description.
 #' @param metadata Optional metadata list.
 #' @param path Optional source path.
-#' @return An `agentPromptTemplate` object.
+#' @return An `bebelPromptTemplate` object.
 #' @export
-agent_prompt_template <- function(name, template, description = NULL, metadata = list(), path = NULL) {
+bebel_prompt_template <- function(name, template, description = NULL, metadata = list(), path = NULL) {
   if (!is.character(name) || length(name) != 1L || !nzchar(name)) stop("template name must be a non-empty string", call. = FALSE)
   structure(
     list(name = name, description = description %||% name, template = as.character(template)[[1L]], metadata = metadata, path = path),
-    class = "agentPromptTemplate"
+    class = "bebelPromptTemplate"
   )
 }
 
-agent_prompt_template_from_file <- function(path) {
+bebel_prompt_template_from_file <- function(path) {
   text <- paste(readLines(path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  parsed <- agent_front_matter(text)
-  agent_prompt_template(
+  parsed <- bebel_front_matter(text)
+  bebel_prompt_template(
     name = parsed$fields$name %||% tools::file_path_sans_ext(basename(path)),
     template = parsed$body,
     description = parsed$fields$description %||% parsed$fields$name %||% basename(path),
@@ -141,26 +141,26 @@ agent_prompt_template_from_file <- function(path) {
   )
 }
 
-agent_normalize_prompt_templates <- function(templates = list(), paths = character()) {
+bebel_normalize_prompt_templates <- function(templates = list(), paths = character()) {
   if (is.null(templates)) templates <- list()
-  if (inherits(templates, "agentPromptTemplate") || is.character(templates)) templates <- list(templates)
+  if (inherits(templates, "bebelPromptTemplate") || is.character(templates)) templates <- list(templates)
   out <- list()
   for (i in seq_along(templates)) {
     template <- templates[[i]]
-    if (inherits(template, "agentPromptTemplate")) {
+    if (inherits(template, "bebelPromptTemplate")) {
       out[[template$name]] <- template
     } else if (is.character(template) && length(template) == 1L) {
       nm <- names(templates)[i]
       if (is.null(nm) || !nzchar(nm)) stop("character templates must be named", call. = FALSE)
-      out[[nm]] <- agent_prompt_template(nm, template)
+      out[[nm]] <- bebel_prompt_template(nm, template)
     } else {
-      stop("templates must contain agentPromptTemplate objects or named character templates", call. = FALSE)
+      stop("templates must contain bebelPromptTemplate objects or named character templates", call. = FALSE)
     }
   }
   for (path in paths %||% character()) {
     candidates <- if (dir.exists(path)) list.files(path, pattern = "[.](md|txt|prompt)$", recursive = TRUE, full.names = TRUE) else path
     for (candidate in candidates[file.exists(candidates)]) {
-      template <- agent_prompt_template_from_file(candidate)
+      template <- bebel_prompt_template_from_file(candidate)
       out[[template$name]] <- template
     }
   }
@@ -169,16 +169,16 @@ agent_normalize_prompt_templates <- function(templates = list(), paths = charact
 
 #' Create a prompt-template provider
 #'
-#' @param templates `agentPromptTemplate` objects or named character templates.
+#' @param templates `bebelPromptTemplate` objects or named character templates.
 #' @param paths Template files or directories to scan.
 #' @param name Provider name.
-#' @return An `agentPromptTemplateProvider` implementing [PromptTemplateProvider].
+#' @return An `bebelPromptTemplateProvider` implementing `BebelPromptTemplateProvider`.
 #' @export
-agent_prompt_template_provider <- function(templates = list(), paths = character(), name = "default") {
-  structure(list(name = name, templates = agent_normalize_prompt_templates(templates, paths)), class = "agentPromptTemplateProvider")
+bebel_prompt_template_provider <- function(templates = list(), paths = character(), name = "default") {
+  structure(list(name = name, templates = bebel_normalize_prompt_templates(templates, paths)), class = "bebelPromptTemplateProvider")
 }
 
-agent_render_template_text <- function(template, data = list()) {
+bebel_render_template_text <- function(template, data = list()) {
   out <- template
   for (nm in names(data %||% list())) {
     value <- data[[nm]]
@@ -188,9 +188,9 @@ agent_render_template_text <- function(template, data = list()) {
   out
 }
 
-AgentPromptTemplateProviderS3 <- S7::new_S3_class("agentPromptTemplateProvider")
+BebelPromptTemplateProviderS3 <- S7::new_S3_class("bebelPromptTemplateProvider")
 
-S7::method(prompt_template_list, AgentPromptTemplateProviderS3) <- function(provider) {
+S7::method(bebel_prompt_template_list, BebelPromptTemplateProviderS3) <- function(provider) {
   data.frame(
     name = names(provider$templates),
     description = vapply(provider$templates, function(x) x$description %||% "", character(1)),
@@ -200,27 +200,27 @@ S7::method(prompt_template_list, AgentPromptTemplateProviderS3) <- function(prov
   )
 }
 
-S7::method(prompt_template_render, AgentPromptTemplateProviderS3) <- function(provider, name, data = list()) {
+S7::method(bebel_prompt_template_render, BebelPromptTemplateProviderS3) <- function(provider, name, data = list()) {
   template <- provider$templates[[as.character(name)[[1L]]]]
   if (is.null(template)) stop("unknown prompt template: ", name, call. = FALSE)
-  agent_render_template_text(template$template, data)
+  bebel_render_template_text(template$template, data)
 }
 
 #' Compose a system prompt from a prompt template and optional skills
 #'
-#' @param provider Object implementing [PromptTemplateProvider].
+#' @param provider Object implementing `BebelPromptTemplateProvider`.
 #' @param name Prompt template name.
 #' @param data Template data.
-#' @param skill_provider Optional object implementing [SkillProvider].
+#' @param skill_provider Optional object implementing `BebelSkillProvider`.
 #' @param skills Character vector of skill names to append.
 #' @return Rendered system prompt text.
 #' @export
-agent_system_prompt <- function(provider, name = "system", data = list(), skill_provider = NULL, skills = character()) {
-  bebel_assert_implements(provider, PromptTemplateProvider, arg = "provider")
-  prompt <- prompt_template_render(provider, name, data = data)
+bebel_system_prompt <- function(provider, name = "system", data = list(), skill_provider = NULL, skills = character()) {
+  bebel_assert_implements(provider, BebelPromptTemplateProvider, arg = "provider")
+  prompt <- bebel_prompt_template_render(provider, name, data = data)
   if (!is.null(skill_provider) && length(skills)) {
-    bebel_assert_implements(skill_provider, SkillProvider, arg = "skill_provider")
-    loaded <- lapply(skills, function(skill_name) skill_load(skill_provider, skill_name))
+    bebel_assert_implements(skill_provider, BebelSkillProvider, arg = "skill_provider")
+    loaded <- lapply(skills, function(skill_name) bebel_skill_load(skill_provider, skill_name))
     skill_text <- vapply(loaded, function(skill) paste0("## Skill: ", skill$name, "\n\n", skill$content), character(1))
     prompt <- paste(c(prompt, "# Loaded skills", skill_text), collapse = "\n\n")
   }
@@ -229,14 +229,14 @@ agent_system_prompt <- function(provider, name = "system", data = list(), skill_
 
 #' Render and append a system prompt to an agent backend
 #'
-#' @param agent Object implementing [AgentBackend].
-#' @inheritParams agent_system_prompt
+#' @param agent Object implementing `BebelAgentBackend`.
+#' @inheritParams bebel_system_prompt
 #' @param tools Optional backend-native tool declarations.
 #' @return `agent`, invisibly.
 #' @export
-agent_append_system_prompt <- function(agent, provider, name = "system", data = list(), skill_provider = NULL, skills = character(), tools = NULL) {
-  bebel_assert_implements(agent, AgentBackend, arg = "agent")
-  prompt <- agent_system_prompt(provider, name = name, data = data, skill_provider = skill_provider, skills = skills)
-  agent_append_system(agent, prompt, tools = tools)
+bebel_append_system_prompt <- function(agent, provider, name = "system", data = list(), skill_provider = NULL, skills = character(), tools = NULL) {
+  bebel_assert_implements(agent, BebelAgentBackend, arg = "agent")
+  prompt <- bebel_system_prompt(provider, name = name, data = data, skill_provider = skill_provider, skills = skills)
+  bebel_backend_append_system(agent, prompt, tools = tools)
   invisible(agent)
 }

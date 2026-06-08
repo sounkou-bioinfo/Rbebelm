@@ -308,24 +308,33 @@ bebel_default_r_tools <- function(env = .GlobalEnv, cwd = getwd(), allow_eval = 
     ),
     list_files = bebel_agent_tool(
       "list_files",
-      "List files under a directory.",
+      "Fuzzy-search files under a directory using the native FFF file finder.",
       params = list(
+        query = list(type = "string", description = "Fuzzy file query. Empty returns FFF's top-ranked files.", required = FALSE),
         path = list(type = "string", description = "Directory path relative to the agent cwd.", required = FALSE),
-        pattern = list(type = "string", description = "Optional regex filter.", required = FALSE),
-        recursive = list(type = "boolean", description = "Whether to recurse.", required = FALSE),
+        pattern = list(type = "string", description = "Optional R regex post-filter applied to result paths.", required = FALSE),
         limit = list(type = "integer", description = "Maximum number of entries.", required = FALSE)
       ),
       fun = function(args, context, call) {
-        path <- resolve_path(args$path %||% ".")
-        if (!dir.exists(path)) return(paste("Directory not found:", path))
-        limit <- as.integer(args$limit %||% 200L)
-        if (is.na(limit) || limit < 1L) limit <- 200L
-        entries <- list.files(path, pattern = args$pattern %||% NULL, recursive = isTRUE(args$recursive), all.files = TRUE, no.. = TRUE, full.names = TRUE)
-        entries <- sort(entries)
-        if (!length(entries)) return(paste("No files found in", path))
-        rel <- strip_root(entries, path)
-        if (length(rel) > limit) rel <- c(rel[seq_len(limit)], sprintf("... %d more", length(entries) - limit))
-        bebel_agent_format_value(paste(rel, collapse = "\n"), max_chars)
+        root <- resolve_path(args$path %||% ".")
+        if (!dir.exists(root)) return(paste("Directory not found:", root))
+        limit <- as.integer(args$limit %||% 100L)
+        if (is.na(limit) || limit < 1L) limit <- 100L
+        query <- as.character(args$query %||% "")[[1L]]
+        found <- tryCatch(
+          bebel_file_search(root, query = query, limit = limit),
+          error = function(e) e
+        )
+        if (inherits(found, "error")) {
+          return(paste("FFF file search unavailable:", conditionMessage(found)))
+        }
+        if (!nrow(found)) return(paste("No files found in", root))
+        rel <- found$path
+        if (!is.null(args$pattern) && nzchar(args$pattern)) rel <- rel[grepl(args$pattern, rel)]
+        if (!length(rel)) return("No files matched the post-filter.")
+        scores <- found$score[match(rel, found$path)]
+        txt <- paste(sprintf("%s\t(score=%s)", rel, scores), collapse = "\n")
+        bebel_agent_format_value(txt, max_chars)
       }
     ),
     read_file = bebel_agent_tool(
@@ -876,7 +885,7 @@ bebel_rpc_handle <- function(session, req) {
       "turn" = {
         prompt <- params$prompt %||% stop("turn requires params$prompt", call. = FALSE)
         turn <- bebel_r_agent_turn(session, prompt, max_steps = as.integer(params$max_steps %||% 4L), on_event = NULL)
-        list(text = turn$text, tool_calls = turn$run$tool_calls, agent_info = turn$run$agent_info)
+        list(text = turn$text, tool_calls = turn$run$tool_calls, backend_info = turn$run$backend_info)
       },
       stop("unknown method: ", method, call. = FALSE)
     )

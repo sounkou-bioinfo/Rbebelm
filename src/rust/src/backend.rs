@@ -22,7 +22,7 @@ pub fn backend_name() -> &'static str {
 /// @export
 #[savvy]
 pub fn rbebelm_backend_features() -> savvy::Result<savvy::Sexp> {
-    let mut out = OwnedListSexp::new(11, true)?;
+    let mut out = OwnedListSexp::new(14, true)?;
     out.set_name_and_value(0, "backend", str_scalar(backend_name())?)?;
     out.set_name_and_value(1, "target_arch", str_scalar(std::env::consts::ARCH)?)?;
     out.set_name_and_value(2, "target_os", str_scalar(std::env::consts::OS)?)?;
@@ -34,5 +34,8 @@ pub fn rbebelm_backend_features() -> savvy::Result<savvy::Sexp> {
     out.set_name_and_value(8, "compiled_neon", bool_scalar(cfg!(target_feature = "neon"))?)?;
     out.set_name_and_value(9, "compiled_dotprod", bool_scalar(cfg!(target_feature = "dotprod"))?)?;
     out.set_name_and_value(10, "compiled_wasm_simd128", bool_scalar(cfg!(target_feature = "simd128"))?)?;
+    out.set_name_and_value(11, "fff_file_search", bool_scalar(!cfg!(target_os = "emscripten"))?)?;
+    out.set_name_and_value(12, "fff_simd_policy", str_scalar(if cfg!(target_os = "emscripten") { "unavailable-in-wasm" } else { "compiled-per-rbebelm-backend; fff/neo_frizbee uses runtime feature checks before target_feature kernels" })?)?;
+    out.set_name_and_value(13, "cpu_build_policy", str_scalar(if cfg!(target_os = "emscripten") { "wasm32-simd128" } else if cfg!(target_feature = "avx512f") { "x86-64-v4" } else if cfg!(target_feature = "avx2") { "x86-64-v3" } else if cfg!(target_feature = "dotprod") { "aarch64-neon+dotprod" } else if cfg!(target_feature = "neon") { "aarch64-neon" } else { "portable-scalar-baseline" })?)?;
     out.into()
 }

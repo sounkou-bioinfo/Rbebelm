@@ -24,16 +24,16 @@ consume the same loop instead of reimplementing or owning agent logic.
 
 ## Backend contract
 
-An LLM provider implements the `AgentBackend` interface from `s7contract` by
+An LLM provider implements the `BebelAgentBackend` interface from `s7contract` by
 providing S7 methods for these generics:
 
-- `agent_append_user(agent, message)`
-- `agent_append_system(agent, message, tools = NULL)`
-- `agent_append_tool_result(agent, content)`
-- `agent_assistant_turn(agent, on_event, check_interrupt, stop_on_tool_call)`
-- `agent_info(agent)`
-- `agent_transcript(agent)`
-- `agent_clear(agent)`
+- `bebel_backend_append_user(agent, message)`
+- `bebel_backend_append_system(agent, message, tools = NULL)`
+- `bebel_backend_append_tool_result(agent, content)`
+- `bebel_backend_assistant_turn(agent, on_event, check_interrupt, stop_on_tool_call)`
+- `bebel_backend_info(agent)`
+- `bebel_backend_transcript(agent)`
+- `bebel_backend_clear(agent)`
 
 BebeLM implements this contract for `BebelAgent`. The following fake backend is
 useful for tests and demonstrates that `bebel_agent_loop()` does not require a
@@ -42,24 +42,24 @@ BebeLM object.
 ```{r fake-backend}
 library(Rbebelm)
 
-FakeAgentBackendS3 <- S7::new_S3_class("fakeAgentBackendVignette")
+FakeBebelAgentBackendS3 <- S7::new_S3_class("fakeBebelAgentBackendVignette")
 
-S7::method(agent_append_user, FakeAgentBackendS3) <- function(agent, message) {
+S7::method(bebel_backend_append_user, FakeBebelAgentBackendS3) <- function(agent, message) {
   agent$user <- c(agent$user, message)
   agent
 }
 
-S7::method(agent_append_system, FakeAgentBackendS3) <- function(agent, message, tools = NULL) {
+S7::method(bebel_backend_append_system, FakeBebelAgentBackendS3) <- function(agent, message, tools = NULL) {
   agent$system <- c(agent$system, message)
   agent
 }
 
-S7::method(agent_append_tool_result, FakeAgentBackendS3) <- function(agent, content) {
+S7::method(bebel_backend_append_tool_result, FakeBebelAgentBackendS3) <- function(agent, content) {
   agent$tool <- c(agent$tool, content)
   agent
 }
 
-S7::method(agent_assistant_turn, FakeAgentBackendS3) <- function(
+S7::method(bebel_backend_assistant_turn, FakeBebelAgentBackendS3) <- function(
   agent,
   on_event = NULL,
   check_interrupt = TRUE,
@@ -69,21 +69,21 @@ S7::method(agent_assistant_turn, FakeAgentBackendS3) <- function(
   list(text = "fake reply", tokens = 2L, stop = "stop")
 }
 
-S7::method(agent_info, FakeAgentBackendS3) <- function(agent) {
+S7::method(bebel_backend_info, FakeBebelAgentBackendS3) <- function(agent) {
   list(provider = "fake", model = "fake-model")
 }
 
-S7::method(agent_transcript, FakeAgentBackendS3) <- function(agent) {
+S7::method(bebel_backend_transcript, FakeBebelAgentBackendS3) <- function(agent) {
   paste(c(agent$system, agent$user, agent$tool), collapse = "\n")
 }
 
-S7::method(agent_clear, FakeAgentBackendS3) <- function(agent) {
+S7::method(bebel_backend_clear, FakeBebelAgentBackendS3) <- function(agent) {
   agent$user <- character()
   agent$tool <- character()
   agent
 }
 
-backend <- structure(new.env(parent = emptyenv()), class = "fakeAgentBackendVignette")
+backend <- structure(new.env(parent = emptyenv()), class = "fakeBebelAgentBackendVignette")
 backend$user <- character()
 backend$system <- character()
 backend$tool <- character()
@@ -92,7 +92,7 @@ backend$tool <- character()
 ## Loop and frontend ownership
 
 `bebel_agent_loop()` is the UI-independent controller. It accepts any
-`AgentBackend`, optional tools, hooks, extensions, and a persistence setting.
+`BebelAgentBackend`, optional tools, hooks, extensions, and a persistence setting.
 The queue vocabulary follows Pi:
 
 - `bebel_loop_steer()` adds steering messages.
@@ -102,7 +102,7 @@ The queue vocabulary follows Pi:
 
 ```{r loop-with-fake-backend}
 store_dir <- file.path(tempdir(), "rbebelm-framework-sessions")
-store <- agent_session_create(cwd = tempdir(), session_dir = store_dir, name = "fake backend")
+store <- bebel_session_create(cwd = tempdir(), session_dir = store_dir, name = "fake backend")
 
 loop <- bebel_agent_loop(backend, session = store)
 run <- bebel_loop_run(loop, "Hello backend", max_steps = 1)
@@ -117,9 +117,9 @@ its own transcript/cache state; the session file stores portable framework
 history for replay, browsing, forking, sharing, and UI state.
 
 ```{r loop-session-context}
-context <- agent_session_context(store)
+context <- bebel_session_context(store)
 vapply(context$messages, `[[`, character(1), "role")
-readLines(agent_session_file(store), n = 3)
+readLines(bebel_session_file(store), n = 3)
 ```
 
 ## JSONL session trees
@@ -138,9 +138,9 @@ tools::R_user_dir("Rbebelm", "data")/sessions/<encoded-cwd>/
 Set `RBEBELM_SESSION_DIR` or pass `session_dir` to override that location.
 
 ```{r session-tree}
-s <- agent_session_create(cwd = tempdir(), session_dir = store_dir, name = "tree demo")
-u1 <- agent_session_append_message(s, "user", "first question")
-a1 <- agent_session_append_message(
+s <- bebel_session_create(cwd = tempdir(), session_dir = store_dir, name = "tree demo")
+u1 <- bebel_session_append_message(s, "user", "first question")
+a1 <- bebel_session_append_message(
   s,
   "assistant",
   list(list(type = "text", text = "first answer")),
@@ -149,11 +149,11 @@ a1 <- agent_session_append_message(
   stopReason = "stop"
 )
 
-agent_session_checkout(s, u1)
-u2 <- agent_session_append_message(s, "user", "alternate branch")
+bebel_session_checkout(s, u1)
+u2 <- bebel_session_append_message(s, "user", "alternate branch")
 
-vapply(agent_session_branch(s), `[[`, character(1), "type")
-length(agent_session_tree(s)[[1]]$children)
+vapply(bebel_session_branch(s), `[[`, character(1), "type")
+length(bebel_session_tree(s)[[1]]$children)
 ```
 
 Session entries include ordinary messages plus metadata and extension entries:
@@ -169,36 +169,36 @@ Session entries include ordinary messages plus metadata and extension entries:
 - `branch_summary`
 
 ```{r custom-session-entries}
-agent_session_append_custom(s, "my-extension", list(counter = 1L))
-agent_session_append_custom_message(s, "my-extension", "Hidden context", display = FALSE)
-agent_session_append_label(s, u1, "checkpoint")
+bebel_session_append_custom(s, "my-extension", list(counter = 1L))
+bebel_session_append_custom_message(s, "my-extension", "Hidden context", display = FALSE)
+bebel_session_append_label(s, u1, "checkpoint")
 
-tail(vapply(agent_session_entries(s), `[[`, character(1), "type"), 3)
+tail(vapply(bebel_session_entries(s), `[[`, character(1), "type"), 3)
 ```
 
 Forking copies all non-header entries into a new session file with a new header.
 Cloning a branch copies only the active path from root to a selected leaf.
 
 ```{r fork-and-clone}
-forked <- agent_session_fork(agent_session_file(s), cwd = tempdir(), session_dir = store_dir)
-cloned <- agent_session_clone_branch(s, leaf_id = u2, session_dir = store_dir)
+forked <- bebel_session_fork(bebel_session_file(s), cwd = tempdir(), session_dir = store_dir)
+cloned <- bebel_session_clone_branch(s, leaf_id = u2, session_dir = store_dir)
 
-agent_session_header(forked)$parentSession
-vapply(agent_session_entries(cloned), `[[`, character(1), "id")
+bebel_session_header(forked)$parentSession
+vapply(bebel_session_entries(cloned), `[[`, character(1), "id")
 ```
 
 ## Extensions
 
 An extension is a backend-agnostic capability bundle registered into the loop,
 not into a particular terminal UI. It should implement the
-`AgentExtension` interface:
+`BebelAgentExtension` interface:
 
-- `extension_manifest(extension)`
-- `extension_tools(extension)`
-- `extension_commands(extension)`
-- `extension_hooks(extension)`
-- `extension_skill_providers(extension)`
-- `extension_prompt_template_providers(extension)`
+- `bebel_extension_manifest(extension)`
+- `bebel_extension_tools(extension)`
+- `bebel_extension_commands(extension)`
+- `bebel_extension_hooks(extension)`
+- `bebel_extension_skill_providers(extension)`
+- `bebel_extension_prompt_template_providers(extension)`
 
 The helper `bebel_extension()` creates a simple extension object implementing
 that interface. Extensions register into the loop; they do not own the loop or a
@@ -240,19 +240,19 @@ prompt loading is not tied to BebeLM. A provider can be in-memory, file-backed,
 or package-backed.
 
 ```{r skill-template-providers}
-skills <- agent_skill_provider(list(
+skills <- bebel_skill_provider(list(
   concise = "Prefer concise, direct answers.",
   r_safe = "Avoid side effects unless the user asks for them."
 ))
 
-prompts <- agent_prompt_template_provider(list(
+prompts <- bebel_prompt_template_provider(list(
   system = "You are {{role}} working in {{place}}."
 ))
 
-skill_list(skills)
-prompt_template_list(prompts)
+bebel_skill_list(skills)
+bebel_prompt_template_list(prompts)
 
-agent_system_prompt(
+bebel_system_prompt(
   prompts,
   "system",
   data = list(role = "an R coding agent", place = "Bamako"),
@@ -261,6 +261,6 @@ agent_system_prompt(
 )
 ```
 
-`agent_append_system_prompt()` renders a template, appends selected skills, and
-then calls `agent_append_system()`. This keeps system-prompt loading generic;
+`bebel_append_system_prompt()` renders a template, appends selected skills, and
+then calls `bebel_backend_append_system()`. This keeps system-prompt loading generic;
 BebeLM-specific tool preamble details remain inside BebeLM's backend method.

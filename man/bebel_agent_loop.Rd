@@ -18,7 +18,7 @@ bebel_agent_loop(
 )
 }
 \arguments{
-\item{agent}{An object implementing \link{AgentBackend}.}
+\item{agent}{An object implementing \code{BebelAgentBackend}.}
 
 \item{tools}{A list of \code{bebel_tool()} objects or named functions.}
 
@@ -33,9 +33,9 @@ bebel_agent_loop(
 
 \item{extensions}{Optional list of \code{\link[=bebel_extension]{bebel_extension()}} objects.}
 
-\item{session}{Session persistence setting. \code{TRUE} creates an \code{agentSession}
-under \code{agent_session_dir()}, \code{FALSE}/\code{NULL} disables persistence, an
-\code{agentSession} reuses that store, and a character path opens a JSONL session.}
+\item{session}{Session persistence setting. \code{TRUE} creates an \code{bebelSession}
+under \code{bebel_session_dir()}, \code{FALSE}/\code{NULL} disables persistence, an
+\code{bebelSession} reuses that store, and a character path opens a JSONL session.}
 
 \item{parse_tool_call}{Function converting tool-call text into one or more
 call records.}
