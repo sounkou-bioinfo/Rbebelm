@@ -42,10 +42,19 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.2.0-0.1.0" id="rbebelm-020-010">Rbebelm 0.2.0-0.1.0<a class="anchor" aria-label="anchor" href="#rbebelm-020-010"></a></h2>
+<ul><li>Reoriented the package around the public <code>bebel_*</code> / <code>Bebel*</code> API for the generic R agent/frontend framework.</li>
+<li>Added S7/s7contract contracts for backends, extensions, skills, prompt templates, loop commands/events, and Pi-inspired JSONL session trees.</li>
+<li>Added native FFF-backed fuzzy file search through <code><a href="../reference/bebel_file_finder.html">bebel_file_finder()</a></code> and <code><a href="../reference/bebel_file_finder.html">bebel_file_search()</a></code> with explicit webR/wasm unsupported diagnostics.</li>
+<li>Hardened native SIMD dispatch: scalar builds use a baseline x86-64 target, optimized dylibs are selected by runtime CPU checks, and FFF/neo_frizbee SIMD remains runtime-gated.</li>
+<li>Updated webR packaging checks for hard runtime dependencies including S7, s7contract, and yyjsonr.</li>
+</ul></div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.0.0.9000" id="rbebelm-0009000">Rbebelm 0.0.0.9000<a class="anchor" aria-label="anchor" href="#rbebelm-0009000"></a></h2>
 <ul><li>Initial experimental scaffold.</li>
 </ul></div>
-  </main></div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">

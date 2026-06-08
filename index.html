@@ -66,6 +66,7 @@
 <ul>
 <li>The framework layer provides backend-agnostic <code>S7</code>/<code>s7contract</code> interfaces for LLM providers, extensions, skills, prompt templates, loop events, frontend/TUI command catalogs, and Pi-inspired append-only JSONL session trees.</li>
 <li>The concrete backend wraps upstream <a href="https://github.com/maximecb/bebelm" class="external-link"><code>maximecb/bebelm</code></a>, a pure-Rust CPU-only implementation of <a href="https://www.liquid.ai/blog/lfm2-5-8b-a1b" class="external-link">Liquid AI LFM2.5-8B-A1B</a> inference. The R package uses <a href="https://github.com/yutannihilation/savvy" class="external-link"><code>savvy</code></a> for the R/Rust boundary and a runtime backend layout for portable SIMD dispatch.</li>
+<li>The native search layer vendors FFF and exposes persistent fuzzy file indexes for agents, consoles, RPC clients, and future TUIs via <code><a href="reference/bebel_file_finder.html">bebel_file_finder()</a></code> and <code><a href="reference/bebel_file_finder.html">bebel_file_search()</a></code>.</li>
 </ul>
 <p>The intended architecture is loop-first: the agent loop owns lifecycle, queues, tools, extensions, events, and sessions; consoles, RPC servers, and future TUIs consume that loop instead of owning agent business logic. BebeLM is the bundled native provider, not a requirement of the framework contracts.</p>
 <div class="section level2">
@@ -92,7 +93,7 @@
 <span>  <span class="op">)</span></span>
 <span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"Rbebelm"</span><span class="op">)</span></span></code></pre></div>
-<p>Source installs require Cargo/rustc and GNU make. On Linux, macOS, and Windows, <code>Rbebelm</code> builds separate Rust backend libraries when possible: scalar, AVX2, and AVX-512 on x86_64; scalar and NEON on arm64. The dispatcher selects the best installed backend supported by the current CPU/runtime before loading model code.</p>
+<p>Source installs require Cargo/rustc and GNU make. On Linux, macOS, and Windows, <code>Rbebelm</code> builds separate Rust backend libraries when possible: scalar, AVX2, and AVX-512 on x86_64; scalar and NEON on arm64. The dispatcher selects the best installed backend supported by the current CPU/runtime before loading model code. Scalar x86_64 artifacts are compiled with an explicit baseline target rather than inheriting <code>target-cpu=native</code>; optimized model and FFF/<code>neo_frizbee</code> SIMD paths are used only through backend selection or runtime feature checks.</p>
 <p>The model weights are not bundled with the R package. Download the GGUF weights from the upstream model source documented by <a href="https://github.com/maximecb/bebelm" class="external-link"><code>bebelm</code></a>, then pass the local path to <code><a href="reference/bebel_model_load.html">bebel_model_load()</a></code>.</p>
 </div>
 <div class="section level2">
@@ -118,8 +119,8 @@
 <span><span class="co">#&gt; &lt;BebeLM assistant turn&gt;</span></span>
 <span><span class="co">#&gt;   stop: eos</span></span>
 <span><span class="co">#&gt;   tokens: 27 generated; 19 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 10.3 tok/s</span></span>
-<span><span class="co">#&gt;   decode: 10.47 tok/s</span></span>
+<span><span class="co">#&gt;   prefill: 11.3 tok/s</span></span>
+<span><span class="co">#&gt;   decode: 11.90 tok/s</span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; &lt;think&gt;</span></span>
 <span><span class="co">#&gt; The user asks: "What is the capital of Mali? Answer briefly."&lt;/think&gt;</span></span>
@@ -128,8 +129,8 @@
 <span><span class="co">#&gt; &lt;BebeLM assistant turn&gt;</span></span>
 <span><span class="co">#&gt;   stop: eos</span></span>
 <span><span class="co">#&gt;   tokens: 26 generated; 14 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 10.5 tok/s</span></span>
-<span><span class="co">#&gt;   decode: 10.70 tok/s</span></span>
+<span><span class="co">#&gt;   prefill: 12.0 tok/s</span></span>
+<span><span class="co">#&gt;   decode: 11.63 tok/s</span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; &lt;think&gt;</span></span>
 <span><span class="co">#&gt; The user asks: "What about Italy? Answer briefly." Likely they&lt;/think&gt;</span></span>
@@ -204,8 +205,8 @@
 <span><span class="co">#&gt; &lt;BebeLM chat result&gt;</span></span>
 <span><span class="co">#&gt;   stop: max_new</span></span>
 <span><span class="co">#&gt;   tokens: 48 generated; 22 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 10.4 tok/s</span></span>
-<span><span class="co">#&gt;   decode: 10.81 tok/s</span></span>
+<span><span class="co">#&gt;   prefill: 11.4 tok/s</span></span>
+<span><span class="co">#&gt;   decode: 11.67 tok/s</span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; &lt;think&gt;</span></span>
 <span><span class="co">#&gt; The user asks: "In one concise sentence, what does runtime SIMD&lt;/think&gt;</span></span>
@@ -226,8 +227,8 @@
 <span><span class="co">#&gt; &lt;BebeLM generation result&gt;</span></span>
 <span><span class="co">#&gt;   stop: max_new</span></span>
 <span><span class="co">#&gt;   tokens: 24 generated; 8 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 10.7 tok/s</span></span>
-<span><span class="co">#&gt;   decode: 11.15 tok/s</span></span>
+<span><span class="co">#&gt;   prefill: 11.5 tok/s</span></span>
+<span><span class="co">#&gt;   decode: 12.03 tok/s</span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt;  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However</span></span></code></pre></div>
 <p>Use <code><a href="reference/bebel_append_system.html">bebel_append_system()</a></code> for an upstream-rendered ChatML system turn. With no tools, the low-level <code><a href="reference/bebel_append.html">bebel_append()</a></code> form below is equivalent apart from being more explicit about the tokens. When <code>tools</code> are supplied, BebeLM renders its <code>List of tools: [...]</code> system preamble.</p>
@@ -297,8 +298,8 @@
 <span><span class="co">#&gt; &lt;BebeLM assistant turn&gt;</span></span>
 <span><span class="co">#&gt;   stop: eos</span></span>
 <span><span class="co">#&gt;   tokens: 18 generated; 13 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 10.2 tok/s</span></span>
-<span><span class="co">#&gt;   decode: 10.32 tok/s</span></span>
+<span><span class="co">#&gt;   prefill: 11.7 tok/s</span></span>
+<span><span class="co">#&gt;   decode: 11.56 tok/s</span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; lookup_capital({"country":"Italy"}) returned Rome as the capital of Italy.</span></span>
 <span><span class="va">ctx</span><span class="op">$</span><span class="va">log</span></span>
@@ -338,10 +339,10 @@
 <span>  model <span class="op">=</span> <span class="st">"demo-model"</span>,</span>
 <span>  stopReason <span class="op">=</span> <span class="st">"stop"</span></span>
 <span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "2cd92948"</span></span>
+<span><span class="co">#&gt; [1] "d643da8a"</span></span>
 <span></span>
 <span><span class="fu"><a href="reference/bebel_session_header.html">bebel_session_leaf_id</a></span><span class="op">(</span><span class="va">store</span><span class="op">)</span></span>
-<span><span class="co">#&gt; &lt;bebelSessionLeafId&gt; 2cd92948</span></span>
+<span><span class="co">#&gt; &lt;bebelSessionLeafId&gt; d643da8a</span></span>
 <span><span class="fu"><a href="reference/bebel_session_context.html">bebel_session_context</a></span><span class="op">(</span><span class="va">store</span><span class="op">)</span><span class="op">$</span><span class="va">messages</span></span>
 <span><span class="co">#&gt; [[1]]</span></span>
 <span><span class="co">#&gt; [[1]]$role</span></span>
@@ -456,9 +457,9 @@
 <span><span class="co">#&gt;                path</span></span>
 <span><span class="co">#&gt;  src/bamako_agent.R</span></span>
 <span><span class="co">#&gt;                                                         absolute_path</span></span>
-<span><span class="co">#&gt;  /tmp/RtmpJ1nQGU/rbebelm-fff-readme-3561df6d004817/src/bamako_agent.R</span></span>
+<span><span class="co">#&gt;  /tmp/Rtmp4zcp5J/rbebelm-fff-readme-39084d1e9f2761/src/bamako_agent.R</span></span>
 <span><span class="co">#&gt;       file_name git_status size            modified score base_score</span></span>
-<span><span class="co">#&gt;  bamako_agent.R      clean    5 2026-06-08 21:38:35    74         64</span></span>
+<span><span class="co">#&gt;  bamako_agent.R      clean    5 2026-06-08 22:47:05    74         64</span></span>
 <span><span class="co">#&gt;      match_type exact_match is_binary</span></span>
 <span><span class="co">#&gt;  fuzzy_filename       FALSE     FALSE</span></span></code></pre></div>
 <p>The native FFF dependency is not loaded in webR/wasm; the package still loads there, and file-search creation reports that native FFF is unavailable. SIMD is handled with the same care as the BebeLM backend: Rbebelm builds scalar and optimized native dylibs separately, and FFF/<code>neo_frizbee</code> SIMD kernels are only entered through runtime CPU-feature checks or the already-selected optimized backend.</p>

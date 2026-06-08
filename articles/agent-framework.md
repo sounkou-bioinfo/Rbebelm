@@ -116,7 +116,7 @@ bebel_loop_state(loop)[c("state", "turns", "session_file")]
 #> [1] 1
 #> 
 #> $session_file
-#> [1] "/tmp/RtmpkIkHxo/rbebelm-framework-sessions/2026-06-08T22-54-00-540Z_c6be45ee-e358-44e7-ec1d-6ada44bc15ee.jsonl"
+#> [1] "/tmp/Rtmpiqz6mZ/rbebelm-framework-sessions/2026-06-08T23-02-27-587Z_c6be45ee-e358-44e7-ec1d-6ada44bc15ee.jsonl"
 ```
 
 The loop writes generic message entries to the session store. The
@@ -130,9 +130,9 @@ context <- bebel_session_context(store)
 vapply(context$messages, `[[`, character(1), "role")
 #> [1] "user"      "assistant"
 readLines(bebel_session_file(store), n = 3)
-#> [1] "{\"type\":\"session\",\"version\":3,\"id\":\"c6be45ee-e358-44e7-ec1d-6ada44bc15ee\",\"timestamp\":\"2026-06-08T22:54:00.540Z\",\"cwd\":\"/tmp/RtmpkIkHxo\"}"                                        
-#> [2] "{\"type\":\"session_info\",\"id\":\"3f1285a6\",\"parentId\":null,\"timestamp\":\"2026-06-08T22:54:00.543Z\",\"name\":\"fake backend\"}"                                                             
-#> [3] "{\"type\":\"message\",\"id\":\"f4585e9f\",\"parentId\":\"3f1285a6\",\"timestamp\":\"2026-06-08T22:54:00.561Z\",\"message\":{\"role\":\"user\",\"content\":\"Hello backend\",\"source\":\"prompt\"}}"
+#> [1] "{\"type\":\"session\",\"version\":3,\"id\":\"c6be45ee-e358-44e7-ec1d-6ada44bc15ee\",\"timestamp\":\"2026-06-08T23:02:27.586Z\",\"cwd\":\"/tmp/Rtmpiqz6mZ\"}"                                        
+#> [2] "{\"type\":\"session_info\",\"id\":\"3f1285a6\",\"parentId\":null,\"timestamp\":\"2026-06-08T23:02:27.590Z\",\"name\":\"fake backend\"}"                                                             
+#> [3] "{\"type\":\"message\",\"id\":\"f4585e9f\",\"parentId\":\"3f1285a6\",\"timestamp\":\"2026-06-08T23:02:27.608Z\",\"message\":{\"role\":\"user\",\"content\":\"Hello backend\",\"source\":\"prompt\"}}"
 ```
 
 ## JSONL session trees
@@ -210,7 +210,7 @@ forked <- bebel_session_fork(bebel_session_file(s), cwd = tempdir(), session_dir
 cloned <- bebel_session_clone_branch(s, leaf_id = u2, session_dir = store_dir)
 
 bebel_session_header(forked)$parentSession
-#> [1] "/tmp/RtmpkIkHxo/rbebelm-framework-sessions/2026-06-08T22-54-00-716Z_512d08e1-470f-b2bb-fa92-169253906552.jsonl"
+#> [1] "/tmp/Rtmpiqz6mZ/rbebelm-framework-sessions/2026-06-08T23-02-27-754Z_512d08e1-470f-b2bb-fa92-169253906552.jsonl"
 vapply(bebel_session_entries(cloned), `[[`, character(1), "id")
 #> [1] "81f70b06" "b589156b" "040c500c"
 ```

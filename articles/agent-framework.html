@@ -184,7 +184,7 @@ once.</li>
 <span><span class="co">#&gt; [1] 1</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $session_file</span></span>
-<span><span class="co">#&gt; [1] "/tmp/RtmpkIkHxo/rbebelm-framework-sessions/2026-06-08T22-54-00-540Z_c6be45ee-e358-44e7-ec1d-6ada44bc15ee.jsonl"</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] "/tmp/Rtmpiqz6mZ/rbebelm-framework-sessions/2026-06-08T23-02-27-587Z_c6be45ee-e358-44e7-ec1d-6ada44bc15ee.jsonl"</span></span></code></pre></div>
 <p>The loop writes generic message entries to the session store. The
 backend keeps its own transcript/cache state; the session file stores
 portable framework history for replay, browsing, forking, sharing, and
@@ -194,9 +194,9 @@ UI state.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">context</span><span class="op">$</span><span class="va">messages</span>, <span class="va">`[[`</span>, <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, <span class="st">"role"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "user"      "assistant"</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="fu"><a href="../reference/bebel_session_header.html">bebel_session_file</a></span><span class="op">(</span><span class="va">store</span><span class="op">)</span>, n <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "{\"type\":\"session\",\"version\":3,\"id\":\"c6be45ee-e358-44e7-ec1d-6ada44bc15ee\",\"timestamp\":\"2026-06-08T22:54:00.540Z\",\"cwd\":\"/tmp/RtmpkIkHxo\"}"                                        </span></span>
-<span><span class="co">#&gt; [2] "{\"type\":\"session_info\",\"id\":\"3f1285a6\",\"parentId\":null,\"timestamp\":\"2026-06-08T22:54:00.543Z\",\"name\":\"fake backend\"}"                                                             </span></span>
-<span><span class="co">#&gt; [3] "{\"type\":\"message\",\"id\":\"f4585e9f\",\"parentId\":\"3f1285a6\",\"timestamp\":\"2026-06-08T22:54:00.561Z\",\"message\":{\"role\":\"user\",\"content\":\"Hello backend\",\"source\":\"prompt\"}}"</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] "{\"type\":\"session\",\"version\":3,\"id\":\"c6be45ee-e358-44e7-ec1d-6ada44bc15ee\",\"timestamp\":\"2026-06-08T23:02:27.586Z\",\"cwd\":\"/tmp/Rtmpiqz6mZ\"}"                                        </span></span>
+<span><span class="co">#&gt; [2] "{\"type\":\"session_info\",\"id\":\"3f1285a6\",\"parentId\":null,\"timestamp\":\"2026-06-08T23:02:27.590Z\",\"name\":\"fake backend\"}"                                                             </span></span>
+<span><span class="co">#&gt; [3] "{\"type\":\"message\",\"id\":\"f4585e9f\",\"parentId\":\"3f1285a6\",\"timestamp\":\"2026-06-08T23:02:27.608Z\",\"message\":{\"role\":\"user\",\"content\":\"Hello backend\",\"source\":\"prompt\"}}"</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="jsonl-session-trees">JSONL session trees<a class="anchor" aria-label="anchor" href="#jsonl-session-trees"></a>
@@ -264,7 +264,7 @@ selected leaf.</p>
 <span><span class="va">cloned</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bebel_session_fork.html">bebel_session_clone_branch</a></span><span class="op">(</span><span class="va">s</span>, leaf_id <span class="op">=</span> <span class="va">u2</span>, session_dir <span class="op">=</span> <span class="va">store_dir</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/bebel_session_header.html">bebel_session_header</a></span><span class="op">(</span><span class="va">forked</span><span class="op">)</span><span class="op">$</span><span class="va">parentSession</span></span>
-<span><span class="co">#&gt; [1] "/tmp/RtmpkIkHxo/rbebelm-framework-sessions/2026-06-08T22-54-00-716Z_512d08e1-470f-b2bb-fa92-169253906552.jsonl"</span></span>
+<span><span class="co">#&gt; [1] "/tmp/Rtmpiqz6mZ/rbebelm-framework-sessions/2026-06-08T23-02-27-754Z_512d08e1-470f-b2bb-fa92-169253906552.jsonl"</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="fu"><a href="../reference/bebel_session_header.html">bebel_session_entries</a></span><span class="op">(</span><span class="va">cloned</span><span class="op">)</span>, <span class="va">`[[`</span>, <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, <span class="st">"id"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "81f70b06" "b589156b" "040c500c"</span></span></code></pre></div>
 </div>
