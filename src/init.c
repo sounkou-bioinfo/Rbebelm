@@ -64,11 +64,6 @@ SEXP savvy_rbebelm_render_system_turn__impl(SEXP c_arg__message, SEXP c_arg__too
     return handle_result(res);
 }
 
-SEXP savvy_rbebelm_tool_schema_json__impl(SEXP c_arg__name, SEXP c_arg__description, SEXP c_arg__param_names, SEXP c_arg__param_types, SEXP c_arg__param_descriptions, SEXP c_arg__param_required) {
-    SEXP res = Rbebelm_tool_schema_json_ffi(c_arg__name, c_arg__description, c_arg__param_names, c_arg__param_types, c_arg__param_descriptions, c_arg__param_required);
-    return handle_result(res);
-}
-
 SEXP savvy_BebelAgent_append__impl(SEXP self__, SEXP c_arg__text) {
     SEXP res = Rbebelm_BebelAgent_append_ffi(self__, c_arg__text);
     return handle_result(res);
@@ -181,7 +176,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"savvy_rbebelm_backend_features__impl", (DL_FUNC) &savvy_rbebelm_backend_features__impl, 0},
     {"savvy_rbebelm_parse_tool_calls__impl", (DL_FUNC) &savvy_rbebelm_parse_tool_calls__impl, 1},
     {"savvy_rbebelm_render_system_turn__impl", (DL_FUNC) &savvy_rbebelm_render_system_turn__impl, 3},
-    {"savvy_rbebelm_tool_schema_json__impl", (DL_FUNC) &savvy_rbebelm_tool_schema_json__impl, 6},
     {"savvy_BebelAgent_append__impl", (DL_FUNC) &savvy_BebelAgent_append__impl, 2},
     {"savvy_BebelAgent_append_system__impl", (DL_FUNC) &savvy_BebelAgent_append_system__impl, 2},
     {"savvy_BebelAgent_append_system_with_tools__impl", (DL_FUNC) &savvy_BebelAgent_append_system_with_tools__impl, 4},

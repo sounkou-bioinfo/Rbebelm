@@ -15,5 +15,5 @@ A list of calls, each with \code{name}, \code{arguments}, and \code{raw}.
 \description{
 Delegates Pythonic BebeLM tool-call parsing (\verb{[name(arg='value')]}, including
 multiple calls) to upstream BebeLM. JSON call objects and legacy \code{name({...})}
-calls remain supported only when optional package \code{jsonlite} is installed.
+calls are parsed with imported package \code{yyjsonr}.
 }

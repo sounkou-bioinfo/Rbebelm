@@ -10,10 +10,10 @@ bebel_tool_schema_json(tool)
 \item{tool}{A \code{bebelTool} object created by \code{\link[=bebel_tool]{bebel_tool()}}.}
 }
 \value{
-A character scalar containing the upstream-rendered tool schema.
+A character scalar containing the rendered tool schema.
 }
 \description{
-Converts an R \code{\link[=bebel_tool]{bebel_tool()}} declaration into upstream BebeLM's JSON-like
-tool schema string for the system \verb{List of tools: [...]} preamble. This is
+Converts an R \code{\link[=bebel_tool]{bebel_tool()}} declaration into BebeLM's JSON tool schema string
+for the system \verb{List of tools: [...]} preamble using \code{yyjsonr}. This is
 normally called by \code{\link[=bebel_append_system]{bebel_append_system()}} when \code{tools} are supplied.
 }

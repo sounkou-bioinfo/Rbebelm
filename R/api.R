@@ -40,39 +40,39 @@ format_bebel_yes_no <- function(x) {
 #' @export
 print.rbebelmBackendInfo <- function(x, ...) {
   cat("<Rbebelm backend dispatch>\n")
-  cat("  mode:", x$dispatch_mode, "\n")
-  cat("  requested:", x$requested_backend, "\n")
-  cat("  selected:", x$selected_backend, "\n")
-  cat("  loaded:", format_bebel_yes_no(x$backend_loaded), "\n")
-  cat("  installed:", x$installed_backends, "\n")
-  cat("  supported:", x$supported_backends, "\n")
+  cat("  mode: ", x$dispatch_mode, "\n", sep = "")
+  cat("  requested: ", x$requested_backend, "\n", sep = "")
+  cat("  selected: ", x$selected_backend, "\n", sep = "")
+  cat("  loaded: ", format_bebel_yes_no(x$backend_loaded), "\n", sep = "")
+  cat("  installed: ", x$installed_backends, "\n", sep = "")
+  cat("  supported: ", x$supported_backends, "\n", sep = "")
   invisible(x)
 }
 
 #' @export
 print.rbebelmCpuidInfo <- function(x, ...) {
   cat("<Rbebelm CPU features>\n")
-  cat("  x86_64-v3:", format_bebel_yes_no(x$cpu_x86_64_v3), "\n")
-  cat("  x86_64-v4:", format_bebel_yes_no(x$cpu_x86_64_v4), "\n")
-  cat("  NEON:", format_bebel_yes_no(x$cpu_neon), "\n")
-  cat("  ARM dotprod:", format_bebel_yes_no(x$cpu_dotprod), "\n")
-  cat("  wasm simd128:", format_bebel_yes_no(x$cpu_wasm_simd128), "\n")
+  cat("  x86_64-v3: ", format_bebel_yes_no(x$cpu_x86_64_v3), "\n", sep = "")
+  cat("  x86_64-v4: ", format_bebel_yes_no(x$cpu_x86_64_v4), "\n", sep = "")
+  cat("  NEON: ", format_bebel_yes_no(x$cpu_neon), "\n", sep = "")
+  cat("  ARM dotprod: ", format_bebel_yes_no(x$cpu_dotprod), "\n", sep = "")
+  cat("  wasm simd128: ", format_bebel_yes_no(x$cpu_wasm_simd128), "\n", sep = "")
   invisible(x)
 }
 
 #' @export
 print.rbebelmBackendFeatures <- function(x, ...) {
   cat("<Rbebelm backend features>\n")
-  cat("  backend:", x$backend, "\n")
-  cat("  target:", paste0(x$target_arch, "-", x$target_os), "\n")
-  cat("  Rust crate:", paste0(x$rust_package, " ", x$rust_package_version), "\n")
-  cat("  native SIMD feature:", format_bebel_yes_no(x$native_simd_feature), "\n")
+  cat("  backend: ", x$backend, "\n", sep = "")
+  cat("  target: ", paste0(x$target_arch, "-", x$target_os), "\n", sep = "")
+  cat("  Rust crate: ", paste0(x$rust_package, " ", x$rust_package_version), "\n", sep = "")
+  cat("  native SIMD feature: ", format_bebel_yes_no(x$native_simd_feature), "\n", sep = "")
   cat("  compiled features:\n")
-  cat("    AVX2:", format_bebel_yes_no(x$compiled_avx2), "\n")
-  cat("    AVX-512F:", format_bebel_yes_no(x$compiled_avx512f), "\n")
-  cat("    NEON:", format_bebel_yes_no(x$compiled_neon), "\n")
-  cat("    ARM dotprod:", format_bebel_yes_no(x$compiled_dotprod), "\n")
-  cat("    wasm simd128:", format_bebel_yes_no(x$compiled_wasm_simd128), "\n")
+  cat("    AVX2: ", format_bebel_yes_no(x$compiled_avx2), "\n", sep = "")
+  cat("    AVX-512F: ", format_bebel_yes_no(x$compiled_avx512f), "\n", sep = "")
+  cat("    NEON: ", format_bebel_yes_no(x$compiled_neon), "\n", sep = "")
+  cat("    ARM dotprod: ", format_bebel_yes_no(x$compiled_dotprod), "\n", sep = "")
+  cat("    wasm simd128: ", format_bebel_yes_no(x$compiled_wasm_simd128), "\n", sep = "")
   invisible(x)
 }
 
@@ -376,7 +376,7 @@ bebel_tool <- function(name, fun, description = NULL, schema = NULL) {
 
 #' @export
 print.bebelTool <- function(x, ...) {
-  cat("<bebelTool>", x$name, "\n")
+  cat("<bebelTool> ", x$name, "\n", sep = "")
   if (!is.null(x$description)) cat("  ", x$description, "\n", sep = "")
   invisible(x)
 }
@@ -402,44 +402,58 @@ normalize_bebel_tools <- function(tools) {
   out
 }
 
+bebel_json_read_opts <- function() {
+  yyjsonr::opts_read_json(
+    obj_of_arrs_to_df = FALSE,
+    arr_of_objs_to_df = FALSE,
+    arr_of_arrs_to_matrix = FALSE
+  )
+}
+
+bebel_json_write_opts <- function(auto_unbox = TRUE) {
+  yyjsonr::opts_write_json(auto_unbox = auto_unbox, pretty = FALSE, null = "null")
+}
+
+bebel_json_read <- function(x) {
+  yyjsonr::read_json_str(x, opts = bebel_json_read_opts())
+}
+
+bebel_json_write <- function(x, auto_unbox = TRUE) {
+  yyjsonr::write_json_str(x, opts = bebel_json_write_opts(auto_unbox = auto_unbox))
+}
+
+bebel_json_string_array <- function(x) {
+  as.list(as.character(unlist(x %||% list(), use.names = FALSE)))
+}
+
+normalize_bebel_tool_schema_json <- function(schema) {
+  if (is.null(schema)) schema <- list()
+  if (!is.list(schema)) stop("tool schema must be a list or JSON string", call. = FALSE)
+  if (is.null(schema$type)) schema$type <- "object"
+  if (is.null(schema$properties)) schema$properties <- stats::setNames(list(), character())
+  if (is.null(schema$required)) schema$required <- list()
+  schema$required <- bebel_json_string_array(schema$required)
+  schema
+}
+
 #' Render a BebeLM tool schema
 #'
-#' Converts an R [bebel_tool()] declaration into upstream BebeLM's JSON-like
-#' tool schema string for the system `List of tools: [...]` preamble. This is
+#' Converts an R [bebel_tool()] declaration into BebeLM's JSON tool schema string
+#' for the system `List of tools: [...]` preamble using `yyjsonr`. This is
 #' normally called by [bebel_append_system()] when `tools` are supplied.
 #'
 #' @param tool A `bebelTool` object created by [bebel_tool()].
-#' @return A character scalar containing the upstream-rendered tool schema.
+#' @return A character scalar containing the rendered tool schema.
 #' @export
 bebel_tool_schema_json <- function(tool) {
   schema <- tool$schema
   if (is.character(schema) && length(schema) == 1L && nzchar(schema)) return(schema)
 
-  params <- list()
-  if (is.list(schema) && identical(schema$type, "object") && is.list(schema$properties)) {
-    required <- unlist(schema$required %||% list(), use.names = FALSE)
-    params <- lapply(names(schema$properties), function(nm) {
-      x <- schema$properties[[nm]]
-      list(
-        name = nm,
-        type = as.character(x$type %||% "string"),
-        description = as.character(x$description %||% ""),
-        required = nm %in% required
-      )
-    })
-  }
-  names <- vapply(params, `[[`, character(1), "name")
-  types <- vapply(params, `[[`, character(1), "type")
-  descriptions <- vapply(params, `[[`, character(1), "description")
-  required <- vapply(params, `[[`, logical(1), "required")
-  rbebelm_tool_schema_json(
-    tool$name,
-    as.character(tool$description %||% tool$name),
-    names,
-    types,
-    descriptions,
-    required
-  )
+  bebel_json_write(list(
+    name = as.character(tool$name),
+    description = as.character(tool$description %||% tool$name),
+    parameters = normalize_bebel_tool_schema_json(schema)
+  ))
 }
 
 
@@ -461,14 +475,11 @@ normalize_upstream_tool_call <- function(call) {
 }
 
 parse_json_tool_call <- function(x, raw) {
-  if (!requireNamespace("jsonlite", quietly = TRUE)) {
-    stop("JSON tool-call compatibility requires optional package 'jsonlite'; upstream BebeLM tool calls use Pythonic syntax", call. = FALSE)
-  }
-  obj <- jsonlite::fromJSON(x, simplifyVector = FALSE)
+  obj <- bebel_json_read(x)
   name <- obj$name %||% obj$tool %||% (obj[["function"]] %||% list())$name
   args <- obj$arguments %||% obj$args %||% obj$input %||% list()
   if (is.character(args) && length(args) == 1L && grepl("^\\s*\\{", args)) {
-    args <- tryCatch(jsonlite::fromJSON(args, simplifyVector = FALSE), error = function(e) args)
+    args <- tryCatch(bebel_json_read(args), error = function(e) args)
   }
   if (is.null(name) || !nzchar(name)) stop("JSON tool call has no name/tool/function.name", call. = FALSE)
   list(name = name, arguments = args, raw = raw)
@@ -478,7 +489,7 @@ parse_json_tool_call <- function(x, raw) {
 #'
 #' Delegates Pythonic BebeLM tool-call parsing (`[name(arg='value')]`, including
 #' multiple calls) to upstream BebeLM. JSON call objects and legacy `name({...})`
-#' calls remain supported only when optional package `jsonlite` is installed.
+#' calls are parsed with imported package `yyjsonr`.
 #'
 #' @param content Accumulated content between BebeLM tool-call delimiters.
 #' @return A list of calls, each with `name`, `arguments`, and `raw`.
@@ -493,10 +504,7 @@ bebel_parse_tool_calls <- function(content) {
   m_json_arg <- regexec("^([A-Za-z_][A-Za-z0-9_.-]*)\\s*\\((\\s*\\{.*\\}\\s*)\\)$", x, perl = TRUE)
   hit_json_arg <- regmatches(x, m_json_arg)[[1]]
   if (length(hit_json_arg)) {
-    if (!requireNamespace("jsonlite", quietly = TRUE)) {
-      stop("JSON tool-call compatibility requires optional package 'jsonlite'; upstream BebeLM tool calls use Pythonic syntax", call. = FALSE)
-    }
-    return(list(list(name = hit_json_arg[2], arguments = jsonlite::fromJSON(hit_json_arg[3], simplifyVector = FALSE), raw = raw)))
+    return(list(list(name = hit_json_arg[2], arguments = bebel_json_read(hit_json_arg[3]), raw = raw)))
   }
 
   calls <- rbebelm_parse_tool_calls(x)
@@ -668,8 +676,8 @@ bebel_agent_run <- function(
 #' @export
 print.bebelAgentRun <- function(x, ...) {
   cat("<bebelAgentRun>\n")
-  cat("  turns:", length(x$turns), "\n")
-  cat("  tool calls:", length(x$tool_calls), "\n")
+  cat("  turns: ", length(x$turns), "\n", sep = "")
+  cat("  tool calls: ", length(x$tool_calls), "\n", sep = "")
   if (length(x$turns)) print(x$turns[[length(x$turns)]])
   invisible(x)
 }
@@ -958,8 +966,8 @@ bebel_live_console <- function(
 print.BebelModel <- function(x, ...) {
   info <- x$info()
   cat("<BebelModel>\n")
-  cat("  path:", info$path, "\n")
-  cat("  backend:", info$backend, "\n")
+  cat("  path: ", info$path, "\n", sep = "")
+  cat("  backend: ", info$backend, "\n", sep = "")
   invisible(x)
 }
 
@@ -967,10 +975,10 @@ print.BebelModel <- function(x, ...) {
 print.BebelAgent <- function(x, ...) {
   info <- x$info()
   cat("<BebelAgent>\n")
-  cat("  model:", info$model_path, "\n")
-  cat("  history tokens:", info$history_tokens, "\n")
-  cat("  processed tokens:", info$processed_tokens, "\n")
-  cat("  backend:", info$backend, "\n")
+  cat("  model: ", info$model_path, "\n", sep = "")
+  cat("  history tokens: ", info$history_tokens, "\n", sep = "")
+  cat("  processed tokens: ", info$processed_tokens, "\n", sep = "")
+  cat("  backend: ", info$backend, "\n", sep = "")
   invisible(x)
 }
 
@@ -991,10 +999,10 @@ print.bebelGeneration <- function(x, ...) {
     "BebeLM generation result"
   }
   cat("<", kind, ">\n", sep = "")
-  cat("  stop:", x$stop, "\n")
-  cat("  tokens:", x$generated_tokens, "generated;", x$prompt_tokens, "prompt\n")
-  cat("  prefill:", sprintf("%.1f tok/s", x$prefill_tps), "\n")
-  cat("  decode:", sprintf("%.2f tok/s", x$decode_tps), "\n")
+  cat("  stop: ", x$stop, "\n", sep = "")
+  cat("  tokens: ", x$generated_tokens, " generated; ", x$prompt_tokens, " prompt\n", sep = "")
+  cat("  prefill: ", sprintf("%.1f tok/s", x$prefill_tps), "\n", sep = "")
+  cat("  decode: ", sprintf("%.2f tok/s", x$decode_tps), "\n", sep = "")
   if (nzchar(x$text)) {
     cat("  text:\n")
     cat(x$text, "\n", sep = "")

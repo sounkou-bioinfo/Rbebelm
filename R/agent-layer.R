@@ -448,7 +448,7 @@ bebel_r_agent <- function(
     top_k = top_k,
     repeat_penalty = repeat_penalty
   )
-  bebel_append_system(agent, system_prompt, tools = tools)
+  bebel_append_system(agent, system_prompt, tools = bebel_agent_as_bebel_tools(tools))
 
   x <- new.env(parent = emptyenv())
   x$model <- model
@@ -468,9 +468,9 @@ bebel_r_agent <- function(
 #' @export
 print.bebelRAgent <- function(x, ...) {
   cat("<bebelRAgent>\n")
-  cat("  tools:", paste(names(x$tools), collapse = ", "), "\n")
+  cat("  tools: ", paste(names(x$tools), collapse = ", "), "\n", sep = "")
   info <- bebel_agent_info(x$agent)
-  cat("  history tokens:", info$history_tokens, "\n")
+  cat("  history tokens: ", info$history_tokens, "\n", sep = "")
   invisible(x)
 }
 
@@ -522,7 +522,7 @@ print.bebelRAgentTurn <- function(x, ...) {
 bebel_r_agent_clear <- function(session) {
   bebel_agent_layer_stopif(inherits(session, "bebelRAgent"), "session must be a bebelRAgent")
   bebel_clear(session$agent)
-  bebel_append_system(session$agent, session$system_prompt, tools = session$tools)
+  bebel_append_system(session$agent, session$system_prompt, tools = bebel_agent_as_bebel_tools(session$tools))
   session$history <- list()
   session$turns <- list()
   invisible(session)
@@ -840,7 +840,7 @@ bebel_r_agent_start <- function(
 }
 
 bebel_rpc_json <- function(x) {
-  jsonlite::toJSON(x, auto_unbox = TRUE, null = "null", pretty = FALSE)
+  bebel_json_write(x)
 }
 
 bebel_rpc_response <- function(id, result = NULL, error = NULL) {
@@ -893,7 +893,8 @@ bebel_rpc_handle <- function(session, req) {
 #' Serve an Rbebelm R agent over JSON-RPC
 #'
 #' This optional SDK surface uses `nanonext` to expose the same `bebelRAgent`
-#' object used by the console. It is intentionally small and not an OpenAI API:
+#' object used by the console. JSON parsing/serialization uses imported `yyjsonr`.
+#' It is intentionally small and not an OpenAI API:
 #' clients call JSON-RPC methods such as `turn`, `tools/list`, and
 #' `session/transcript`.
 #'
@@ -904,7 +905,6 @@ bebel_rpc_handle <- function(session, req) {
 bebel_r_agent_rpc_server <- function(session, url = "http://127.0.0.1:8080") {
   bebel_agent_layer_stopif(inherits(session, "bebelRAgent"), "session must be a bebelRAgent")
   bebel_agent_require("nanonext")
-  bebel_agent_require("jsonlite")
 
   handlers <- list(
     nanonext::handler("/health", function(req) {
@@ -912,7 +912,7 @@ bebel_r_agent_rpc_server <- function(session, url = "http://127.0.0.1:8080") {
     }, method = "GET"),
     nanonext::handler("/rpc", function(req) {
       body <- rawToChar(req$body %||% raw())
-      parsed <- tryCatch(jsonlite::fromJSON(body, simplifyVector = FALSE), error = function(e) NULL)
+      parsed <- tryCatch(bebel_json_read(body), error = function(e) NULL)
       if (is.null(parsed)) {
         response <- bebel_rpc_response(NULL, error = list(code = -32700L, message = "parse error"))
       } else {

@@ -16,7 +16,8 @@ A \code{nanoServer} object from \code{nanonext}.
 }
 \description{
 This optional SDK surface uses \code{nanonext} to expose the same \code{bebelRAgent}
-object used by the console. It is intentionally small and not an OpenAI API:
+object used by the console. JSON parsing/serialization uses imported \code{yyjsonr}.
+It is intentionally small and not an OpenAI API:
 clients call JSON-RPC methods such as \code{turn}, \code{tools/list}, and
 \code{session/transcript}.
 }

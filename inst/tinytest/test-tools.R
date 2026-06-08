@@ -8,6 +8,14 @@ call2 <- bebel_parse_tool_call('[lookup_capital(country="Italy")]')
 expect_equal(call2$name, "lookup_capital")
 expect_equal(call2$arguments$country, "Italy")
 
+json_call <- bebel_parse_tool_call('{"name":"lookup_capital","arguments":{"country":"Mali"}}')
+expect_equal(json_call$name, "lookup_capital")
+expect_equal(json_call$arguments$country, "Mali")
+
+legacy_json_call <- bebel_parse_tool_call('lookup_capital({"country":"Mali"})')
+expect_equal(legacy_json_call$name, "lookup_capital")
+expect_equal(legacy_json_call$arguments$country, "Mali")
+
 multi <- bebel_parse_tool_calls("[lookup_capital(country='Italy'), add(a=21, b=21)]")
 expect_equal(length(multi), 2L)
 expect_equal(multi[[1]]$name, "lookup_capital")

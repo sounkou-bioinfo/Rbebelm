@@ -88,20 +88,20 @@ turn2 <- bebel_assistant_turn(agent, on_event = NULL)
 
 turn1
 #> <BebeLM assistant turn>
-#>   stop: eos 
+#>   stop: eos
 #>   tokens: 27 generated; 19 prompt
-#>   prefill: 9.3 tok/s 
-#>   decode: 9.01 tok/s 
+#>   prefill: 10.0 tok/s
+#>   decode: 11.44 tok/s
 #>   text:
 #> <think>
 #> The user asks: "What is the capital of Mali? Answer briefly."</think>
 #> The capital of Mali is Bamako.
 turn2
 #> <BebeLM assistant turn>
-#>   stop: eos 
+#>   stop: eos
 #>   tokens: 26 generated; 14 prompt
-#>   prefill: 8.7 tok/s 
-#>   decode: 8.62 tok/s 
+#>   prefill: 11.6 tok/s
+#>   decode: 11.24 tok/s
 #>   text:
 #> <think>
 #> The user asks: "What about Italy? Answer briefly." Likely they</think>
@@ -188,18 +188,18 @@ result <- bebel_chat(
 )
 #> <think>
 #> The user asks: "In one concise sentence, what does runtime SIMD</think>
-#> Runtime SIMD dispatch dynamically selects and executes the most efficient instruction variant for the current hardware at execution time, allowing programs to adapt to varying processor
+#> Runtime SIMD dispatch dynamically selects and invokes the most efficient SIMD instruction set for the target hardware at execution time, optimizing performance by matching operations
 
 result
 #> <BebeLM chat result>
-#>   stop: max_new 
+#>   stop: max_new
 #>   tokens: 48 generated; 22 prompt
-#>   prefill: 8.7 tok/s 
-#>   decode: 8.92 tok/s 
+#>   prefill: 11.4 tok/s
+#>   decode: 11.71 tok/s
 #>   text:
 #> <think>
 #> The user asks: "In one concise sentence, what does runtime SIMD</think>
-#> Runtime SIMD dispatch dynamically selects and executes the most efficient instruction variant for the current hardware at execution time, allowing programs to adapt to varying processor
+#> Runtime SIMD dispatch dynamically selects and invokes the most efficient SIMD instruction set for the target hardware at execution time, optimizing performance by matching operations
 ```
 
 For plain text completion, use `bebel_generate()`:
@@ -217,10 +217,10 @@ raw_result <- bebel_generate(
 #>  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However
 raw_result
 #> <BebeLM generation result>
-#>   stop: max_new 
+#>   stop: max_new
 #>   tokens: 24 generated; 8 prompt
-#>   prefill: 8.7 tok/s 
-#>   decode: 9.20 tok/s 
+#>   prefill: 11.8 tok/s
+#>   decode: 12.13 tok/s
 #>   text:
 #>  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However
 ```
@@ -252,12 +252,12 @@ raw_turn <- bebel_agent_generate(raw_agent, on_event = NULL)
 ids <- bebel_tokenize(model, " and its airport code is", add_bos = FALSE)
 bebel_append_tokens(raw_agent, ids)
 bebel_history(raw_agent)[1:8]
-#> [1] 124894    597   5205    302  46628    355  50593   6261
+#> [1] 124894    597   5205    302  46628    355    278   3270
 bebel_token_ids()[c("TOKEN_THINK", "TOKEN_TOOL_CALL_START", "TOKEN_TOOL_CALL_END")]
 #>           TOKEN_THINK TOKEN_TOOL_CALL_START   TOKEN_TOOL_CALL_END 
 #>                124901                124905                124906
 raw_turn$text
-#> [1] " Bamako. city of ... ... ... ... ... ... ... ... ... ... ..."
+#> [1] " the city of Bamako. city of Bamako is located in the country of"
 ```
 
 Tools can be orchestrated with an Agent run loop. The `context` object
@@ -302,15 +302,15 @@ bebel_append_user(agent, tool_prompt)
 run <- bebel_agent_run(agent, tools = tools, context = ctx, hooks = hooks, max_steps = 2)
 run
 #> <bebelAgentRun>
-#>   turns: 2 
-#>   tool calls: 1 
+#>   turns: 2
+#>   tool calls: 1
 #> <BebeLM assistant turn>
-#>   stop: eos 
-#>   tokens: 7 generated; 31 prompt
-#>   prefill: 8.8 tok/s 
-#>   decode: 8.65 tok/s 
+#>   stop: eos
+#>   tokens: 18 generated; 13 prompt
+#>   prefill: 11.8 tok/s
+#>   decode: 11.71 tok/s
 #>   text:
-#> The capital of Italy is Rome.
+#> lookup_capital({"country":"Italy"}) returned Rome as the capital of Italy.
 ctx$log
 #> [1] "request lookup_capital"     "tool lookup_capital Italy" 
 #> [3] "result lookup_capital Rome"
@@ -377,8 +377,8 @@ From a shell, after installation:
   --weights /path/to/LFM2.5-8B-A1B-Q4_K_M.gguf
 ```
 
-Optional RPC server, using `nanonext` and `jsonlite` only when
-requested:
+Optional RPC server, using optional `nanonext`; JSON parsing and
+serialization use imported `yyjsonr`:
 
 ``` r
 server <- bebel_r_agent_rpc_server(r_agent, url = "http://127.0.0.1:8080")
@@ -407,7 +407,7 @@ invisible(bebel_generate(
   )
 ))
 paste0(deltas, collapse = "")
-#> [1] " be used to update a text field in a UI component."
+#> [1] " be used to update a text area. time is  "
 ```
 
 You can also pass a named list of event-specific handlers directly:
@@ -476,30 +476,30 @@ Inspect the current CPU/runtime and selected backend:
 ``` r
 rbebelm_cpuid_info()
 #> <Rbebelm CPU features>
-#>   x86_64-v3: yes 
-#>   x86_64-v4: no 
-#>   NEON: no 
-#>   ARM dotprod: no 
+#>   x86_64-v3: yes
+#>   x86_64-v4: no
+#>   NEON: no
+#>   ARM dotprod: no
 #>   wasm simd128: no
 rbebelm_backend_features()
 #> <Rbebelm backend features>
-#>   backend: avx2 
-#>   target: x86_64-linux 
-#>   Rust crate: rbebelm_backend 0.1.0 
-#>   native SIMD feature: yes 
+#>   backend: avx2
+#>   target: x86_64-linux
+#>   Rust crate: rbebelm_backend 0.1.0
+#>   native SIMD feature: yes
 #>   compiled features:
-#>     AVX2: yes 
-#>     AVX-512F: no 
-#>     NEON: no 
-#>     ARM dotprod: no 
+#>     AVX2: yes
+#>     AVX-512F: no
+#>     NEON: no
+#>     ARM dotprod: no
 #>     wasm simd128: no
 rbebelm_backend_info()
 #> <Rbebelm backend dispatch>
-#>   mode: dynamic 
-#>   requested: auto 
-#>   selected: avx2 
-#>   loaded: yes 
-#>   installed: scalar,avx2,avx512 
+#>   mode: dynamic
+#>   requested: auto
+#>   selected: avx2
+#>   loaded: yes
+#>   installed: scalar,avx2,avx512
 #>   supported: scalar,avx2
 ```
 

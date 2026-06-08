@@ -3,7 +3,6 @@ SEXP savvy_bebel_token_ids__ffi(void);
 SEXP savvy_rbebelm_backend_features__ffi(void);
 SEXP savvy_rbebelm_parse_tool_calls__ffi(SEXP c_arg__text);
 SEXP savvy_rbebelm_render_system_turn__ffi(SEXP c_arg__message, SEXP c_arg__tool_names, SEXP c_arg__tool_schemas);
-SEXP savvy_rbebelm_tool_schema_json__ffi(SEXP c_arg__name, SEXP c_arg__description, SEXP c_arg__param_names, SEXP c_arg__param_types, SEXP c_arg__param_descriptions, SEXP c_arg__param_required);
 
 // methods and associated functions for BebelAgent
 SEXP savvy_BebelAgent_append__ffi(SEXP self__, SEXP c_arg__text);

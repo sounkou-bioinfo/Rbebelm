@@ -1,16 +1,7 @@
-use bebelm::tool::{parse_tool_calls, Schema, Tool, Type};
-use savvy::{savvy, LogicalSexp, OwnedListSexp, StringSexp};
+use bebelm::tool::{parse_tool_calls, Tool};
+use savvy::{savvy, OwnedListSexp, StringSexp};
 
 use crate::util::{err, str_scalar};
-
-fn tool_type(value: &str) -> Type {
-    match value {
-        "integer" => Type::Int,
-        "number" => Type::Num,
-        "boolean" => Type::Bool,
-        _ => Type::Str,
-    }
-}
 
 fn parse_tool_call_to_list(call: &bebelm::tool::ToolCall) -> savvy::Result<savvy::Sexp> {
     let mut args = OwnedListSexp::new(call.args.len(), true)?;
@@ -54,38 +45,6 @@ pub fn render_system_turn(message: &str, tool_names: &[&str], tool_schemas: &[&s
     block.push_str(message);
     block.push_str("<|im_end|>\n");
     Ok(block)
-}
-
-/// Render an upstream BebeLM tool schema from parameter vectors.
-/// @keywords internal
-#[savvy]
-fn rbebelm_tool_schema_json(
-    name: &str,
-    description: &str,
-    param_names: StringSexp,
-    param_types: StringSexp,
-    param_descriptions: StringSexp,
-    param_required: LogicalSexp,
-) -> savvy::Result<savvy::Sexp> {
-    let names = param_names.to_vec();
-    let types = param_types.to_vec();
-    let descriptions = param_descriptions.to_vec();
-    let required = param_required.to_vec();
-    let n = names.len();
-    if types.len() != n || descriptions.len() != n || required.len() != n {
-        return Err(err("parameter vectors must have the same length"));
-    }
-
-    let mut schema = Schema::new();
-    for i in 0..n {
-        schema = if required[i] {
-            schema.req(names[i], tool_type(types[i]), descriptions[i])
-        } else {
-            schema.opt(names[i], tool_type(types[i]), descriptions[i])
-        };
-    }
-    let tool = Tool::new(name, description, schema, |_| String::new());
-    str_scalar(tool.schema())?.into()
 }
 
 /// Parse upstream BebeLM Pythonic tool calls.

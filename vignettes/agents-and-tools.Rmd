@@ -132,8 +132,8 @@ tools$lookup_capital
 ```
 
 The default parser delegates BebeLM's bracketed Pythonic tool-call form to
-upstream, including multiple calls. JSON object calls remain optional legacy
-compatibility when `jsonlite` is installed.
+upstream, including multiple calls. JSON object calls and legacy `name({...})`
+compatibility are parsed with imported `yyjsonr`.
 
 
 ``` r

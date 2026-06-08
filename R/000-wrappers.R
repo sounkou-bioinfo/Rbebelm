@@ -67,12 +67,6 @@ NULL
   .Call(savvy_rbebelm_render_system_turn__impl, `message`, `tool_names`, `tool_schemas`)
 }
 
-#' Render an upstream BebeLM tool schema from parameter vectors.
-#' @keywords internal
-`rbebelm_tool_schema_json` <- function(`name`, `description`, `param_names`, `param_types`, `param_descriptions`, `param_required`) {
-  .Call(savvy_rbebelm_tool_schema_json__impl, `name`, `description`, `param_names`, `param_types`, `param_descriptions`, `param_required`)
-}
-
 ### wrapper functions for BebelAgent
 
 `BebelAgent_append` <- function(self) {
