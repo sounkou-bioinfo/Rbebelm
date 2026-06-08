@@ -20,6 +20,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/getting-started.html">Getting started</a></li>
     <li><a class="dropdown-item" href="../articles/agents-and-tools.html">Agents and tools</a></li>
+    <li><a class="dropdown-item" href="../articles/agent-framework.html">Generic agent and frontend framework</a></li>
     <li><a class="dropdown-item" href="../articles/r-native-agent-layer.html">R-native agent layer</a></li>
     <li><a class="dropdown-item" href="../articles/events-and-adapters.html">Events and adapters</a></li>
     <li><a class="dropdown-item" href="../articles/backend-and-webr.html">Backends and webR</a></li>
@@ -89,7 +90,7 @@
           <code><a href="bebel_append_system.html">bebel_append_system()</a></code>
 
         </dt>
-        <dd>Append a ChatML system turn to a BebeLM agent transcript</dd>
+        <dd>Append an upstream BebeLM system turn to an agent transcript</dd>
 
         <dt>
 
@@ -128,6 +129,13 @@
 
         <dt>
 
+          <code><a href="bebel_assistant_turn_tool_stop.html">bebel_assistant_turn_tool_stop()</a></code>
+
+        </dt>
+        <dd>Open an assistant turn and stop when a tool call closes</dd>
+
+        <dt>
+
           <code><a href="bebel_agent_run.html">bebel_agent_run()</a></code>
 
         </dt>
@@ -142,10 +150,24 @@
 
         <dt>
 
+          <code><a href="bebel_tool_schema_json.html">bebel_tool_schema_json()</a></code>
+
+        </dt>
+        <dd>Render a BebeLM tool schema</dd>
+
+        <dt>
+
           <code><a href="bebel_parse_tool_call.html">bebel_parse_tool_call()</a></code>
 
         </dt>
-        <dd>Parse a BebeLM tool call block</dd>
+        <dd>Parse a single BebeLM tool call block</dd>
+
+        <dt>
+
+          <code><a href="bebel_parse_tool_calls.html">bebel_parse_tool_calls()</a></code>
+
+        </dt>
+        <dd>Parse BebeLM tool calls</dd>
 
         <dt>
 
@@ -244,6 +266,460 @@
 
         </dt>
         <dd>Persistent BebeLM conversation agent with transcript and decode caches.</dd>
+      </dl></div><div class="section level2">
+      <h2 id="generic-agent-and-frontend-framework">Generic agent and frontend framework<a class="anchor" aria-label="anchor" href="#generic-agent-and-frontend-framework"></a></h2>
+
+
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="rbebelm_contracts.html">rbebelm_contracts</a></code>
+
+        </dt>
+        <dd>Rbebelm agent framework contracts</dd>
+
+        <dt>
+
+          <code><a href="BebelAgentBackend.html">BebelAgentBackend</a></code>
+
+        </dt>
+        <dd>BebeLM agent backend interface</dd>
+
+        <dt>
+
+          <code><a href="BebelAgentExtension.html">BebelAgentExtension</a></code>
+
+        </dt>
+        <dd>BebeLM agent extension interface</dd>
+
+        <dt>
+
+          <code><a href="BebelSkillProvider.html">BebelSkillProvider</a></code>
+
+        </dt>
+        <dd>BebeLM skill provider interface</dd>
+
+        <dt>
+
+          <code><a href="BebelPromptTemplateProvider.html">BebelPromptTemplateProvider</a></code>
+
+        </dt>
+        <dd>BebeLM prompt-template provider interface</dd>
+
+        <dt>
+
+          <code><a href="bebel_backend_append_user.html">bebel_backend_append_user()</a></code>
+
+        </dt>
+        <dd>Append a user message to an agent backend</dd>
+
+        <dt>
+
+          <code><a href="bebel_backend_append_system.html">bebel_backend_append_system()</a></code>
+
+        </dt>
+        <dd>Append a system message to an agent backend</dd>
+
+        <dt>
+
+          <code><a href="bebel_backend_append_tool_result.html">bebel_backend_append_tool_result()</a></code>
+
+        </dt>
+        <dd>Append a tool result to an agent backend</dd>
+
+        <dt>
+
+          <code><a href="bebel_backend_assistant_turn.html">bebel_backend_assistant_turn()</a></code>
+
+        </dt>
+        <dd>Run one assistant turn on an agent backend</dd>
+
+        <dt>
+
+          <code><a href="bebel_backend_info.html">bebel_backend_info()</a></code>
+
+        </dt>
+        <dd>Return agent backend information</dd>
+
+        <dt>
+
+          <code><a href="bebel_backend_transcript.html">bebel_backend_transcript()</a></code>
+
+        </dt>
+        <dd>Return agent backend transcript text</dd>
+
+        <dt>
+
+          <code><a href="bebel_backend_clear.html">bebel_backend_clear()</a></code>
+
+        </dt>
+        <dd>Clear an agent backend</dd>
+
+        <dt>
+
+          <code><a href="bebel_agent_loop.html">bebel_agent_loop()</a></code>
+
+        </dt>
+        <dd>Create a stateful BebeLM agent loop</dd>
+
+        <dt>
+
+          <code><a href="bebel_r_agent_loop.html">bebel_r_agent_loop()</a></code>
+
+        </dt>
+        <dd>Create an agent loop from an R-native agent session</dd>
+
+        <dt>
+
+          <code><a href="bebel_loop_policy.html">bebel_loop_policy()</a></code>
+
+        </dt>
+        <dd>Create an Agent-loop policy</dd>
+
+        <dt>
+
+          <code><a href="bebel_loop_run.html">bebel_loop_run()</a></code>
+
+        </dt>
+        <dd>Run an agent loop</dd>
+
+        <dt>
+
+          <code><a href="bebel_loop_step.html">bebel_loop_step()</a></code>
+
+        </dt>
+        <dd>Run one agent-loop assistant/tool step</dd>
+
+        <dt>
+
+          <code><a href="bebel_loop_prompt.html">bebel_loop_prompt()</a></code>
+
+        </dt>
+        <dd>Prompt an agent loop</dd>
+
+        <dt>
+
+          <code><a href="bebel_loop_steer.html">bebel_loop_steer()</a></code>
+
+        </dt>
+        <dd>Queue a steering message</dd>
+
+        <dt>
+
+          <code><a href="bebel_loop_follow_up.html">bebel_loop_follow_up()</a></code>
+
+        </dt>
+        <dd>Queue a follow-up message</dd>
+
+        <dt>
+
+          <code><a href="bebel_loop_state.html">bebel_loop_state()</a></code>
+
+        </dt>
+        <dd>Inspect agent-loop state</dd>
+
+        <dt>
+
+          <code><a href="bebel_loop_events.html">bebel_loop_events()</a></code>
+
+        </dt>
+        <dd>Return agent-loop events</dd>
+
+        <dt>
+
+          <code><a href="bebel_loop_extensions.html">bebel_loop_extensions()</a></code>
+
+        </dt>
+        <dd>Return a loop's extension manifests</dd>
+
+        <dt>
+
+          <code><a href="bebel_loop_command.html">bebel_loop_command()</a></code>
+
+        </dt>
+        <dd>Define an agent-loop command</dd>
+
+        <dt>
+
+          <code><a href="bebel_loop_execute_command.html">bebel_loop_execute_command()</a></code>
+
+        </dt>
+        <dd>Execute a loop command</dd>
+
+        <dt>
+
+          <code><a href="bebel_loop_cancel.html">bebel_loop_cancel()</a></code>
+
+        </dt>
+        <dd>Cancel an agent loop</dd>
+
+        <dt>
+
+          <code><a href="bebel_loop_clear_queue.html">bebel_loop_clear_queue()</a></code>
+
+        </dt>
+        <dd>Clear queued steering and follow-up messages</dd>
+
+        <dt>
+
+          <code><a href="bebel_loop_command_catalog.html">bebel_loop_command_catalog()</a></code>
+
+        </dt>
+        <dd>Return a loop's command catalog</dd>
+
+        <dt>
+
+          <code><a href="bebel_extension.html">bebel_extension()</a></code>
+
+        </dt>
+        <dd>Define an agent-loop extension</dd>
+
+        <dt>
+
+          <code><a href="bebel_extension_manifest.html">bebel_extension_manifest()</a></code>
+
+        </dt>
+        <dd>Return an extension manifest</dd>
+
+        <dt>
+
+          <code><a href="bebel_extension_tools.html">bebel_extension_tools()</a></code>
+
+        </dt>
+        <dd>Return tools contributed by an extension</dd>
+
+        <dt>
+
+          <code><a href="bebel_extension_commands.html">bebel_extension_commands()</a></code>
+
+        </dt>
+        <dd>Return commands contributed by an extension</dd>
+
+        <dt>
+
+          <code><a href="bebel_extension_hooks.html">bebel_extension_hooks()</a></code>
+
+        </dt>
+        <dd>Return hooks contributed by an extension</dd>
+
+        <dt>
+
+          <code><a href="bebel_extension_skill_providers.html">bebel_extension_skill_providers()</a></code>
+
+        </dt>
+        <dd>Return skill providers contributed by an extension</dd>
+
+        <dt>
+
+          <code><a href="bebel_extension_prompt_template_providers.html">bebel_extension_prompt_template_providers()</a></code>
+
+        </dt>
+        <dd>Return prompt-template providers contributed by an extension</dd>
+
+        <dt>
+
+          <code><a href="bebel_skill_provider.html">bebel_skill_provider()</a></code>
+
+        </dt>
+        <dd>Create a skill provider</dd>
+
+        <dt>
+
+          <code><a href="bebel_skill.html">bebel_skill()</a></code>
+
+        </dt>
+        <dd>Define a framework skill</dd>
+
+        <dt>
+
+          <code><a href="bebel_skill_list.html">bebel_skill_list()</a></code>
+
+        </dt>
+        <dd>List available skills</dd>
+
+        <dt>
+
+          <code><a href="bebel_skill_load.html">bebel_skill_load()</a></code>
+
+        </dt>
+        <dd>Load a skill by name</dd>
+
+        <dt>
+
+          <code><a href="bebel_prompt_template_provider.html">bebel_prompt_template_provider()</a></code>
+
+        </dt>
+        <dd>Create a prompt-template provider</dd>
+
+        <dt>
+
+          <code><a href="bebel_prompt_template.html">bebel_prompt_template()</a></code>
+
+        </dt>
+        <dd>Define a prompt template</dd>
+
+        <dt>
+
+          <code><a href="bebel_prompt_template_list.html">bebel_prompt_template_list()</a></code>
+
+        </dt>
+        <dd>List prompt templates</dd>
+
+        <dt>
+
+          <code><a href="bebel_prompt_template_render.html">bebel_prompt_template_render()</a></code>
+
+        </dt>
+        <dd>Render a prompt template</dd>
+
+        <dt>
+
+          <code><a href="bebel_system_prompt.html">bebel_system_prompt()</a></code>
+
+        </dt>
+        <dd>Compose a system prompt from a prompt template and optional skills</dd>
+
+        <dt>
+
+          <code><a href="bebel_append_system_prompt.html">bebel_append_system_prompt()</a></code>
+
+        </dt>
+        <dd>Render and append a system prompt to an agent backend</dd>
+      </dl></div><div class="section level2">
+      <h2 id="session-trees-and-context">Session trees and context<a class="anchor" aria-label="anchor" href="#session-trees-and-context"></a></h2>
+
+
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="bebel_session_create.html">bebel_session_create()</a></code>
+
+        </dt>
+        <dd>Create an agent session JSONL store</dd>
+
+        <dt>
+
+          <code><a href="bebel_session_open.html">bebel_session_open()</a></code>
+
+        </dt>
+        <dd>Open an agent session JSONL file</dd>
+
+        <dt>
+
+          <code><a href="bebel_session_dir.html">bebel_session_dir()</a></code>
+
+        </dt>
+        <dd>Agent session storage directory</dd>
+
+        <dt>
+
+          <code><a href="bebel_session_header.html">bebel_session_header()</a></code> <code><a href="bebel_session_header.html">bebel_session_entries()</a></code> <code><a href="bebel_session_header.html">bebel_session_leaf_id()</a></code> <code><a href="bebel_session_header.html">bebel_session_file()</a></code> <code><a href="bebel_session_header.html">bebel_session_get_entry()</a></code>
+
+        </dt>
+        <dd>Inspect agent session metadata</dd>
+
+        <dt>
+
+          <code><a href="bebel_session_list.html">bebel_session_list()</a></code>
+
+        </dt>
+        <dd>List agent session files</dd>
+
+        <dt>
+
+          <code><a href="bebel_session_append_message.html">bebel_session_append_message()</a></code>
+
+        </dt>
+        <dd>Append a message entry to an agent session</dd>
+
+        <dt>
+
+          <code><a href="bebel_session_append_session_info.html">bebel_session_append_session_info()</a></code> <code><a href="bebel_session_append_session_info.html">bebel_session_append_custom()</a></code> <code><a href="bebel_session_append_session_info.html">bebel_session_append_custom_message()</a></code>
+
+        </dt>
+        <dd>Append session metadata and extension entries</dd>
+
+        <dt>
+
+          <code><a href="bebel_session_append_model_change.html">bebel_session_append_model_change()</a></code> <code><a href="bebel_session_append_model_change.html">bebel_session_append_thinking_level_change()</a></code> <code><a href="bebel_session_append_model_change.html">bebel_session_append_compaction()</a></code> <code><a href="bebel_session_append_model_change.html">bebel_session_append_branch_summary()</a></code>
+
+        </dt>
+        <dd>Append model/thinking/compaction/branch metadata</dd>
+
+        <dt>
+
+          <code><a href="bebel_session_append_label.html">bebel_session_append_label()</a></code>
+
+        </dt>
+        <dd>Append or clear a label on a session entry</dd>
+
+        <dt>
+
+          <code><a href="bebel_session_branch.html">bebel_session_branch()</a></code>
+
+        </dt>
+        <dd>Return the branch from root to a session entry</dd>
+
+        <dt>
+
+          <code><a href="bebel_session_checkout.html">bebel_session_checkout()</a></code>
+
+        </dt>
+        <dd>Move the current session leaf</dd>
+
+        <dt>
+
+          <code><a href="bebel_session_fork.html">bebel_session_fork()</a></code> <code><a href="bebel_session_fork.html">bebel_session_clone_branch()</a></code>
+
+        </dt>
+        <dd>Fork an agent session file into a new session file</dd>
+
+        <dt>
+
+          <code><a href="bebel_session_context.html">bebel_session_context()</a></code>
+
+        </dt>
+        <dd>Build model context from the active session branch</dd>
+
+        <dt>
+
+          <code><a href="bebel_session_tree.html">bebel_session_tree()</a></code>
+
+        </dt>
+        <dd>Return an agent session tree</dd>
+      </dl></div><div class="section level2">
+      <h2 id="native-fuzzy-file-search">Native fuzzy file search<a class="anchor" aria-label="anchor" href="#native-fuzzy-file-search"></a></h2>
+
+
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="bebel_file_finder.html">bebel_file_finder()</a></code> <code><a href="bebel_file_finder.html">bebel_file_search()</a></code>
+
+        </dt>
+        <dd>Create a native fuzzy file finder</dd>
+
+        <dt>
+
+          <code><a href="BebelFileFinder.html">BebelFileFinder</a></code>
+
+        </dt>
+        <dd>Persistent native FFF fuzzy file finder.</dd>
       </dl></div><div class="section level2">
       <h2 id="r-native-agent-layer">R-native agent layer<a class="anchor" aria-label="anchor" href="#r-native-agent-layer"></a></h2>
 

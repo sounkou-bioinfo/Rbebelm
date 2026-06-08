@@ -1,17 +1,25 @@
 # Rbebelm
 
-`Rbebelm` provides experimental R bindings for upstream
-[`maximecb/bebelm`](https://github.com/maximecb/bebelm), a pure-Rust
-CPU-only implementation of [Liquid AI
-LFM2.5-8B-A1B](https://www.liquid.ai/blog/lfm2-5-8b-a1b) inference. The
-R package uses [`savvy`](https://github.com/yutannihilation/savvy) for
-the R/Rust boundary and a runtime backend layout for portable SIMD
-dispatch.
+`Rbebelm` is both a generic R agent framework and a concrete native
+local-model backend.
 
-The package is designed for interactive LLM use: generation streams
-tokens to the R console as soon as they are decoded, while the function
-still returns the final text, token ids, stop reason, and timing
-statistics.
+- The framework layer provides backend-agnostic `S7`/`s7contract`
+  interfaces for LLM providers, extensions, skills, prompt templates,
+  loop events, frontend/TUI command catalogs, and Pi-inspired
+  append-only JSONL session trees.
+- The concrete backend wraps upstream
+  [`maximecb/bebelm`](https://github.com/maximecb/bebelm), a pure-Rust
+  CPU-only implementation of [Liquid AI
+  LFM2.5-8B-A1B](https://www.liquid.ai/blog/lfm2-5-8b-a1b) inference.
+  The R package uses [`savvy`](https://github.com/yutannihilation/savvy)
+  for the R/Rust boundary and a runtime backend layout for portable SIMD
+  dispatch.
+
+The intended architecture is loop-first: the agent loop owns lifecycle,
+queues, tools, extensions, events, and sessions; consoles, RPC servers,
+and future TUIs consume that loop instead of owning agent business
+logic. BebeLM is the bundled native provider, not a requirement of the
+framework contracts.
 
 ## Installation
 
@@ -81,20 +89,20 @@ turn2 <- bebel_assistant_turn(agent, on_event = NULL)
 
 turn1
 #> <BebeLM assistant turn>
-#>   stop: eos 
+#>   stop: eos
 #>   tokens: 27 generated; 19 prompt
-#>   prefill: 9.3 tok/s 
-#>   decode: 9.01 tok/s 
+#>   prefill: 10.3 tok/s
+#>   decode: 10.47 tok/s
 #>   text:
 #> <think>
 #> The user asks: "What is the capital of Mali? Answer briefly."</think>
 #> The capital of Mali is Bamako.
 turn2
 #> <BebeLM assistant turn>
-#>   stop: eos 
+#>   stop: eos
 #>   tokens: 26 generated; 14 prompt
-#>   prefill: 8.7 tok/s 
-#>   decode: 8.62 tok/s 
+#>   prefill: 10.5 tok/s
+#>   decode: 10.70 tok/s
 #>   text:
 #> <think>
 #> The user asks: "What about Italy? Answer briefly." Likely they</think>
@@ -186,18 +194,18 @@ result <- bebel_chat(
 )
 #> <think>
 #> The user asks: "In one concise sentence, what does runtime SIMD</think>
-#> Runtime SIMD dispatch dynamically selects and executes the most efficient instruction variant for the current hardware at execution time, allowing programs to adapt to varying processor
+#> Runtime SIMD dispatch dynamically selects and invokes the most efficient SIMD instruction set for the target hardware at execution time, optimizing performance by matching operations
 
 result
 #> <BebeLM chat result>
-#>   stop: max_new 
+#>   stop: max_new
 #>   tokens: 48 generated; 22 prompt
-#>   prefill: 8.7 tok/s 
-#>   decode: 8.92 tok/s 
+#>   prefill: 10.4 tok/s
+#>   decode: 10.81 tok/s
 #>   text:
 #> <think>
 #> The user asks: "In one concise sentence, what does runtime SIMD</think>
-#> Runtime SIMD dispatch dynamically selects and executes the most efficient instruction variant for the current hardware at execution time, allowing programs to adapt to varying processor
+#> Runtime SIMD dispatch dynamically selects and invokes the most efficient SIMD instruction set for the target hardware at execution time, optimizing performance by matching operations
 ```
 
 For plain text completion, use
@@ -217,21 +225,22 @@ raw_result <- bebel_generate(
 #>  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However
 raw_result
 #> <BebeLM generation result>
-#>   stop: max_new 
+#>   stop: max_new
 #>   tokens: 24 generated; 8 prompt
-#>   prefill: 8.7 tok/s 
-#>   decode: 9.20 tok/s 
+#>   prefill: 10.7 tok/s
+#>   decode: 11.15 tok/s
 #>   text:
 #>  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However
 ```
 
 Use
 [`bebel_append_system()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_append_system.md)
-for a ChatML system-role instruction. Raw appends do not add user
-framing, so the low-level
+for an upstream-rendered ChatML system turn. With no tools, the
+low-level
 [`bebel_append()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_append.md)
 form below is equivalent apart from being more explicit about the
-tokens.
+tokens. When `tools` are supplied, BebeLM renders its
+`List of tools: [...]` system preamble.
 
 ``` r
 
@@ -257,12 +266,12 @@ raw_turn <- bebel_agent_generate(raw_agent, on_event = NULL)
 ids <- bebel_tokenize(model, " and its airport code is", add_bos = FALSE)
 bebel_append_tokens(raw_agent, ids)
 bebel_history(raw_agent)[1:8]
-#> [1] 124894    597   5205    302  46628    355  50593   6261
+#> [1] 124894    597   5205    302  46628    355    278   3270
 bebel_token_ids()[c("TOKEN_THINK", "TOKEN_TOOL_CALL_START", "TOKEN_TOOL_CALL_END")]
 #>           TOKEN_THINK TOKEN_TOOL_CALL_START   TOKEN_TOOL_CALL_END 
 #>                124901                124905                124906
 raw_turn$text
-#> [1] " Bamako. city of ... ... ... ... ... ... ... ... ... ... ..."
+#> [1] " the city of Bamako. city of Bamako is located in the country of"
 ```
 
 Tools can be orchestrated with an Agent run loop. The `context` object
@@ -308,19 +317,217 @@ bebel_append_user(agent, tool_prompt)
 run <- bebel_agent_run(agent, tools = tools, context = ctx, hooks = hooks, max_steps = 2)
 run
 #> <bebelAgentRun>
-#>   turns: 2 
-#>   tool calls: 1 
+#>   turns: 2
+#>   tool calls: 1
 #> <BebeLM assistant turn>
-#>   stop: eos 
-#>   tokens: 7 generated; 31 prompt
-#>   prefill: 8.8 tok/s 
-#>   decode: 8.65 tok/s 
+#>   stop: eos
+#>   tokens: 18 generated; 13 prompt
+#>   prefill: 10.2 tok/s
+#>   decode: 10.32 tok/s
 #>   text:
-#> The capital of Italy is Rome.
+#> lookup_capital({"country":"Italy"}) returned Rome as the capital of Italy.
 ctx$log
 #> [1] "request lookup_capital"     "tool lookup_capital Italy" 
 #> [3] "result lookup_capital Rome"
 ```
+
+## Generic agent and frontend/TUI framework
+
+The BebeLM bindings are one implementation of a more generic R
+agent/frontend framework. The loop itself is backend-agnostic: it talks
+to objects that implement the `BebelAgentBackend` S7/s7contract
+interface. BebeLM implements that contract today; other local or remote
+providers can implement the same generics later.
+
+The core backend contract is intentionally small:
+
+- `bebel_backend_append_user(agent, message)`
+- `bebel_backend_append_system(agent, message, tools = NULL)`
+- `bebel_backend_append_tool_result(agent, content)`
+- `bebel_backend_assistant_turn(agent, on_event, check_interrupt, stop_on_tool_call)`
+- `bebel_backend_info(agent)`, `bebel_backend_transcript(agent)`, and
+  `bebel_backend_clear(agent)`
+
+[`bebel_agent_loop()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_loop.md)
+owns policy, queues, event emission, tool dispatch, and session
+persistence. A console, RPC server, or future Rust TUI should consume
+the loop; it should not own agent logic. The queue semantics mirror Pi’s
+vocabulary:
+[`bebel_loop_steer()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_steer.md),
+[`bebel_loop_follow_up()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_follow_up.md),
+`steering_mode`, and `follow_up_mode`.
+
+``` r
+
+library(Rbebelm)
+
+store <- bebel_session_create(
+  cwd = tempdir(),
+  session_dir = file.path(tempdir(), "rbebelm-readme-sessions"),
+  name = "README demo"
+)
+
+user_id <- bebel_session_append_message(store, "user", "Hello from R")
+bebel_session_append_message(
+  store,
+  "assistant",
+  list(list(type = "text", text = "Hello.")),
+  provider = "demo",
+  model = "demo-model",
+  stopReason = "stop"
+)
+#> [1] "2cd92948"
+
+bebel_session_leaf_id(store)
+#> <bebelSessionLeafId> 2cd92948
+bebel_session_context(store)$messages
+#> [[1]]
+#> [[1]]$role
+#> [1] "user"
+#> 
+#> [[1]]$content
+#> [1] "Hello from R"
+#> 
+#> 
+#> [[2]]
+#> [[2]]$role
+#> [1] "assistant"
+#> 
+#> [[2]]$content
+#> [[2]]$content[[1]]
+#> [[2]]$content[[1]]$type
+#> [1] "text"
+#> 
+#> [[2]]$content[[1]]$text
+#> [1] "Hello."
+#> 
+#> 
+#> 
+#> [[2]]$provider
+#> [1] "demo"
+#> 
+#> [[2]]$model
+#> [1] "demo-model"
+#> 
+#> [[2]]$stopReason
+#> [1] "stop"
+```
+
+Session files are append-only JSONL trees inspired by Pi’s session
+format. Each entry has an `id` and `parentId`, so `/tree`, `/fork`, and
+`/clone` style UIs can be built without rewriting history. By default,
+persisted sessions live under
+`tools::R_user_dir("Rbebelm", "data")/sessions/<encoded-cwd>/`; set
+`RBEBELM_SESSION_DIR` or pass `session_dir` to override that location.
+
+Extensions are also generic capability bundles. An object implementing
+`BebelAgentExtension` contributes a manifest plus optional tools,
+commands, hooks, skill providers, prompt-template providers, and UI
+metadata. The loop registers those capabilities; frontends only render
+and invoke the catalog.
+
+``` r
+
+skills <- bebel_skill_provider(list(
+  concise = "Prefer concise, direct answers."
+))
+
+prompts <- bebel_prompt_template_provider(list(
+  system = "You are {{role}} working in {{place}}."
+))
+
+ext <- bebel_extension(
+  "readme-demo",
+  skill_providers = list(default = skills),
+  prompt_template_providers = list(default = prompts),
+  commands = list(info = bebel_loop_command("info", function(args, loop, context) {
+    bebel_loop_state(loop)
+  }))
+)
+
+bebel_extension_manifest(ext)
+#> $name
+#> [1] "readme-demo"
+#> 
+#> $tools
+#> NULL
+#> 
+#> $commands
+#> $commands$info
+#> $commands$info$name
+#> [1] "info"
+#> 
+#> $commands$info$description
+#> [1] "info"
+#> 
+#> $commands$info$usage
+#> [1] "/info"
+#> 
+#> 
+#> 
+#> $hooks
+#> NULL
+#> 
+#> $skill_providers
+#> [1] "default"
+#> 
+#> $prompt_template_providers
+#> [1] "default"
+#> 
+#> $keybindings
+#> list()
+#> 
+#> $widgets
+#> list()
+#> 
+#> $metadata
+#> list()
+bebel_system_prompt(
+  prompts,
+  "system",
+  data = list(role = "an R agent", place = "Bamako"),
+  skill_provider = skills,
+  skills = "concise"
+)
+#> [1] "You are an R agent working in Bamako.\n\n# Loaded skills\n\n## Skill: concise\n\nPrefer concise, direct answers."
+```
+
+See the “Generic agent and frontend framework” vignette for a fake
+backend example and the full session-tree/forking API.
+
+## Native FFF fuzzy file search
+
+Rbebelm uses the FFF engine behind `fff-c` as its native fuzzy file
+search primitive. A persistent `BebelFileFinder` indexes a project once;
+consoles, RPC clients, default file tools, and future TUIs can reuse it
+for low-latency file picking.
+
+``` r
+
+search_root <- tempfile("rbebelm-fff-readme-")
+dir.create(file.path(search_root, "src"), recursive = TRUE)
+writeLines("demo", file.path(search_root, "src", "bamako_agent.R"))
+writeLines("notes", file.path(search_root, "README.md"))
+
+finder <- bebel_file_finder(search_root, watch = FALSE)
+bebel_file_search(finder, "agent", limit = 5)
+#> <bebelFileSearchResult> 1 rows / 1 matched
+#>                path
+#>  src/bamako_agent.R
+#>                                                         absolute_path
+#>  /tmp/RtmpJ1nQGU/rbebelm-fff-readme-3561df6d004817/src/bamako_agent.R
+#>       file_name git_status size            modified score base_score
+#>  bamako_agent.R      clean    5 2026-06-08 21:38:35    74         64
+#>      match_type exact_match is_binary
+#>  fuzzy_filename       FALSE     FALSE
+```
+
+The native FFF dependency is not loaded in webR/wasm; the package still
+loads there, and file-search creation reports that native FFF is
+unavailable. SIMD is handled with the same care as the BebeLM backend:
+Rbebelm builds scalar and optimized native dylibs separately, and
+FFF/`neo_frizbee` SIMD kernels are only entered through runtime
+CPU-feature checks or the already-selected optimized backend.
 
 ## R-native agent layer
 
@@ -340,12 +547,18 @@ r_agent <- bebel_r_agent(
   max_think = 16
 )
 bebel_agent_tool_catalog(r_agent$tools)
-#>         name                                       description
-#> 1  r_objects     List objects in the configured R environment.
-#> 2     r_help Read R help for a topic, optionally in a package.
-#> 3 list_files                     List files under a directory.
-#> 4  read_file                                 Read a text file.
-#> 5 grep_files                       Search text files by regex.
+#>         name
+#> 1  r_objects
+#> 2     r_help
+#> 3 list_files
+#> 4  read_file
+#> 5 grep_files
+#>                                                              description
+#> 1                          List objects in the configured R environment.
+#> 2                      Read R help for a topic, optionally in a package.
+#> 3 Fuzzy-search files under a directory using the native FFF file finder.
+#> 4                                                      Read a text file.
+#> 5                                            Search text files by regex.
 ```
 
 Interactive console. The `/r` command is a direct R escape hatch into
@@ -389,8 +602,8 @@ From a shell, after installation:
   --weights /path/to/LFM2.5-8B-A1B-Q4_K_M.gguf
 ```
 
-Optional RPC server, using `nanonext` and `jsonlite` only when
-requested:
+Optional RPC server, using optional `nanonext`; JSON parsing and
+serialization use imported `yyjsonr`:
 
 ``` r
 
@@ -421,7 +634,7 @@ invisible(bebel_generate(
   )
 ))
 paste0(deltas, collapse = "")
-#> [1] " be used to update a text field in a UI component."
+#> [1] " be used to update a text area. time is  "
 ```
 
 You can also pass a named list of event-specific handlers directly:
@@ -498,30 +711,30 @@ Inspect the current CPU/runtime and selected backend:
 
 rbebelm_cpuid_info()
 #> <Rbebelm CPU features>
-#>   x86_64-v3: yes 
-#>   x86_64-v4: no 
-#>   NEON: no 
-#>   ARM dotprod: no 
+#>   x86_64-v3: yes
+#>   x86_64-v4: no
+#>   NEON: no
+#>   ARM dotprod: no
 #>   wasm simd128: no
 rbebelm_backend_features()
 #> <Rbebelm backend features>
-#>   backend: avx2 
-#>   target: x86_64-linux 
-#>   Rust crate: rbebelm_backend 0.1.0 
-#>   native SIMD feature: yes 
+#>   backend: avx2
+#>   target: x86_64-linux
+#>   Rust crate: rbebelm_backend 0.1.0
+#>   native SIMD feature: yes
 #>   compiled features:
-#>     AVX2: yes 
-#>     AVX-512F: no 
-#>     NEON: no 
-#>     ARM dotprod: no 
+#>     AVX2: yes
+#>     AVX-512F: no
+#>     NEON: no
+#>     ARM dotprod: no
 #>     wasm simd128: no
 rbebelm_backend_info()
 #> <Rbebelm backend dispatch>
-#>   mode: dynamic 
-#>   requested: auto 
-#>   selected: avx2 
-#>   loaded: yes 
-#>   installed: scalar,avx2,avx512 
+#>   mode: dynamic
+#>   requested: auto
+#>   selected: avx2
+#>   loaded: yes
+#>   installed: scalar,avx2,avx512
 #>   supported: scalar,avx2
 ```
 

@@ -35,6 +35,7 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/getting-started.html">Getting started</a></li>
     <li><a class="dropdown-item" href="../articles/agents-and-tools.html">Agents and tools</a></li>
+    <li><a class="dropdown-item" href="../articles/agent-framework.html">Generic agent and frontend framework</a></li>
     <li><a class="dropdown-item" href="../articles/r-native-agent-layer.html">R-native agent layer</a></li>
     <li><a class="dropdown-item" href="../articles/events-and-adapters.html">Events and adapters</a></li>
     <li><a class="dropdown-item" href="../articles/backend-and-webr.html">Backends and webR</a></li>
@@ -99,10 +100,10 @@ generation.</p>
 <span><span class="fu"><a href="../reference/bebel_agent_info.html">bebel_agent_info</a></span><span class="op">(</span><span class="va">agent</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"history_tokens"</span>, <span class="st">"processed_tokens"</span>, <span class="st">"kv_tokens"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt; $history_tokens</span></span>
 <span><span class="co">#&gt; [1] 82</span></span>
-<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;</span></span>
 <span><span class="co">#&gt; $processed_tokens</span></span>
 <span><span class="co">#&gt; [1] 80</span></span>
-<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;</span></span>
 <span><span class="co">#&gt; $kv_tokens</span></span>
 <span><span class="co">#&gt; [1] 80</span></span>
 <span></span>
@@ -122,16 +123,18 @@ generation.</p>
 <span><span class="va">agent</span><span class="op">$</span><span class="fu">clear</span><span class="op">(</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"history_tokens"</span>, <span class="st">"processed_tokens"</span>, <span class="st">"kv_tokens"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt; $history_tokens</span></span>
 <span><span class="co">#&gt; [1] 0</span></span>
-<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;</span></span>
 <span><span class="co">#&gt; $processed_tokens</span></span>
 <span><span class="co">#&gt; [1] 0</span></span>
-<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;</span></span>
 <span><span class="co">#&gt; $kv_tokens</span></span>
 <span><span class="co">#&gt; [1] 0</span></span></code></pre></div>
-<p>Use <code><a href="../reference/bebel_append_system.html">bebel_append_system()</a></code> for a ChatML system-role
-instruction. Raw appends do not add user framing, so the low-level
+<p>Use <code><a href="../reference/bebel_append_system.html">bebel_append_system()</a></code> for an upstream-rendered
+ChatML system turn. With no tools, the low-level
 <code><a href="../reference/bebel_append.html">bebel_append()</a></code> form below is equivalent apart from being
-more explicit about the tokens.</p>
+more explicit about the tokens. When <code>tools</code> are supplied,
+BebeLM renders its <code>List of tools: [...]</code> system
+preamble.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">system_agent</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bebel_agent.html">bebel_agent</a></span><span class="op">(</span><span class="va">model</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/bebel_append_system.html">bebel_append_system</a></span><span class="op">(</span><span class="va">system_agent</span>, <span class="st">"You are concise."</span><span class="op">)</span></span>
@@ -149,7 +152,7 @@ more explicit about the tokens.</p>
 <span><span class="va">raw_turn</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"stop"</span>, <span class="st">"generated_tokens"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt; $stop</span></span>
 <span><span class="co">#&gt; [1] "max_new"</span></span>
-<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;</span></span>
 <span><span class="co">#&gt; $generated_tokens</span></span>
 <span><span class="co">#&gt; [1] 16</span></span>
 <span></span>
@@ -182,44 +185,49 @@ transcript.</p>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">tools</span><span class="op">$</span><span class="va">lookup_capital</span></span>
-<span><span class="co">#&gt; &lt;bebelTool&gt; lookup_capital </span></span>
+<span><span class="co">#&gt; &lt;bebelTool&gt; lookup_capital</span></span>
 <span><span class="co">#&gt;   Return a capital city for a country.</span></span></code></pre></div>
-<p>The default parser accepts JSON calls, simple function calls, and
-BebeLM’s bracketed tool-call form.</p>
+<p>The default parser delegates BebeLM’s bracketed Pythonic tool-call
+form to upstream, including multiple calls. JSON object calls and legacy
+<code>name({...})</code> compatibility are parsed with imported
+<code>yyjsonr</code>.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/bebel_parse_tool_call.html">bebel_parse_tool_call</a></span><span class="op">(</span><span class="st">'{"name":"lookup_capital","arguments":{"country":"Italy"}}'</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/bebel_parse_tool_call.html">bebel_parse_tool_call</a></span><span class="op">(</span><span class="st">'[lookup_capital(country="Italy")]'</span><span class="op">)</span></span>
 <span><span class="co">#&gt; $name</span></span>
 <span><span class="co">#&gt; [1] "lookup_capital"</span></span>
-<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;</span></span>
 <span><span class="co">#&gt; $arguments</span></span>
 <span><span class="co">#&gt; $arguments$country</span></span>
 <span><span class="co">#&gt; [1] "Italy"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;</span></span>
+<span><span class="co">#&gt;</span></span>
 <span><span class="co">#&gt; $raw</span></span>
-<span><span class="co">#&gt; [1] "{\"name\":\"lookup_capital\",\"arguments\":{\"country\":\"Italy\"}}"</span></span>
-<span><span class="fu"><a href="../reference/bebel_parse_tool_call.html">bebel_parse_tool_call</a></span><span class="op">(</span><span class="st">'lookup_capital({"country":"Italy"})'</span><span class="op">)</span></span>
-<span><span class="co">#&gt; $name</span></span>
+<span><span class="co">#&gt; [1] "lookup_capital(country=\"Italy\")"</span></span>
+<span><span class="fu"><a href="../reference/bebel_parse_tool_calls.html">bebel_parse_tool_calls</a></span><span class="op">(</span><span class="st">'[lookup_capital(country="Mali"), lookup_capital(country="Italy")]'</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [[1]]</span></span>
+<span><span class="co">#&gt; [[1]]$name</span></span>
 <span><span class="co">#&gt; [1] "lookup_capital"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $arguments</span></span>
-<span><span class="co">#&gt; $arguments$country</span></span>
-<span><span class="co">#&gt; [1] "Italy"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $raw</span></span>
-<span><span class="co">#&gt; [1] "lookup_capital({\"country\":\"Italy\"})"</span></span>
-<span><span class="fu"><a href="../reference/bebel_parse_tool_call.html">bebel_parse_tool_call</a></span><span class="op">(</span><span class="st">'[lookup_capital(country="Italy")]'</span><span class="op">)</span></span>
-<span><span class="co">#&gt; $name</span></span>
+<span><span class="co">#&gt;</span></span>
+<span><span class="co">#&gt; [[1]]$arguments</span></span>
+<span><span class="co">#&gt; [[1]]$arguments$country</span></span>
+<span><span class="co">#&gt; [1] "Mali"</span></span>
+<span><span class="co">#&gt;</span></span>
+<span><span class="co">#&gt;</span></span>
+<span><span class="co">#&gt; [[1]]$raw</span></span>
+<span><span class="co">#&gt; [1] "lookup_capital(country=\"Mali\")"</span></span>
+<span><span class="co">#&gt;</span></span>
+<span><span class="co">#&gt;</span></span>
+<span><span class="co">#&gt; [[2]]</span></span>
+<span><span class="co">#&gt; [[2]]$name</span></span>
 <span><span class="co">#&gt; [1] "lookup_capital"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $arguments</span></span>
-<span><span class="co">#&gt; $arguments$country</span></span>
+<span><span class="co">#&gt;</span></span>
+<span><span class="co">#&gt; [[2]]$arguments</span></span>
+<span><span class="co">#&gt; [[2]]$arguments$country</span></span>
 <span><span class="co">#&gt; [1] "Italy"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $raw</span></span>
-<span><span class="co">#&gt; [1] "[lookup_capital(country=\"Italy\")]"</span></span></code></pre></div>
+<span><span class="co">#&gt;</span></span>
+<span><span class="co">#&gt;</span></span>
+<span><span class="co">#&gt; [[2]]$raw</span></span>
+<span><span class="co">#&gt; [1] "lookup_capital(country=\"Italy\")"</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="run-a-tool-loop">Run a tool loop<a class="anchor" aria-label="anchor" href="#run-a-tool-loop"></a>
@@ -250,7 +258,7 @@ path.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">run</span><span class="op">$</span><span class="va">tool_calls</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 1</span></span>
 <span><span class="va">ctx</span><span class="op">$</span><span class="va">log</span></span>
-<span><span class="co">#&gt; [1] "request lookup_capital"     "tool lookup_capital Italy" </span></span>
+<span><span class="co">#&gt; [1] "request lookup_capital"     "tool lookup_capital Italy"</span></span>
 <span><span class="co">#&gt; [3] "result lookup_capital Rome"</span></span></code></pre></div>
 <p>If a model uses a different tool-call format, pass a custom
 <code>parse_tool_call</code> function to

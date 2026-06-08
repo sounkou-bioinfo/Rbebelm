@@ -1,17 +1,25 @@
 # Rbebelm
 
-`Rbebelm` provides experimental R bindings for upstream
-[`maximecb/bebelm`](https://github.com/maximecb/bebelm), a pure-Rust
-CPU-only implementation of [Liquid AI
-LFM2.5-8B-A1B](https://www.liquid.ai/blog/lfm2-5-8b-a1b) inference. The
-R package uses [`savvy`](https://github.com/yutannihilation/savvy) for
-the R/Rust boundary and a runtime backend layout for portable SIMD
-dispatch.
+`Rbebelm` is both a generic R agent framework and a concrete native
+local-model backend.
 
-The package is designed for interactive LLM use: generation streams
-tokens to the R console as soon as they are decoded, while the function
-still returns the final text, token ids, stop reason, and timing
-statistics.
+- The framework layer provides backend-agnostic `S7`/`s7contract`
+  interfaces for LLM providers, extensions, skills, prompt templates,
+  loop events, frontend/TUI command catalogs, and Pi-inspired
+  append-only JSONL session trees.
+- The concrete backend wraps upstream
+  [`maximecb/bebelm`](https://github.com/maximecb/bebelm), a pure-Rust
+  CPU-only implementation of [Liquid AI
+  LFM2.5-8B-A1B](https://www.liquid.ai/blog/lfm2-5-8b-a1b) inference.
+  The R package uses [`savvy`](https://github.com/yutannihilation/savvy)
+  for the R/Rust boundary and a runtime backend layout for portable SIMD
+  dispatch.
+
+The intended architecture is loop-first: the agent loop owns lifecycle,
+queues, tools, extensions, events, and sessions; consoles, RPC servers,
+and future TUIs consume that loop instead of owning agent business
+logic. BebeLM is the bundled native provider, not a requirement of the
+framework contracts.
 
 ## Installation
 
@@ -81,20 +89,20 @@ turn2 <- bebel_assistant_turn(agent, on_event = NULL)
 
 turn1
 #> <BebeLM assistant turn>
-#>   stop: eos 
+#>   stop: eos
 #>   tokens: 27 generated; 19 prompt
-#>   prefill: 9.3 tok/s 
-#>   decode: 9.01 tok/s 
+#>   prefill: 10.3 tok/s
+#>   decode: 10.47 tok/s
 #>   text:
 #> <think>
 #> The user asks: "What is the capital of Mali? Answer briefly."</think>
 #> The capital of Mali is Bamako.
 turn2
 #> <BebeLM assistant turn>
-#>   stop: eos 
+#>   stop: eos
 #>   tokens: 26 generated; 14 prompt
-#>   prefill: 8.7 tok/s 
-#>   decode: 8.62 tok/s 
+#>   prefill: 10.5 tok/s
+#>   decode: 10.70 tok/s
 #>   text:
 #> <think>
 #> The user asks: "What about Italy? Answer briefly." Likely they</think>
@@ -186,18 +194,18 @@ result <- bebel_chat(
 )
 #> <think>
 #> The user asks: "In one concise sentence, what does runtime SIMD</think>
-#> Runtime SIMD dispatch dynamically selects and executes the most efficient instruction variant for the current hardware at execution time, allowing programs to adapt to varying processor
+#> Runtime SIMD dispatch dynamically selects and invokes the most efficient SIMD instruction set for the target hardware at execution time, optimizing performance by matching operations
 
 result
 #> <BebeLM chat result>
-#>   stop: max_new 
+#>   stop: max_new
 #>   tokens: 48 generated; 22 prompt
-#>   prefill: 8.7 tok/s 
-#>   decode: 8.92 tok/s 
+#>   prefill: 10.4 tok/s
+#>   decode: 10.81 tok/s
 #>   text:
 #> <think>
 #> The user asks: "In one concise sentence, what does runtime SIMD</think>
-#> Runtime SIMD dispatch dynamically selects and executes the most efficient instruction variant for the current hardware at execution time, allowing programs to adapt to varying processor
+#> Runtime SIMD dispatch dynamically selects and invokes the most efficient SIMD instruction set for the target hardware at execution time, optimizing performance by matching operations
 ```
 
 For plain text completion, use
@@ -217,21 +225,22 @@ raw_result <- bebel_generate(
 #>  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However
 raw_result
 #> <BebeLM generation result>
-#>   stop: max_new 
+#>   stop: max_new
 #>   tokens: 24 generated; 8 prompt
-#>   prefill: 8.7 tok/s 
-#>   decode: 9.20 tok/s 
+#>   prefill: 10.7 tok/s
+#>   decode: 11.15 tok/s
 #>   text:
 #>  it allows the compiler to generate code that is specific to the target processor architecture, which can lead to better performance. However
 ```
 
 Use
 [`bebel_append_system()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_append_system.md)
-for a ChatML system-role instruction. Raw appends do not add user
-framing, so the low-level
+for an upstream-rendered ChatML system turn. With no tools, the
+low-level
 [`bebel_append()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_append.md)
 form below is equivalent apart from being more explicit about the
-tokens.
+tokens. When `tools` are supplied, BebeLM renders its
+`List of tools: [...]` system preamble.
 
 ``` r
 
@@ -257,12 +266,12 @@ raw_turn <- bebel_agent_generate(raw_agent, on_event = NULL)
 ids <- bebel_tokenize(model, " and its airport code is", add_bos = FALSE)
 bebel_append_tokens(raw_agent, ids)
 bebel_history(raw_agent)[1:8]
-#> [1] 124894    597   5205    302  46628    355  50593   6261
+#> [1] 124894    597   5205    302  46628    355    278   3270
 bebel_token_ids()[c("TOKEN_THINK", "TOKEN_TOOL_CALL_START", "TOKEN_TOOL_CALL_END")]
 #>           TOKEN_THINK TOKEN_TOOL_CALL_START   TOKEN_TOOL_CALL_END 
 #>                124901                124905                124906
 raw_turn$text
-#> [1] " Bamako. city of ... ... ... ... ... ... ... ... ... ... ..."
+#> [1] " the city of Bamako. city of Bamako is located in the country of"
 ```
 
 Tools can be orchestrated with an Agent run loop. The `context` object
@@ -308,19 +317,217 @@ bebel_append_user(agent, tool_prompt)
 run <- bebel_agent_run(agent, tools = tools, context = ctx, hooks = hooks, max_steps = 2)
 run
 #> <bebelAgentRun>
-#>   turns: 2 
-#>   tool calls: 1 
+#>   turns: 2
+#>   tool calls: 1
 #> <BebeLM assistant turn>
-#>   stop: eos 
-#>   tokens: 7 generated; 31 prompt
-#>   prefill: 8.8 tok/s 
-#>   decode: 8.65 tok/s 
+#>   stop: eos
+#>   tokens: 18 generated; 13 prompt
+#>   prefill: 10.2 tok/s
+#>   decode: 10.32 tok/s
 #>   text:
-#> The capital of Italy is Rome.
+#> lookup_capital({"country":"Italy"}) returned Rome as the capital of Italy.
 ctx$log
 #> [1] "request lookup_capital"     "tool lookup_capital Italy" 
 #> [3] "result lookup_capital Rome"
 ```
+
+## Generic agent and frontend/TUI framework
+
+The BebeLM bindings are one implementation of a more generic R
+agent/frontend framework. The loop itself is backend-agnostic: it talks
+to objects that implement the `BebelAgentBackend` S7/s7contract
+interface. BebeLM implements that contract today; other local or remote
+providers can implement the same generics later.
+
+The core backend contract is intentionally small:
+
+- `bebel_backend_append_user(agent, message)`
+- `bebel_backend_append_system(agent, message, tools = NULL)`
+- `bebel_backend_append_tool_result(agent, content)`
+- `bebel_backend_assistant_turn(agent, on_event, check_interrupt, stop_on_tool_call)`
+- `bebel_backend_info(agent)`, `bebel_backend_transcript(agent)`, and
+  `bebel_backend_clear(agent)`
+
+[`bebel_agent_loop()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_loop.md)
+owns policy, queues, event emission, tool dispatch, and session
+persistence. A console, RPC server, or future Rust TUI should consume
+the loop; it should not own agent logic. The queue semantics mirror Pi’s
+vocabulary:
+[`bebel_loop_steer()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_steer.md),
+[`bebel_loop_follow_up()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_follow_up.md),
+`steering_mode`, and `follow_up_mode`.
+
+``` r
+
+library(Rbebelm)
+
+store <- bebel_session_create(
+  cwd = tempdir(),
+  session_dir = file.path(tempdir(), "rbebelm-readme-sessions"),
+  name = "README demo"
+)
+
+user_id <- bebel_session_append_message(store, "user", "Hello from R")
+bebel_session_append_message(
+  store,
+  "assistant",
+  list(list(type = "text", text = "Hello.")),
+  provider = "demo",
+  model = "demo-model",
+  stopReason = "stop"
+)
+#> [1] "2cd92948"
+
+bebel_session_leaf_id(store)
+#> <bebelSessionLeafId> 2cd92948
+bebel_session_context(store)$messages
+#> [[1]]
+#> [[1]]$role
+#> [1] "user"
+#> 
+#> [[1]]$content
+#> [1] "Hello from R"
+#> 
+#> 
+#> [[2]]
+#> [[2]]$role
+#> [1] "assistant"
+#> 
+#> [[2]]$content
+#> [[2]]$content[[1]]
+#> [[2]]$content[[1]]$type
+#> [1] "text"
+#> 
+#> [[2]]$content[[1]]$text
+#> [1] "Hello."
+#> 
+#> 
+#> 
+#> [[2]]$provider
+#> [1] "demo"
+#> 
+#> [[2]]$model
+#> [1] "demo-model"
+#> 
+#> [[2]]$stopReason
+#> [1] "stop"
+```
+
+Session files are append-only JSONL trees inspired by Pi’s session
+format. Each entry has an `id` and `parentId`, so `/tree`, `/fork`, and
+`/clone` style UIs can be built without rewriting history. By default,
+persisted sessions live under
+`tools::R_user_dir("Rbebelm", "data")/sessions/<encoded-cwd>/`; set
+`RBEBELM_SESSION_DIR` or pass `session_dir` to override that location.
+
+Extensions are also generic capability bundles. An object implementing
+`BebelAgentExtension` contributes a manifest plus optional tools,
+commands, hooks, skill providers, prompt-template providers, and UI
+metadata. The loop registers those capabilities; frontends only render
+and invoke the catalog.
+
+``` r
+
+skills <- bebel_skill_provider(list(
+  concise = "Prefer concise, direct answers."
+))
+
+prompts <- bebel_prompt_template_provider(list(
+  system = "You are {{role}} working in {{place}}."
+))
+
+ext <- bebel_extension(
+  "readme-demo",
+  skill_providers = list(default = skills),
+  prompt_template_providers = list(default = prompts),
+  commands = list(info = bebel_loop_command("info", function(args, loop, context) {
+    bebel_loop_state(loop)
+  }))
+)
+
+bebel_extension_manifest(ext)
+#> $name
+#> [1] "readme-demo"
+#> 
+#> $tools
+#> NULL
+#> 
+#> $commands
+#> $commands$info
+#> $commands$info$name
+#> [1] "info"
+#> 
+#> $commands$info$description
+#> [1] "info"
+#> 
+#> $commands$info$usage
+#> [1] "/info"
+#> 
+#> 
+#> 
+#> $hooks
+#> NULL
+#> 
+#> $skill_providers
+#> [1] "default"
+#> 
+#> $prompt_template_providers
+#> [1] "default"
+#> 
+#> $keybindings
+#> list()
+#> 
+#> $widgets
+#> list()
+#> 
+#> $metadata
+#> list()
+bebel_system_prompt(
+  prompts,
+  "system",
+  data = list(role = "an R agent", place = "Bamako"),
+  skill_provider = skills,
+  skills = "concise"
+)
+#> [1] "You are an R agent working in Bamako.\n\n# Loaded skills\n\n## Skill: concise\n\nPrefer concise, direct answers."
+```
+
+See the “Generic agent and frontend framework” vignette for a fake
+backend example and the full session-tree/forking API.
+
+## Native FFF fuzzy file search
+
+Rbebelm uses the FFF engine behind `fff-c` as its native fuzzy file
+search primitive. A persistent `BebelFileFinder` indexes a project once;
+consoles, RPC clients, default file tools, and future TUIs can reuse it
+for low-latency file picking.
+
+``` r
+
+search_root <- tempfile("rbebelm-fff-readme-")
+dir.create(file.path(search_root, "src"), recursive = TRUE)
+writeLines("demo", file.path(search_root, "src", "bamako_agent.R"))
+writeLines("notes", file.path(search_root, "README.md"))
+
+finder <- bebel_file_finder(search_root, watch = FALSE)
+bebel_file_search(finder, "agent", limit = 5)
+#> <bebelFileSearchResult> 1 rows / 1 matched
+#>                path
+#>  src/bamako_agent.R
+#>                                                         absolute_path
+#>  /tmp/RtmpJ1nQGU/rbebelm-fff-readme-3561df6d004817/src/bamako_agent.R
+#>       file_name git_status size            modified score base_score
+#>  bamako_agent.R      clean    5 2026-06-08 21:38:35    74         64
+#>      match_type exact_match is_binary
+#>  fuzzy_filename       FALSE     FALSE
+```
+
+The native FFF dependency is not loaded in webR/wasm; the package still
+loads there, and file-search creation reports that native FFF is
+unavailable. SIMD is handled with the same care as the BebeLM backend:
+Rbebelm builds scalar and optimized native dylibs separately, and
+FFF/`neo_frizbee` SIMD kernels are only entered through runtime
+CPU-feature checks or the already-selected optimized backend.
 
 ## R-native agent layer
 
@@ -340,12 +547,18 @@ r_agent <- bebel_r_agent(
   max_think = 16
 )
 bebel_agent_tool_catalog(r_agent$tools)
-#>         name                                       description
-#> 1  r_objects     List objects in the configured R environment.
-#> 2     r_help Read R help for a topic, optionally in a package.
-#> 3 list_files                     List files under a directory.
-#> 4  read_file                                 Read a text file.
-#> 5 grep_files                       Search text files by regex.
+#>         name
+#> 1  r_objects
+#> 2     r_help
+#> 3 list_files
+#> 4  read_file
+#> 5 grep_files
+#>                                                              description
+#> 1                          List objects in the configured R environment.
+#> 2                      Read R help for a topic, optionally in a package.
+#> 3 Fuzzy-search files under a directory using the native FFF file finder.
+#> 4                                                      Read a text file.
+#> 5                                            Search text files by regex.
 ```
 
 Interactive console. The `/r` command is a direct R escape hatch into
@@ -389,8 +602,8 @@ From a shell, after installation:
   --weights /path/to/LFM2.5-8B-A1B-Q4_K_M.gguf
 ```
 
-Optional RPC server, using `nanonext` and `jsonlite` only when
-requested:
+Optional RPC server, using optional `nanonext`; JSON parsing and
+serialization use imported `yyjsonr`:
 
 ``` r
 
@@ -421,7 +634,7 @@ invisible(bebel_generate(
   )
 ))
 paste0(deltas, collapse = "")
-#> [1] " be used to update a text field in a UI component."
+#> [1] " be used to update a text area. time is  "
 ```
 
 You can also pass a named list of event-specific handlers directly:
@@ -498,30 +711,30 @@ Inspect the current CPU/runtime and selected backend:
 
 rbebelm_cpuid_info()
 #> <Rbebelm CPU features>
-#>   x86_64-v3: yes 
-#>   x86_64-v4: no 
-#>   NEON: no 
-#>   ARM dotprod: no 
+#>   x86_64-v3: yes
+#>   x86_64-v4: no
+#>   NEON: no
+#>   ARM dotprod: no
 #>   wasm simd128: no
 rbebelm_backend_features()
 #> <Rbebelm backend features>
-#>   backend: avx2 
-#>   target: x86_64-linux 
-#>   Rust crate: rbebelm_backend 0.1.0 
-#>   native SIMD feature: yes 
+#>   backend: avx2
+#>   target: x86_64-linux
+#>   Rust crate: rbebelm_backend 0.1.0
+#>   native SIMD feature: yes
 #>   compiled features:
-#>     AVX2: yes 
-#>     AVX-512F: no 
-#>     NEON: no 
-#>     ARM dotprod: no 
+#>     AVX2: yes
+#>     AVX-512F: no
+#>     NEON: no
+#>     ARM dotprod: no
 #>     wasm simd128: no
 rbebelm_backend_info()
 #> <Rbebelm backend dispatch>
-#>   mode: dynamic 
-#>   requested: auto 
-#>   selected: avx2 
-#>   loaded: yes 
-#>   installed: scalar,avx2,avx512 
+#>   mode: dynamic
+#>   requested: auto
+#>   selected: avx2
+#>   loaded: yes
+#>   installed: scalar,avx2,avx512
 #>   supported: scalar,avx2
 ```
 
@@ -558,7 +771,7 @@ make clean        # remove generated build artifacts
 - [`bebel_append()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_append.md)
   : Append raw text to a BebeLM agent transcript
 - [`bebel_append_system()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_append_system.md)
-  : Append a ChatML system turn to a BebeLM agent transcript
+  : Append an upstream BebeLM system turn to an agent transcript
 - [`bebel_append_user()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_append_user.md)
   : Append a ChatML user turn to a BebeLM agent transcript
 - [`bebel_append_tokens()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_append_tokens.md)
@@ -569,12 +782,18 @@ make clean        # remove generated build artifacts
   : Generate a raw continuation from a BebeLM agent transcript
 - [`bebel_assistant_turn()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_assistant_turn.md)
   : Generate and close an assistant ChatML turn from a BebeLM agent
+- [`bebel_assistant_turn_tool_stop()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_assistant_turn_tool_stop.md)
+  : Open an assistant turn and stop when a tool call closes
 - [`bebel_agent_run()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_run.md)
   : Run a BebeLM agent with R tool dispatch
 - [`bebel_tool()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_tool.md)
   : Define a BebeLM R tool
+- [`bebel_tool_schema_json()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_tool_schema_json.md)
+  : Render a BebeLM tool schema
 - [`bebel_parse_tool_call()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_parse_tool_call.md)
-  : Parse a BebeLM tool call block
+  : Parse a single BebeLM tool call block
+- [`bebel_parse_tool_calls()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_parse_tool_calls.md)
+  : Parse BebeLM tool calls
 - [`bebel_agent_configure()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_configure.md)
   : Configure a BebeLM agent
 - [`bebel_agent_info()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_info.md)
@@ -604,6 +823,148 @@ make clean        # remove generated build artifacts
 - [`BebelAgent`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelAgent.md)
   : Persistent BebeLM conversation agent with transcript and decode
   caches.
+
+## Generic agent and frontend framework
+
+- [`rbebelm_contracts`](https://sounkou-bioinfo.github.io/Rbebelm/reference/rbebelm_contracts.md)
+  : Rbebelm agent framework contracts
+- [`BebelAgentBackend`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelAgentBackend.md)
+  : BebeLM agent backend interface
+- [`BebelAgentExtension`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelAgentExtension.md)
+  : BebeLM agent extension interface
+- [`BebelSkillProvider`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelSkillProvider.md)
+  : BebeLM skill provider interface
+- [`BebelPromptTemplateProvider`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelPromptTemplateProvider.md)
+  : BebeLM prompt-template provider interface
+- [`bebel_backend_append_user()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_backend_append_user.md)
+  : Append a user message to an agent backend
+- [`bebel_backend_append_system()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_backend_append_system.md)
+  : Append a system message to an agent backend
+- [`bebel_backend_append_tool_result()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_backend_append_tool_result.md)
+  : Append a tool result to an agent backend
+- [`bebel_backend_assistant_turn()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_backend_assistant_turn.md)
+  : Run one assistant turn on an agent backend
+- [`bebel_backend_info()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_backend_info.md)
+  : Return agent backend information
+- [`bebel_backend_transcript()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_backend_transcript.md)
+  : Return agent backend transcript text
+- [`bebel_backend_clear()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_backend_clear.md)
+  : Clear an agent backend
+- [`bebel_agent_loop()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_loop.md)
+  : Create a stateful BebeLM agent loop
+- [`bebel_r_agent_loop()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_r_agent_loop.md)
+  : Create an agent loop from an R-native agent session
+- [`bebel_loop_policy()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_policy.md)
+  : Create an Agent-loop policy
+- [`bebel_loop_run()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_run.md)
+  : Run an agent loop
+- [`bebel_loop_step()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_step.md)
+  : Run one agent-loop assistant/tool step
+- [`bebel_loop_prompt()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_prompt.md)
+  : Prompt an agent loop
+- [`bebel_loop_steer()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_steer.md)
+  : Queue a steering message
+- [`bebel_loop_follow_up()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_follow_up.md)
+  : Queue a follow-up message
+- [`bebel_loop_state()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_state.md)
+  : Inspect agent-loop state
+- [`bebel_loop_events()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_events.md)
+  : Return agent-loop events
+- [`bebel_loop_extensions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_extensions.md)
+  : Return a loop's extension manifests
+- [`bebel_loop_command()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_command.md)
+  : Define an agent-loop command
+- [`bebel_loop_execute_command()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_execute_command.md)
+  : Execute a loop command
+- [`bebel_loop_cancel()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_cancel.md)
+  : Cancel an agent loop
+- [`bebel_loop_clear_queue()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_clear_queue.md)
+  : Clear queued steering and follow-up messages
+- [`bebel_loop_command_catalog()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_command_catalog.md)
+  : Return a loop's command catalog
+- [`bebel_extension()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_extension.md)
+  : Define an agent-loop extension
+- [`bebel_extension_manifest()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_extension_manifest.md)
+  : Return an extension manifest
+- [`bebel_extension_tools()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_extension_tools.md)
+  : Return tools contributed by an extension
+- [`bebel_extension_commands()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_extension_commands.md)
+  : Return commands contributed by an extension
+- [`bebel_extension_hooks()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_extension_hooks.md)
+  : Return hooks contributed by an extension
+- [`bebel_extension_skill_providers()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_extension_skill_providers.md)
+  : Return skill providers contributed by an extension
+- [`bebel_extension_prompt_template_providers()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_extension_prompt_template_providers.md)
+  : Return prompt-template providers contributed by an extension
+- [`bebel_skill_provider()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_skill_provider.md)
+  : Create a skill provider
+- [`bebel_skill()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_skill.md)
+  : Define a framework skill
+- [`bebel_skill_list()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_skill_list.md)
+  : List available skills
+- [`bebel_skill_load()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_skill_load.md)
+  : Load a skill by name
+- [`bebel_prompt_template_provider()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_prompt_template_provider.md)
+  : Create a prompt-template provider
+- [`bebel_prompt_template()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_prompt_template.md)
+  : Define a prompt template
+- [`bebel_prompt_template_list()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_prompt_template_list.md)
+  : List prompt templates
+- [`bebel_prompt_template_render()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_prompt_template_render.md)
+  : Render a prompt template
+- [`bebel_system_prompt()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_system_prompt.md)
+  : Compose a system prompt from a prompt template and optional skills
+- [`bebel_append_system_prompt()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_append_system_prompt.md)
+  : Render and append a system prompt to an agent backend
+
+## Session trees and context
+
+- [`bebel_session_create()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_create.md)
+  : Create an agent session JSONL store
+- [`bebel_session_open()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_open.md)
+  : Open an agent session JSONL file
+- [`bebel_session_dir()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_dir.md)
+  : Agent session storage directory
+- [`bebel_session_header()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_header.md)
+  [`bebel_session_entries()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_header.md)
+  [`bebel_session_leaf_id()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_header.md)
+  [`bebel_session_file()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_header.md)
+  [`bebel_session_get_entry()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_header.md)
+  : Inspect agent session metadata
+- [`bebel_session_list()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_list.md)
+  : List agent session files
+- [`bebel_session_append_message()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_append_message.md)
+  : Append a message entry to an agent session
+- [`bebel_session_append_session_info()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_append_session_info.md)
+  [`bebel_session_append_custom()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_append_session_info.md)
+  [`bebel_session_append_custom_message()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_append_session_info.md)
+  : Append session metadata and extension entries
+- [`bebel_session_append_model_change()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_append_model_change.md)
+  [`bebel_session_append_thinking_level_change()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_append_model_change.md)
+  [`bebel_session_append_compaction()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_append_model_change.md)
+  [`bebel_session_append_branch_summary()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_append_model_change.md)
+  : Append model/thinking/compaction/branch metadata
+- [`bebel_session_append_label()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_append_label.md)
+  : Append or clear a label on a session entry
+- [`bebel_session_branch()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_branch.md)
+  : Return the branch from root to a session entry
+- [`bebel_session_checkout()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_checkout.md)
+  : Move the current session leaf
+- [`bebel_session_fork()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_fork.md)
+  [`bebel_session_clone_branch()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_fork.md)
+  : Fork an agent session file into a new session file
+- [`bebel_session_context()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_context.md)
+  : Build model context from the active session branch
+- [`bebel_session_tree()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_tree.md)
+  : Return an agent session tree
+
+## Native fuzzy file search
+
+- [`bebel_file_finder()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_file_finder.md)
+  [`bebel_file_search()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_file_finder.md)
+  : Create a native fuzzy file finder
+- [`BebelFileFinder`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelFileFinder.md)
+  : Persistent native FFF fuzzy file finder.
 
 ## R-native agent layer
 
@@ -650,6 +1011,8 @@ make clean        # remove generated build artifacts
   started](https://sounkou-bioinfo.github.io/Rbebelm/articles/getting-started.md):
 - [Agents and
   tools](https://sounkou-bioinfo.github.io/Rbebelm/articles/agents-and-tools.md):
+- [Generic agent and frontend
+  framework](https://sounkou-bioinfo.github.io/Rbebelm/articles/agent-framework.md):
 - [R-native agent
   layer](https://sounkou-bioinfo.github.io/Rbebelm/articles/r-native-agent-layer.md):
 - [Events and

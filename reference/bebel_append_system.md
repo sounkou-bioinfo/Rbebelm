@@ -1,14 +1,13 @@
-# Append a ChatML system turn to a BebeLM agent transcript
+# Append an upstream BebeLM system turn to an agent transcript
 
-Appends `<|im_start|>system\n...<|im_end|>` framing. BebeLM upstream
-does not expose a separate system-prompt channel; this helper provides
-the ChatML system-role form for users who want to place an instruction
-before user turns.
+Delegates ChatML system-turn rendering to upstream BebeLM. When `tools`
+are supplied, their schemas are rendered in upstream's
+`List of tools: [...]` system-block preamble before `message`.
 
 ## Usage
 
 ``` r
-bebel_append_system(agent, message)
+bebel_append_system(agent, message, tools = NULL)
 ```
 
 ## Arguments
@@ -20,6 +19,12 @@ bebel_append_system(agent, message)
 - message:
 
   System instruction text.
+
+- tools:
+
+  Optional list of
+  [`bebel_tool()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_tool.md)
+  objects or named functions to advertise.
 
 ## Value
 

@@ -23,10 +23,10 @@ turn2 <- bebel_assistant_turn(agent, on_event = NULL)
 bebel_agent_info(agent)[c("history_tokens", "processed_tokens", "kv_tokens")]
 #> $history_tokens
 #> [1] 82
-#> 
+#>
 #> $processed_tokens
 #> [1] 80
-#> 
+#>
 #> $kv_tokens
 #> [1] 80
 
@@ -46,21 +46,22 @@ substr(bebel_transcript(agent), 1, 80)
 agent$clear()[c("history_tokens", "processed_tokens", "kv_tokens")]
 #> $history_tokens
 #> [1] 0
-#> 
+#>
 #> $processed_tokens
 #> [1] 0
-#> 
+#>
 #> $kv_tokens
 #> [1] 0
 ```
 
 Use
 [`bebel_append_system()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_append_system.md)
-for a ChatML system-role instruction. Raw appends do not add user
-framing, so the low-level
+for an upstream-rendered ChatML system turn. With no tools, the
+low-level
 [`bebel_append()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_append.md)
 form below is equivalent apart from being more explicit about the
-tokens.
+tokens. When `tools` are supplied, BebeLM renders its
+`List of tools: [...]` system preamble.
 
 ``` r
 
@@ -80,7 +81,7 @@ raw_turn <- bebel_agent_generate(raw_agent, on_event = NULL)
 raw_turn[c("stop", "generated_tokens")]
 #> $stop
 #> [1] "max_new"
-#> 
+#>
 #> $generated_tokens
 #> [1] 16
 
@@ -114,48 +115,52 @@ tools <- list(
 )
 
 tools$lookup_capital
-#> <bebelTool> lookup_capital 
+#> <bebelTool> lookup_capital
 #>   Return a capital city for a country.
 ```
 
-The default parser accepts JSON calls, simple function calls, and
-BebeLM’s bracketed tool-call form.
+The default parser delegates BebeLM’s bracketed Pythonic tool-call form
+to upstream, including multiple calls. JSON object calls and legacy
+`name({...})` compatibility are parsed with imported `yyjsonr`.
 
 ``` r
 
-bebel_parse_tool_call('{"name":"lookup_capital","arguments":{"country":"Italy"}}')
-#> $name
-#> [1] "lookup_capital"
-#> 
-#> $arguments
-#> $arguments$country
-#> [1] "Italy"
-#> 
-#> 
-#> $raw
-#> [1] "{\"name\":\"lookup_capital\",\"arguments\":{\"country\":\"Italy\"}}"
-bebel_parse_tool_call('lookup_capital({"country":"Italy"})')
-#> $name
-#> [1] "lookup_capital"
-#> 
-#> $arguments
-#> $arguments$country
-#> [1] "Italy"
-#> 
-#> 
-#> $raw
-#> [1] "lookup_capital({\"country\":\"Italy\"})"
 bebel_parse_tool_call('[lookup_capital(country="Italy")]')
 #> $name
 #> [1] "lookup_capital"
-#> 
+#>
 #> $arguments
 #> $arguments$country
 #> [1] "Italy"
-#> 
-#> 
+#>
+#>
 #> $raw
-#> [1] "[lookup_capital(country=\"Italy\")]"
+#> [1] "lookup_capital(country=\"Italy\")"
+bebel_parse_tool_calls('[lookup_capital(country="Mali"), lookup_capital(country="Italy")]')
+#> [[1]]
+#> [[1]]$name
+#> [1] "lookup_capital"
+#>
+#> [[1]]$arguments
+#> [[1]]$arguments$country
+#> [1] "Mali"
+#>
+#>
+#> [[1]]$raw
+#> [1] "lookup_capital(country=\"Mali\")"
+#>
+#>
+#> [[2]]
+#> [[2]]$name
+#> [1] "lookup_capital"
+#>
+#> [[2]]$arguments
+#> [[2]]$arguments$country
+#> [1] "Italy"
+#>
+#>
+#> [[2]]$raw
+#> [1] "lookup_capital(country=\"Italy\")"
 ```
 
 ## Run a tool loop
@@ -188,7 +193,7 @@ run <- bebel_agent_run(agent, tools = tools, context = ctx, hooks = hooks, max_s
 length(run$tool_calls)
 #> [1] 1
 ctx$log
-#> [1] "request lookup_capital"     "tool lookup_capital Italy" 
+#> [1] "request lookup_capital"     "tool lookup_capital Italy"
 #> [3] "result lookup_capital Rome"
 ```
 

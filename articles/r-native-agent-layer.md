@@ -101,8 +101,8 @@ line after each user turn.
 
 The same session object can be served over a small JSON-RPC API. This is
 not an OpenAI-compatible API; it is an SDK surface for controlling the
-R-native agent. `nanonext` and `jsonlite` are optional dependencies used
-only by this server.
+R-native agent. The server uses optional `nanonext`; JSON parsing and
+serialization use imported `yyjsonr`.
 
 ``` r
 
