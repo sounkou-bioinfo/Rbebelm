@@ -13,7 +13,7 @@ use crossterm::execute;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout};
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::prelude::{Color, Stylize};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
 use ratatui::Terminal;
@@ -22,7 +22,7 @@ use serde_json::{json, Value};
 
 #[derive(Parser, Debug)]
 #[command(name = "rbebelm-tui")]
-#[command(about = "ARF-style terminal frontend and transport client for Rbebelm agent loops")]
+#[command(about = "ARF-inspired terminal frontend and transport client for Rbebelm agent loops")]
 #[command(after_help = "Examples:\n  rbebelm-tui run --weights /path/to/model.gguf\n  BEBELM_WEIGHTS_FILE=/path/to/model.gguf rbebelm-tui\n  rbebelm-tui command --type catalog --params '{}'\n  rbebelm-tui stream --url http://127.0.0.1:8080")]
 struct Cli {
     /// Path to a TOML configuration file.
@@ -41,7 +41,7 @@ enum CommandKind {
     Config(ConfigCommand),
     /// Start only the Rbebelm loop host in an R process.
     Headless(HeadlessArgs),
-    /// Call one JSON-RPC method on a running Rbebelm loop host (compatibility control plane).
+    /// Call one JSON-RPC method on a running Rbebelm loop host (compatibility control API).
     Rpc(RpcArgs),
     /// Send one typed JSON command to a running Rbebelm loop host.
     Command(CommandArgs),
@@ -1010,8 +1010,9 @@ impl ChatApp {
             }
             "tool_result" => {
                 let name = event.pointer("/call/name").and_then(Value::as_str).unwrap_or("tool");
-                let result = event.get("result").map(|v| value_preview(v)).unwrap_or_default();
-                if let Some(path) = plot_path_from_text(&result) {
+                let value = event.get("result").unwrap_or(&Value::Null);
+                let result = value_preview(value);
+                if let Some(path) = plot_path_from_value(value) {
                     self.messages.push(ChatMessage { role: "artifact", text: png_artifact_text(&path, None) });
                 } else {
                     self.messages.push(ChatMessage { role: "tool", text: format!("result {name}: {result}") });
@@ -1024,8 +1025,9 @@ impl ChatApp {
             }
             "command_end" => {
                 let name = event.get("command").and_then(Value::as_str).unwrap_or("command");
-                let result = event.get("result").map(value_preview).unwrap_or_else(|| "OK".to_string());
-                if let Some(path) = plot_path_from_text(&result) {
+                let value = event.get("result").unwrap_or(&Value::Null);
+                let result = value_preview(value);
+                if let Some(path) = plot_path_from_value(value) {
                     self.messages.push(ChatMessage { role: "artifact", text: png_artifact_text(&path, Some(name)) });
                 } else {
                     self.messages.push(ChatMessage { role: "command", text: format!("/{name}: {result}") });
@@ -1147,6 +1149,13 @@ fn plot_path_from_text(text: &str) -> Option<String> {
     if path.ends_with(".png") { Some(path.to_string()) } else { None }
 }
 
+fn plot_path_from_value(value: &Value) -> Option<String> {
+    if let Some(path) = value.get("path").and_then(Value::as_str) {
+        if path.ends_with(".png") { return Some(path.to_string()); }
+    }
+    value.as_str().and_then(plot_path_from_text)
+}
+
 fn png_artifact_text(path: &str, command: Option<&str>) -> String {
     let header = match command {
         Some(name) => format!("/{name}: image/png\n{path}"),
@@ -1226,6 +1235,7 @@ fn push_state_field(lines: &mut Vec<String>, state: &Value, key: &str, label: &s
 
 fn value_preview(value: &Value) -> String {
     if let Some(s) = value.as_str() { return s.to_string(); }
+    if let Some(s) = value.get("text").and_then(Value::as_str) { return s.to_string(); }
     serde_json::to_string(value).unwrap_or_else(|_| String::new())
 }
 
@@ -1272,17 +1282,14 @@ fn role_color(role: &str) -> Color {
     }
 }
 
-fn markdown_line_style(text: &str, role: &str) -> Style {
+fn message_span(text: &str, role: &str) -> Span<'static> {
     let trimmed = text.trim_start();
-    let base = Style::default().fg(role_color(role));
     if trimmed.starts_with("#") {
-        base.add_modifier(Modifier::BOLD)
+        Span::raw(text.to_string()).fg(role_color(role)).bold()
     } else if trimmed.starts_with("```") || trimmed.starts_with("    ") {
-        Style::default().fg(Color::Gray)
-    } else if trimmed.starts_with("-") || trimmed.starts_with("*") {
-        base
+        Span::raw(text.to_string()).fg(Color::Gray)
     } else {
-        base
+        Span::raw(text.to_string()).fg(role_color(role))
     }
 }
 
@@ -1294,17 +1301,14 @@ fn render_message_lines(lines: &mut Vec<Line<'static>>, message: &ChatMessage) {
         message.text.lines().collect()
     };
     if parts.is_empty() {
-        lines.push(Line::from(vec![Span::styled(
-            format!("{}: ", message.role),
-            Style::default().fg(color).add_modifier(Modifier::BOLD),
-        )]));
+        lines.push(Line::from(vec![Span::raw(format!("{}: ", message.role)).fg(color).bold()]));
         return;
     }
     for (i, part) in parts.iter().enumerate() {
         let prefix = if i == 0 { format!("{}: ", message.role) } else { "  ".to_string() };
         lines.push(Line::from(vec![
-            Span::styled(prefix, Style::default().fg(color).add_modifier(Modifier::BOLD)),
-            Span::styled((*part).to_string(), markdown_line_style(part, message.role)),
+            Span::raw(prefix).fg(color).bold(),
+            message_span(part, message.role),
         ]));
     }
 }
@@ -1335,9 +1339,8 @@ fn draw<W: Write>(terminal: &mut Terminal<CrosstermBackend<W>>, app: &ChatApp) -
             .scroll((scroll_y, 0));
         frame.render_widget(transcript, chunks[0]);
 
-        let input = Paragraph::new(app.input.as_str())
-            .block(Block::default().title("Prompt").borders(Borders::ALL))
-            .style(Style::default().fg(Color::White));
+        let input = Paragraph::new(Span::raw(app.input.as_str()).fg(Color::White))
+            .block(Block::default().title("Prompt").borders(Borders::ALL));
         frame.render_widget(input, chunks[1]);
 
         let base_status = app.busy_status().unwrap_or_else(|| app.status.clone());
@@ -1346,7 +1349,7 @@ fn draw<W: Write>(terminal: &mut Terminal<CrosstermBackend<W>>, app: &ChatApp) -
         } else {
             base_status
         };
-        frame.render_widget(Paragraph::new(help).style(Style::default().fg(Color::DarkGray)), chunks[2]);
+        frame.render_widget(Paragraph::new(Span::raw(help).fg(Color::DarkGray)), chunks[2]);
     })?;
     Ok(())
 }

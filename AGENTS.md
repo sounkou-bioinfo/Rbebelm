@@ -30,7 +30,7 @@ BebeLM should implement the framework provider contracts.
   dylib dispatcher or runtime-guarded by CPU feature checks before
   `#[target_feature]` kernels. Never compile portable/scalar artifacts with
   `target-cpu=native` or unguarded AVX/AVX512/dotprod assumptions.
-- Do not add a Pi-style core `/reload`: S7/s7contract method registration and
+- Do not add a Pi-like core `/reload`: S7/s7contract method registration and
   extension objects should compose without a reload concept. Refresh/reload
   commands belong only to frontends or side-effecting extension consumers such
   as a TUI rebuilding keybindings/widgets, command palettes, watcher state, or
@@ -109,7 +109,7 @@ Full check:
 make check
 ```
 
-Optional real-model smoke test:
+Optional real-model check:
 
 ```sh
 BEBELM_WEIGHTS_FILE=/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf \

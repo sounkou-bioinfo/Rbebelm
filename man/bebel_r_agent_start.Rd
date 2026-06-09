@@ -21,7 +21,7 @@ bebel_r_agent_start(
   max_steps = 4L,
   show_stats = TRUE,
   blank_limit = 10L,
-  prompt_style = c("compact", "full")
+  prompt_detail = c("compact", "full")
 )
 }
 \arguments{
@@ -46,7 +46,7 @@ bebel_r_agent_start(
 
 \item{blank_limit}{Number of consecutive blank inputs before exiting the console. Set to \code{Inf} to never auto-exit on blanks.}
 
-\item{prompt_style}{Tool prompt verbosity passed to \code{\link[=bebel_r_agent]{bebel_r_agent()}}.}
+\item{prompt_detail}{Tool prompt detail passed to \code{\link[=bebel_r_agent]{bebel_r_agent()}}.}
 }
 \value{
 Invisibly returns the \code{bebelRAgent} session after the console exits.

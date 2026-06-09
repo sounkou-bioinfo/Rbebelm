@@ -27,7 +27,7 @@ local-model backend. Start from the entry point that matches your use case:
    `BebelAgent` that owns transcript and decode-cache state.
 3. **Native file search**: create a persistent FFF file finder for agent tools,
    consoles, RPC clients, and the standalone terminal TUI.
-4. **Terminal frontend**: use the ARF-style native `rbebelm-tui` binary, which
+4. **Terminal frontend**: use the ARF-inspired native `rbebelm-tui` binary, which
    talks to an R-owned loop over the stream/command endpoint instead of owning
    model or tool logic.
 
@@ -61,7 +61,7 @@ store <- bebel_session_create(
 
 msg <- bebel_session_append_message(store, "user", "Hello from a framework-only session")
 bebel_session_leaf_id(store)
-#> <bebelSessionLeafId> a0d88507
+#> <bebelSessionLeafId> 65bfdc71
 bebel_session_context(store)$messages[[1]]$role
 #> [1] "user"
 ```
@@ -145,7 +145,7 @@ bebel_file_search(finder, "agent", limit = 3)$path
 In webR/wasm the package still loads, but creating a file finder reports that
 native FFF search is unavailable.
 
-## ARF-style TUI module
+## ARF-inspired TUI module
 
 The terminal TUI source lives in `src/rust/src/bin/rbebelm-tui.rs` and is
 compiled during source installation. It follows ARF's model: Rust owns terminal
@@ -163,12 +163,13 @@ BEBELM_WEIGHTS_FILE=/path/to/LFM2.5-8B-A1B-Q4_K_M.gguf "$TUI"
 
 The default `run` mode starts the R host, waits for readiness, attaches chat,
 and stops the host when the UI exits. Slash commands are handled before model
-turns: `/quit` exits, `/help` and `Tab` show completions, and `/rplot` saves a
-simple PNG when called without arguments. Model-side `r_eval` and `r_plot` are
-enabled by default for local TUI hosts; use `--no-eval` at startup or `/no-eval`
-at runtime to remove them from the model tool catalog. The lower-level split mode
+turns: `/quit` exits, `/help` and `Tab` show completions, `/graphics` inspects or
+sets plot handling, and `/rplot` draws with the configured R graphics device.
+Model-side `r_eval` and `r_plot` are enabled by default for local TUI hosts; use
+`--no-eval` at startup or `/no-eval` at runtime to remove them from the model
+tool catalog. The lower-level split mode
 still consumes `GET /stream` events plus `POST /command` messages, with
-`POST /rpc` kept as compatibility/control plane. There is no duplicate TUI-owned
+`POST /rpc` kept as compatibility/control API. There is no duplicate TUI-owned
 agent loop and no core `/reload`; R registers extensions and frontends refresh
 local palettes/widgets when `catalog_changed` events arrive.
 

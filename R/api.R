@@ -529,6 +529,7 @@ bebel_parse_tool_call <- function(content) {
 format_bebel_tool_result <- function(call, result, error = NULL) {
   if (!is.null(error)) return(paste0("Error: ", conditionMessage(error)))
   if (is.null(result)) return("")
+  if (is.list(result) && !is.null(result$text)) return(as.character(result$text)[[1L]])
   paste(result, collapse = "\n")
 }
 

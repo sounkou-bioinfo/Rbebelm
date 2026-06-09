@@ -1,8 +1,8 @@
 ---
-title: "ARF-style TUI module"
+title: "ARF-inspired TUI module"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{ARF-style TUI module}
+  %\VignetteIndexEntry{ARF-inspired TUI module}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -101,7 +101,7 @@ R-owned loop endpoint:
 This command requires the installed R package plus optional `nanonext` and
 `later`, because the loop endpoint is an R-level optional surface. The URL can be
 local HTTP, remote HTTP, or HTTPS/TLS when the R server is created with
-`nanonext::tls_config()`. Headless mode is the R host side of the ARF-style
+`nanonext::tls_config()`. Headless mode is the R host side of the ARF-inspired
 split; terminal/editor clients attach to it.
 
 ## Stream and command clients
@@ -115,7 +115,7 @@ Use the stream as the rendering/event backbone and commands as the control path:
 "$TUI" command --url http://127.0.0.1:8080 --type turn \
   --params '{"prompt":"Say hi","max_steps":2}'
 
-# JSON-RPC compatibility/control plane:
+# JSON-RPC compatibility/control API:
 "$TUI" rpc --url http://127.0.0.1:8080 --method session/info
 ```
 
@@ -135,13 +135,14 @@ Keys and slash commands:
 - `Ctrl-L`: clear the local screen
 - `Ctrl-Q`, `/quit`, `/exit`, `/q`: quit
 - default R-agent commands: `/help`, `/commands`, `/tools`, `/state`,
-  `/transcript`, `/clear`, `/allow-eval`, `/no-eval`, `/r <code>`,
-  `/rplot [plot-code]`
+  `/transcript`, `/clear`, `/allow-eval`, `/no-eval`, `/graphics [device]`,
+  `/r <code>`, `/rplot [plot-code]`
 
-Direct `/rplot` is a user command and creates a simple PNG when no code is
+Direct `/rplot` is a user command and creates a simple plot when no code is
 supplied. Model-side `r_eval` and `r_plot` are enabled by default for local TUI
 hosts; use `--no-eval` at startup or `/no-eval` at runtime to remove them from
-the model tool catalog.
+the model tool catalog. Use `/graphics auto|native|png|jgd|devout-ascii` to
+inspect or change plot handling.
 
 The current UI is intentionally small: it is a frontend shell around R-owned
 agent semantics. That keeps consoles, transport clients, and TUI consumers
@@ -151,18 +152,33 @@ aligned. Runtime extension registration happens in R via
 
 ## Plots
 
-Plots are managed by R, not by the terminal frontend. The `r_plot` tool renders
-plotting code to PNG under the agent working directory and returns the saved
-path. The TUI marks this as an `image/png` artifact, shows the path, and renders
-a portable braille thumbnail from the PNG bytes so thin base-R axes/points survive
-terminal rendering better than plain ASCII. Full-color inline pixel preview still
-needs a terminal image protocol backend (Kitty graphics, iTerm2 inline images, or
-sixel), while a jgd-style graphics stream would be the richer vector/event
-renderer boundary. The TUI does not own an R graphics device.
+Plots are managed by R, not by the terminal frontend. `r_plot` and `/rplot` use
+the configured R graphics device: `auto`, `native`, `png`, optional `jgd`, or
+optional `devout-ascii`. TUI/headless sessions default to PNG artifacts unless a
+jgd socket is configured. The TUI marks PNG output as an `image/png` artifact,
+shows the path, and renders a portable braille thumbnail from the PNG bytes so
+thin base-R axes/points survive terminal rendering better than plain ASCII.
+Full-color inline pixel preview still needs a terminal image protocol backend
+(Kitty graphics, iTerm2 inline images, or sixel), while a jgd-compatible graphics
+stream would be the richer vector/event renderer boundary. The TUI does not own
+an R graphics device.
 
 ## Testing
 
-Non-model smoke tests after package installation:
+Real frontend/device check from the repository root:
+
+```sh
+make tui-check
+```
+
+This target uses a Rust PTY runner plus optional R packages `nanonext` and
+`later`. It installs the current package, starts a fake loop endpoint, launches
+the installed `rbebelm-tui` through a pseudo-terminal, submits `/rplot`, and
+verifies that the terminal rendering contains an `image/png` artifact plus a
+braille thumbnail. It is intentionally outside `R CMD check` because it requires
+a real terminal.
+
+Non-model command checks after package installation:
 
 ```sh
 TUI="$(Rscript -e 'cat(system.file("bin/rbebelm-tui", package = "Rbebelm"))')"
@@ -191,6 +207,6 @@ Split-terminal endpoint test:
 "$TUI" stream --url http://127.0.0.1:8080
 "$TUI" command --type session_info --url http://127.0.0.1:8080 --params '{}'
 "$TUI" command --type turn --url http://127.0.0.1:8080 \
-  --params '{"prompt":"Say hello from the TUI smoke test","max_steps":1}'
+  --params '{"prompt":"Say hello from the TUI check","max_steps":1}'
 "$TUI" chat --url http://127.0.0.1:8080
 ```

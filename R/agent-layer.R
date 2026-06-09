@@ -21,6 +21,169 @@ bebel_agent_tool_text <- function(result) {
   if (is.list(result) && !is.null(result$text)) result$text else bebel_agent_format_value(result)
 }
 
+bebel_namespace_available <- function(pkg) {
+  isTRUE(do.call("requireNamespace", list(as.character(pkg)[[1L]], quietly = TRUE)))
+}
+
+bebel_console_command <- function(name, fun, description = "", usage = NULL, aliases = character()) {
+  structure(
+    list(
+      name = name,
+      fun = fun,
+      description = description,
+      usage = usage %||% paste0("/", name),
+      aliases = aliases
+    ),
+    class = "bebelConsoleCommand"
+  )
+}
+
+bebel_console_parse_command <- function(text) {
+  text <- trimws(as.character(text)[[1L]])
+  if (!startsWith(text, "/") || startsWith(text, "//")) return(NULL)
+  body <- trimws(sub("^/", "", text))
+  if (!nzchar(body)) return(NULL)
+  name <- tolower(strsplit(body, "\\s+", perl = TRUE)[[1L]][[1L]])
+  args <- if (grepl("\\s", body, perl = TRUE)) trimws(sub("^[^[:space:]]+\\s*", "", body, perl = TRUE)) else ""
+  list(name = name, args = args, raw = text)
+}
+
+bebel_console_command_catalog <- function(commands) {
+  data.frame(
+    name = names(commands),
+    usage = vapply(commands, `[[`, character(1), "usage"),
+    description = vapply(commands, `[[`, character(1), "description"),
+    aliases = vapply(commands, function(x) paste(x$aliases %||% character(), collapse = ", "), character(1)),
+    stringsAsFactors = FALSE
+  )
+}
+
+bebel_console_command_aliases <- function(commands) {
+  aliases <- unlist(lapply(names(commands), function(name) {
+    stats::setNames(rep(name, length(commands[[name]]$aliases %||% character())), commands[[name]]$aliases %||% character())
+  }), use.names = TRUE)
+  c(stats::setNames(names(commands), names(commands)), aliases)
+}
+
+bebel_console_dispatch_command <- function(text, commands, session, input_con = NULL) {
+  parsed <- bebel_console_parse_command(text)
+  if (is.null(parsed)) return(list(handled = FALSE, quit = FALSE))
+  aliases <- bebel_console_command_aliases(commands)
+  target <- unname(aliases[parsed$name])
+  if (!length(target) || is.na(target)) target <- parsed$name
+  command <- commands[[target]]
+  if (is.null(command)) return(list(handled = FALSE, quit = FALSE, name = parsed$name))
+  result <- tryCatch(
+    command$fun(parsed$args, session = session, input_con = input_con, commands = commands, parsed = parsed),
+    error = function(e) {
+      message("Command error: ", conditionMessage(e))
+      list()
+    }
+  )
+  if (isTRUE(result)) result <- list(quit = TRUE)
+  if (is.null(result) || !is.list(result)) result <- list()
+  quit <- isTRUE(result$quit)
+  result$quit <- NULL
+  c(list(handled = TRUE, quit = quit, name = target), result)
+}
+
+bebel_graphics_device <- function(device = NULL, interactive_default = TRUE) {
+  device <- device %||%
+    getOption("Rbebelm.graphics.device", NULL) %||%
+    Sys.getenv("RBEBELM_GRAPHICS_DEVICE", unset = NULL) %||%
+    "auto"
+  device <- tolower(as.character(device)[[1L]])
+  if (!nzchar(device)) device <- "auto"
+  if (identical(device, "auto")) {
+    socket <- Sys.getenv("JGD_SOCKET", unset = "")
+    if (nzchar(socket) && bebel_namespace_available("jgd")) return("jgd")
+    if (isTRUE(interactive_default) && interactive()) return("native")
+    return("png")
+  }
+  aliases <- c(ascii = "devout-ascii", devout = "devout-ascii", devout_ascii = "devout-ascii")
+  if (device %in% names(aliases)) device <- aliases[[device]]
+  match.arg(device, c("native", "png", "jgd", "devout-ascii"))
+}
+
+bebel_plot_result <- function(text, device, path = NULL, mime = NULL, socket = NULL, width = NULL, height = NULL) {
+  structure(
+    list(text = text, device = device, path = path, mime = mime, socket = socket, width = width, height = height),
+    class = "bebelPlotResult"
+  )
+}
+
+bebel_graphics_open_jgd <- function(width, height, socket) {
+  jgd <- getExportedValue("jgd", "jgd")
+  jgd(width = as.numeric(width) / 96, height = as.numeric(height) / 96, dpi = 96, socket = socket)
+}
+
+bebel_graphics_render_devout_ascii <- function(exprs, envir, width, height) {
+  if (!bebel_namespace_available("devout")) {
+    stop("devout-ascii graphics requested but package 'devout' is not installed", call. = FALSE)
+  }
+  ascii <- getExportedValue("devout", "ascii")
+  cols <- max(30L, min(160L, as.integer(width / 8L)))
+  rows <- max(12L, min(80L, as.integer(height / 16L)))
+  path <- tempfile("rbebelm-devout-ascii-", fileext = ".txt")
+  opened <- FALSE
+  ascii(filename = path, width = cols, height = rows)
+  opened <- TRUE
+  on.exit({
+    if (opened) grDevices::dev.off()
+  }, add = TRUE)
+  for (expr in exprs) eval(expr, envir = envir)
+  grDevices::dev.off()
+  opened <- FALSE
+  txt <- paste(readLines(path, warn = FALSE), collapse = "\n")
+  bebel_plot_result(
+    paste(c(sprintf("Plot rendered via devout::ascii (%dx%d characters):", cols, rows), txt), collapse = "\n"),
+    device = "devout-ascii",
+    mime = "text/plain",
+    width = cols,
+    height = rows
+  )
+}
+
+bebel_graphics_render_plot <- function(exprs, envir, cwd = getwd(), width = 800L, height = 600L, device = NULL) {
+  width <- suppressWarnings(as.integer(width %||% 800L))
+  height <- suppressWarnings(as.integer(height %||% 600L))
+  width <- if (length(width) && !is.na(width) && width >= 100L) width[[1L]] else 800L
+  height <- if (length(height) && !is.na(height) && height >= 100L) height[[1L]] else 600L
+  device <- bebel_graphics_device(device)
+  if (identical(device, "native")) {
+    for (expr in exprs) eval(expr, envir = envir)
+    return(bebel_plot_result("Plot displayed on the native R graphics device.", device = "native", width = width, height = height))
+  }
+  if (identical(device, "devout-ascii")) {
+    out <- tryCatch(bebel_graphics_render_devout_ascii(exprs, envir, width, height), error = function(e) e)
+    if (!inherits(out, "error")) return(out)
+    warning("devout-ascii graphics failed; falling back to PNG: ", conditionMessage(out), call. = FALSE)
+  }
+  if (identical(device, "jgd")) {
+    socket <- Sys.getenv("JGD_SOCKET", unset = "")
+    if (nzchar(socket) && bebel_namespace_available("jgd")) {
+      opened <- FALSE
+      out <- tryCatch({
+        bebel_graphics_open_jgd(width, height, socket)
+        opened <- TRUE
+        on.exit({
+          if (opened) grDevices::dev.off()
+        }, add = TRUE)
+        for (expr in exprs) eval(expr, envir = envir)
+        grDevices::dev.off()
+        opened <- FALSE
+        bebel_plot_result(paste("Plot streamed via jgd to:", socket), device = "jgd", socket = socket, width = width, height = height)
+      }, error = function(e) e)
+      if (!inherits(out, "error")) return(out)
+      warning("jgd graphics failed; falling back to PNG: ", conditionMessage(out), call. = FALSE)
+    } else {
+      warning("jgd graphics requested but jgd/JGD_SOCKET is unavailable; falling back to PNG", call. = FALSE)
+    }
+  }
+  path <- bebel_console_save_plot(exprs, envir, cwd = cwd, width = width, height = height)
+  bebel_plot_result(paste("Plot saved to:", path), device = "png", path = path, mime = "image/png", width = width, height = height)
+}
+
 bebel_agent_require <- function(pkg) {
   if (!requireNamespace(pkg, quietly = TRUE)) {
     stop("Package '", pkg, "' is required for this optional feature.", call. = FALSE)
@@ -197,7 +360,7 @@ bebel_agent_default_system <- function(tools, detail = c("compact", "full")) {
   )
   if (identical(detail, "compact")) {
     return(paste(
-      "You are an expert R-native assistant operating inside Rbebelm, an R agent/frontend harness.",
+      "You are an expert R-native assistant operating inside Rbebelm, an R agent/frontend framework.",
       "Available tools are declared separately by the host.",
       "Guidelines:",
       paste0("- ", guidelines, collapse = "\n"),
@@ -207,7 +370,7 @@ bebel_agent_default_system <- function(tools, detail = c("compact", "full")) {
   }
 
   paste(
-    "You are an expert R-native assistant operating inside Rbebelm, an R agent/frontend harness.",
+    "You are an expert R-native assistant operating inside Rbebelm, an R agent/frontend framework.",
     "You help users inspect R state, read files, run R code when enabled, create plots, and explain results.",
     "Available tools are declared separately by the host.",
     "Guidelines:",
@@ -221,7 +384,10 @@ bebel_agent_default_system <- function(tools, detail = c("compact", "full")) {
 #'
 #' The default catalog is intentionally small. It exposes read-only file and R
 #' session inspection tools plus optional R evaluation and plot rendering. These
-#' are ordinary R functions and run in the current R process.
+#' are ordinary R functions and run in the current R process. Plot rendering is
+#' device-backed: `options(Rbebelm.graphics.device=)` or the
+#' `RBEBELM_GRAPHICS_DEVICE` environment variable may be `"auto"`, `"native"`,
+#' `"png"`, `"jgd"`, or `"devout-ascii"`.
 #'
 #' @param env Environment used by `r_objects`, `r_eval`, and `r_plot`.
 #' @param cwd Working directory for file and plot tools.
@@ -297,11 +463,11 @@ bebel_default_r_tools <- function(env = .GlobalEnv, cwd = getwd(), allow_eval = 
     ),
     r_plot = bebel_agent_tool(
       "r_plot",
-      "Render R plotting code to a PNG file and return the saved path.",
+      "Render R plotting code using the configured R graphics device and return the resulting artifact or device message.",
       params = list(
         code = list(type = "string", description = "R plotting code, such as plot(mpg ~ cyl, mtcars).", required = TRUE),
-        width = list(type = "integer", description = "PNG width in pixels.", required = FALSE),
-        height = list(type = "integer", description = "PNG height in pixels.", required = FALSE)
+        width = list(type = "integer", description = "Requested plot width in pixels for file/stream devices.", required = FALSE),
+        height = list(type = "integer", description = "Requested plot height in pixels for file/stream devices.", required = FALSE)
       ),
       fun = function(args, context, call) {
         if (!isTRUE(allow_eval)) {
@@ -314,8 +480,7 @@ bebel_default_r_tools <- function(env = .GlobalEnv, cwd = getwd(), allow_eval = 
         height <- suppressWarnings(as.integer(args$height %||% 600L))
         out <- tryCatch(
           {
-            path <- bebel_console_save_plot(expr, env, cwd = cwd, width = width, height = height)
-            paste("Plot saved to:", path)
+            bebel_graphics_render_plot(expr, env, cwd = cwd, width = width, height = height)
           },
           error = function(e) {
             msg <- conditionMessage(e)
@@ -449,8 +614,8 @@ bebel_default_r_tools <- function(env = .GlobalEnv, cwd = getwd(), allow_eval = 
 
 #' Create an R-native Rbebelm agent session
 #'
-#' `bebel_r_agent()` is a higher-level layer inspired by R console agent
-#' harnesses. It keeps one BebeLM agent, a private tool context, and a small R
+#' `bebel_r_agent()` is a higher-level layer inspired by R console agents. It
+#' keeps one BebeLM agent, a private tool context, and a small R
 #' tool catalog together so the same object can be driven by a console loop or
 #' by the JSON-RPC server.
 #'
@@ -462,7 +627,7 @@ bebel_default_r_tools <- function(env = .GlobalEnv, cwd = getwd(), allow_eval = 
 #' @param cwd Working directory for file tools.
 #' @param allow_eval Whether to include `r_eval` and `r_plot` tools that execute
 #'   R code and render plots. Defaults to `TRUE`; set `FALSE` to start read-only.
-#' @param prompt_style Tool prompt verbosity. `"compact"` is faster for console
+#' @param prompt_detail Tool prompt detail. `"compact"` is faster for console
 #'   use; `"full"` includes descriptions for every argument.
 #' @param greedy,max_gen,max_context,max_think,temperature,top_k,repeat_penalty
 #'   Generation options passed to [bebel_agent()].
@@ -475,7 +640,7 @@ bebel_r_agent <- function(
   env = .GlobalEnv,
   cwd = getwd(),
   allow_eval = TRUE,
-  prompt_style = c("compact", "full"),
+  prompt_detail = c("compact", "full"),
   greedy = FALSE,
   max_gen = 512,
   max_context = 4096,
@@ -484,10 +649,10 @@ bebel_r_agent <- function(
   top_k = 50,
   repeat_penalty = 1.1
 ) {
-  prompt_style <- match.arg(prompt_style)
+  prompt_detail <- match.arg(prompt_detail)
   if (is.null(tools)) tools <- bebel_default_r_tools(env = env, cwd = cwd, allow_eval = allow_eval)
   tools <- bebel_agent_normalize_tools(tools)
-  if (is.null(system_prompt)) system_prompt <- bebel_agent_default_system(tools, detail = prompt_style)
+  if (is.null(system_prompt)) system_prompt <- bebel_agent_default_system(tools, detail = prompt_detail)
 
   agent <- bebel_agent(
     model,
@@ -510,7 +675,7 @@ bebel_r_agent <- function(
   x$context$env <- env
   x$context$cwd <- cwd
   x$allow_eval <- isTRUE(allow_eval)
-  x$prompt_style <- prompt_style
+  x$prompt_detail <- prompt_detail
   x$max_chars <- getOption("Rbebelm.agent.max_chars", 4000L)
   x$history <- list()
   x$turns <- list()
@@ -591,7 +756,7 @@ bebel_r_agent_set_eval <- function(session, loop = NULL, allow_eval = TRUE) {
     allow_eval = session$allow_eval,
     max_chars = session$max_chars %||% 4000L
   ))
-  session$system_prompt <- bebel_agent_default_system(session$tools, detail = session$prompt_style %||% "compact")
+  session$system_prompt <- bebel_agent_default_system(session$tools, detail = session$prompt_detail %||% "compact")
   bebel_append_system(session$agent, session$system_prompt, tools = bebel_agent_as_bebel_tools(session$tools))
   if (!is.null(loop)) {
     loop$user_tools <- bebel_agent_as_bebel_tools(session$tools)
@@ -649,6 +814,24 @@ bebel_r_agent_loop_extension <- function(session) {
       transcript = bebel_loop_command("transcript", function(args, loop, context) {
         bebel_transcript(session$agent)
       }, description = "Show backend transcript.", usage = "/transcript"),
+      graphics = bebel_loop_command("graphics", function(args, loop, context) {
+        value <- trimws(args)
+        if (!nzchar(value)) {
+          current <- bebel_graphics_device()
+          return(paste(
+            sprintf("graphics device: %s", current),
+            "usage: /graphics native|png|jgd|devout-ascii|auto",
+            "auto chooses jgd when JGD_SOCKET+jgd are available, native in interactive R consoles, otherwise png.",
+            sep = "\n"
+          ))
+        }
+        value <- tolower(value)
+        if (!value %in% c("auto", "native", "png", "jgd", "devout-ascii", "devout", "ascii", "devout_ascii")) {
+          stop("unknown graphics device; use auto, native, png, jgd, or devout-ascii", call. = FALSE)
+        }
+        options(Rbebelm.graphics.device = value)
+        sprintf("graphics device set to: %s", bebel_graphics_device(value))
+      }, description = "Show or set the R graphics device used by r_plot and /rplot.", usage = "/graphics [auto|native|png|jgd|devout-ascii]"),
       clear = bebel_loop_command("clear", function(args, loop, context) {
         bebel_r_agent_clear(session)
         loop$turns <- list()
@@ -684,9 +867,8 @@ bebel_r_agent_loop_extension <- function(session) {
           code <- "plot(1:10, (1:10)^2, type = 'b', main = 'Simple plot', xlab = 'x', ylab = 'x^2')"
         }
         exprs <- parse(text = code, srcfile = NULL)
-        path <- bebel_console_save_plot(exprs, session$context$env, cwd = session$context$cwd)
-        paste("Plot saved to:", path)
-      }, description = "Render R plotting code to a PNG path; no args creates a simple plot.", usage = "/rplot [plot-code]")
+        bebel_graphics_render_plot(exprs, session$context$env, cwd = session$context$cwd)
+      }, description = "Render R plotting code using the configured R graphics device; no args creates a simple plot.", usage = "/rplot [plot-code]")
     )
   )
 }
@@ -832,6 +1014,75 @@ bebel_format_agent_run_stats <- function(run) {
   )
 }
 
+bebel_r_agent_console_commands <- function() {
+  list(
+    help = bebel_console_command("help", function(args, session, input_con, commands, ...) {
+      catalog <- bebel_console_command_catalog(commands)
+      cat("Commands:\n")
+      for (i in seq_len(nrow(catalog))) {
+        alias <- if (nzchar(catalog$aliases[[i]])) paste0(" (aliases: ", catalog$aliases[[i]], ")") else ""
+        cat("  ", catalog$usage[[i]], alias, " - ", catalog$description[[i]], "\n", sep = "")
+      }
+      cat("Use /r <code> to evaluate R directly in the configured environment.\n")
+      cat("Use /graphics native|png|jgd|devout-ascii to choose plot handling.\n")
+      cat("Large /r output is truncated; assign objects with /r x <- value.\n")
+    }, description = "Show console commands.", usage = "/help"),
+    tools = bebel_console_command("tools", function(args, session, input_con, commands, ...) {
+      print(bebel_agent_tool_catalog(session$tools))
+    }, description = "List model tools advertised by the R agent.", usage = "/tools"),
+    graphics = bebel_console_command("graphics", function(args, session, input_con, commands, ...) {
+      value <- trimws(args)
+      if (!nzchar(value)) {
+        cat("graphics device: ", bebel_graphics_device(), "\n", sep = "")
+        cat("usage: /graphics native|png|jgd|devout-ascii|auto\n")
+        return(invisible(NULL))
+      }
+      value <- tolower(value)
+      if (!value %in% c("auto", "native", "png", "jgd", "devout-ascii", "devout", "ascii", "devout_ascii")) {
+        message("Unknown graphics device. Use auto, native, png, jgd, or devout-ascii.")
+        return(invisible(NULL))
+      }
+      options(Rbebelm.graphics.device = value)
+      cat("graphics device set to: ", bebel_graphics_device(value), "\n", sep = "")
+    }, description = "Show or set the R graphics device used by r_plot and /rplot.", usage = "/graphics [auto|native|png|jgd|devout-ascii]"),
+    r = bebel_console_command("r", function(args, session, input_con, commands, ...) {
+      exprs <- tryCatch(bebel_console_read_r(trimws(args), input_con = input_con), error = function(e) {
+        message("R parse error: ", conditionMessage(e))
+        NULL
+      })
+      if (!is.null(exprs)) {
+        tryCatch(bebel_console_eval_r(exprs, session$context$env), error = function(e) {
+          message("R error: ", conditionMessage(e))
+        })
+      }
+    }, description = "Evaluate R code directly in the configured environment.", usage = "/r <R code>"),
+    rplot = bebel_console_command("rplot", function(args, session, input_con, commands, ...) {
+      exprs <- tryCatch(bebel_console_read_r(trimws(args), input_con = input_con), error = function(e) {
+        message("R parse error: ", conditionMessage(e))
+        NULL
+      })
+      if (!is.null(exprs)) {
+        tryCatch({
+          out <- bebel_graphics_render_plot(exprs, session$context$env, cwd = session$context$cwd)
+          cat(bebel_agent_tool_text(out), "\n", sep = "")
+        }, error = function(e) {
+          message("R plot error: ", conditionMessage(e))
+        })
+      }
+    }, description = "Draw R plotting code with the configured graphics device.", usage = "/rplot [plot-code]"),
+    transcript = bebel_console_command("transcript", function(args, session, input_con, commands, ...) {
+      cat(bebel_transcript(session$agent), "\n", sep = "")
+    }, description = "Show backend transcript.", usage = "/transcript"),
+    clear = bebel_console_command("clear", function(args, session, input_con, commands, ...) {
+      bebel_r_agent_clear(session)
+      cat("Cleared.\n")
+    }, description = "Clear transcript and agent state.", usage = "/clear"),
+    quit = bebel_console_command("quit", function(args, session, input_con, commands, ...) {
+      list(quit = TRUE)
+    }, description = "Exit the console.", usage = "/quit", aliases = c("q", "exit"))
+  )
+}
+
 #' Start an interactive Rbebelm console agent
 #'
 #' @param session A `bebelRAgent`.
@@ -847,10 +1098,11 @@ bebel_r_agent_console <- function(session, prompt = "bebel> ", max_steps = 4L, s
   blank_limit <- suppressWarnings(as.numeric(blank_limit))
   blank_limit <- if (length(blank_limit)) blank_limit[[1L]] else NA_real_
   if (is.na(blank_limit) || blank_limit < 1) blank_limit <- 10
-  cat("RbebelM R agent. Commands: /help, /tools, /r, /rplot, /transcript, /clear, /quit\n")
+  cat("RbebelM R agent. Commands: /help, /tools, /graphics, /r, /rplot, /transcript, /clear, /quit\n")
   cat("Type a message and press Enter; blank lines are ignored.\n")
   input_con <- bebel_console_open_input()
   on.exit(bebel_console_close_input(input_con), add = TRUE)
+  commands <- bebel_r_agent_console_commands()
   blank_count <- 0L
   repeat {
     quit <- FALSE
@@ -872,47 +1124,10 @@ bebel_r_agent_console <- function(session, prompt = "bebel> ", max_steps = 4L, s
         } else {
           blank_count <- 0L
           if (startsWith(line_trim, "/")) {
-            cmd <- tolower(strsplit(line_trim, "\\s+")[[1]][1])
-            if (cmd %in% c("/q", "/quit", "/exit")) {
+            command_result <- bebel_console_dispatch_command(line_trim, commands, session, input_con)
+            if (isTRUE(command_result$quit)) {
               quit <- TRUE
-            } else if (cmd == "/help") {
-              cat("Commands: /help /tools /r /rplot /transcript /clear /quit\n")
-              cat("Use /r <code> to evaluate R directly in the configured environment.\n")
-              cat("Use /rplot <plot-code> to save a PNG under rbebelm-plots/.\n")
-              cat("Large /r output is truncated; assign objects with /r x <- value.\n")
-            } else if (cmd == "/tools") {
-              print(bebel_agent_tool_catalog(session$tools))
-            } else if (cmd == "/r") {
-              code <- trimws(sub("^/r\\s*", "", line_trim))
-              exprs <- tryCatch(bebel_console_read_r(code, input_con = input_con), error = function(e) {
-                message("R parse error: ", conditionMessage(e))
-                NULL
-              })
-              if (!is.null(exprs)) {
-                tryCatch(bebel_console_eval_r(exprs, session$context$env), error = function(e) {
-                  message("R error: ", conditionMessage(e))
-                })
-              }
-            } else if (cmd == "/rplot") {
-              code <- trimws(sub("^/rplot\\s*", "", line_trim))
-              exprs <- tryCatch(bebel_console_read_r(code, input_con = input_con), error = function(e) {
-                message("R parse error: ", conditionMessage(e))
-                NULL
-              })
-              if (!is.null(exprs)) {
-                tryCatch({
-                  path <- bebel_console_save_plot(exprs, session$context$env, cwd = session$context$cwd)
-                  cat("Plot saved to: ", path, "\n", sep = "")
-                }, error = function(e) {
-                  message("R plot error: ", conditionMessage(e))
-                })
-              }
-            } else if (cmd == "/transcript") {
-              cat(bebel_transcript(session$agent), "\n", sep = "")
-            } else if (cmd == "/clear") {
-              bebel_r_agent_clear(session)
-              cat("Cleared.\n")
-            } else {
+            } else if (!isTRUE(command_result$handled)) {
               cat("Unknown command. Use /help.\n")
             }
           } else {
@@ -960,7 +1175,7 @@ bebel_r_agent_console <- function(session, prompt = "bebel> ", max_steps = 4L, s
 #' @param max_steps Maximum assistant/tool iterations per user prompt.
 #' @param show_stats Whether to print token/timing stats after each turn.
 #' @param blank_limit Number of consecutive blank inputs before exiting the console. Set to `Inf` to never auto-exit on blanks.
-#' @param prompt_style Tool prompt verbosity passed to [bebel_r_agent()].
+#' @param prompt_detail Tool prompt detail passed to [bebel_r_agent()].
 #' @return Invisibly returns the `bebelRAgent` session after the console exits.
 #' @export
 bebel_r_agent_start <- function(
@@ -980,9 +1195,9 @@ bebel_r_agent_start <- function(
   max_steps = 4L,
   show_stats = TRUE,
   blank_limit = 10L,
-  prompt_style = c("compact", "full")
+  prompt_detail = c("compact", "full")
 ) {
-  prompt_style <- match.arg(prompt_style)
+  prompt_detail <- match.arg(prompt_detail)
   model <- bebel_model_load(weights, num_threads = num_threads)
   session <- bebel_r_agent(
     model,
@@ -996,7 +1211,7 @@ bebel_r_agent_start <- function(
     temperature = temperature,
     top_k = top_k,
     repeat_penalty = repeat_penalty,
-    prompt_style = prompt_style
+    prompt_detail = prompt_detail
   )
   bebel_r_agent_console(session, prompt = prompt, max_steps = max_steps, show_stats = show_stats, blank_limit = blank_limit)
   invisible(session)

@@ -22,3 +22,6 @@
 ^src/Makevars\.win$
 ^src/rbebelm-build\.stamp$
 ^LICENSE\.md$
+
+^src/rust/\.cargo$
+^src/rust/target$

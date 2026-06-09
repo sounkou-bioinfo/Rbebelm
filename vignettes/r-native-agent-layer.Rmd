@@ -18,7 +18,7 @@ vignette: >
 
 
 RbebelM's low-level API exposes model loading, ChatML turns, events, and tool
-orchestration. The R-native agent layer builds a small harness on top of those
+orchestration. The R-native agent layer builds a small layer on top of those
 pieces: one session object can be driven from the R console loop, from a small
 JSON-RPC SDK helper, or wrapped in a generic `bebelAgentLoop` endpoint for the
 standalone `rbebelm-tui` frontend.
@@ -106,17 +106,19 @@ agent_bin <- system.file("bin/rbebelm-agent", package = "Rbebelm")
 system2(agent_bin, "--help")
 ```
 
-Console commands include `/tools`, `/r`, `/rplot`, `/transcript`, `/clear`, and
-`/quit`. The `/r` command evaluates R directly in the same environment used by
-the agent's R tools. For example, `/r x <- mtcars` creates an object that
-`r_objects()` can later see. Visible `/r` output is capped so large objects do
-not flood the chat prompt; assign objects or use summaries such as `/r str(x)`
-for inspection. In an `Rscript` terminal, use `/rplot plot(mpg ~ cyl, mtcars)`
-to save graphics as PNG files under `rbebelm-plots/`. The `r_eval` and `r_plot`
-tools are advertised to the model by default for `bebel_r_agent()`; disable with
-`allow_eval = FALSE` or `/no-eval` when you want read-only model tools. The
-console prints a compact token/timing stats line after
-each user turn.
+Console commands include `/tools`, `/graphics`, `/r`, `/rplot`, `/transcript`,
+`/clear`, and `/quit`. The `/r` command evaluates R directly in the same
+environment used by the agent's R tools. For example, `/r x <- mtcars` creates an
+object that `r_objects()` can later see. Visible `/r` output is capped so large
+objects do not flood the chat prompt; assign objects or use summaries such as
+`/r str(x)` for inspection. Use `/graphics` to inspect or change how plots are
+handled and `/rplot plot(mpg ~ cyl, mtcars)` to draw. Interactive R consoles use
+native R graphics by default; headless sessions use PNG artifacts; optional
+`devout-ascii` can render terminal text plots when the `devout` package is
+installed. The `r_eval` and `r_plot` tools are advertised to the model by default
+for `bebel_r_agent()`; disable with `allow_eval = FALSE` or `/no-eval` when you
+want read-only model tools. The console prints a compact token/timing stats line
+after each user turn.
 
 ## JSON-RPC SDK surface
 

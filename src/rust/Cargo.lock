@@ -1991,6 +1991,7 @@ dependencies = [
  "dirs 6.0.0",
  "fff-search",
  "image",
+ "libc",
  "ratatui",
  "rayon",
  "savvy",

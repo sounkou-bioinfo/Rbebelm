@@ -323,8 +323,8 @@ bebel_session_context(store)$messages
 ```
 
 Session files are append-only JSONL trees inspired by Pi's session format. Each
-entry has an `id` and `parentId`, so `/tree`, `/fork`, and `/clone` style UIs can
-be built without rewriting history. By default, persisted sessions live under
+entry has an `id` and `parentId`, so `/tree`, `/fork`, and `/clone` interfaces
+can be built without rewriting history. By default, persisted sessions live under
 `tools::R_user_dir("Rbebelm", "data")/sessions/<encoded-cwd>/`; set
 `RBEBELM_SESSION_DIR` or pass `session_dir` to override that location.
 
@@ -396,7 +396,7 @@ optimized native dylibs separately, and FFF/`neo_frizbee` SIMD kernels are only
 entered through runtime CPU-feature checks or the already-selected optimized
 backend.
 
-## ARF-style terminal TUI module
+## ARF-inspired terminal TUI module
 
 The serious terminal frontend is a native Rust binary compiled as part of the R
 package source build and installed under `system.file("bin", package =
@@ -425,23 +425,26 @@ TUI="$(Rscript -e 'cat(system.file("bin/rbebelm-tui", package = "Rbebelm"))')"
 BEBELM_WEIGHTS_FILE=/path/to/LFM2.5-8B-A1B-Q4_K_M.gguf "$TUI"
 ```
 
-Pi-style slash commands are handled before model turns. `/quit`, `/exit`, and
+Pi-like slash commands are handled before model turns. `/quit`, `/exit`, and
 `/q` quit the terminal locally. Default R-agent hosts also register `/help`,
 `/commands`, `/tools`, `/state`, `/transcript`, `/clear`, `/r <code>`, and
-`/allow-eval`, `/no-eval`, `/r <code>`, and `/rplot [plot-code]`; press `Tab`
-after `/` for completion. Direct `/rplot` works as a user command. Model-side
-`r_eval`/`r_plot` are enabled by default for local TUI hosts; use `--no-eval` at
-startup or `/no-eval` at runtime to remove them from the model tool catalog.
+`/allow-eval`, `/no-eval`, `/graphics [device]`, `/r <code>`, and
+`/rplot [plot-code]`; press `Tab` after `/` for completion. Direct `/rplot` works
+as a user command. Model-side `r_eval`/`r_plot` are enabled by default for local
+TUI hosts; use `--no-eval` at startup or `/no-eval` at runtime to remove them
+from the model tool catalog. Use `/graphics auto|native|png|jgd|devout-ascii` to
+inspect or change how R plots are handled.
 
-Plots should follow the same frontend-agnostic idea as `jgd`: R records or
-renders graphics and frontends consume an external representation. Today the
-built-in `r_plot` tool saves a PNG and returns an image artifact path. The TUI
-marks it as an `image/png` artifact, shows the path, and renders a portable
-braille thumbnail from the PNG bytes so thin base-R axes/points survive terminal
-rendering better than plain ASCII. Full-color inline pixel preview still requires
-a terminal image backend such as Kitty graphics, iTerm2 inline images, or sixel;
-a jgd-style JSONL graphics stream is the right longer-term vector/event renderer
-boundary, not a TUI-owned R graphics device.
+Graphics is a first-class R capability. Rbebelm now has a graphics-device policy
+for `r_plot` and `/rplot`: `auto`, `native`, `png`, optional `jgd`, and optional
+`devout-ascii` (inspired by Mike FC/coolbutuseless' `devout`, which bridges R's
+graphics device callbacks to ordinary R functions). In an interactive R console,
+`auto` prefers native R graphics; in headless/TUI contexts it uses PNG unless a
+jgd socket is available. PNG artifacts are shown as paths plus portable braille
+thumbnails in the TUI. Full-color inline pixel preview still requires a terminal
+image backend such as Kitty graphics, iTerm2 inline images, or sixel; a
+jgd-compatible JSONL graphics stream is the right longer-term vector/event renderer boundary,
+not a TUI-owned R graphics device.
 
 For split-terminal, remote, automation, or editor integrations, use the lower
 level endpoint clients:
@@ -453,7 +456,7 @@ level endpoint clients:
 "$TUI" command --url http://127.0.0.1:8080 --type turn \
   --params '{"prompt":"Say hi","max_steps":2}'
 
-# Compatibility/control plane only:
+# Compatibility/control API only:
 "$TUI" rpc --url http://127.0.0.1:8080 --method session/info
 ```
 
@@ -464,7 +467,7 @@ local keybindings, widgets, palettes, and file watchers when catalogs change.
 
 ## R-native agent layer
 
-`bebel_r_agent()` adds a small Corteza-inspired harness on top of the core
+`bebel_r_agent()` adds a small Corteza-inspired layer on top of the core
 model bindings. One session object owns a BebeLM agent, a tool catalog, a private
 context environment, and can be driven either from an R console or from a small
 JSON-RPC SDK surface.
@@ -484,9 +487,11 @@ Interactive console. The `/r` command is a direct R escape hatch into the same
 environment used by the agent's R tools; for example `/r x <- mtcars` creates an
 object that `r_objects()` can later see. Visible `/r` output is capped so large
 objects do not flood the chat prompt; assign objects or use summaries such as
-`/r str(x)` for inspection. For plots in an `Rscript` terminal, use `/rplot`,
-e.g. `/rplot plot(mpg ~ cyl, mtcars)`, which saves a PNG under `rbebelm-plots/`.
-The `r_eval` and `r_plot` tools are advertised to the model by default; set
+`/r str(x)` for inspection. For plots, use `/graphics` to inspect or set the
+plot device and `/rplot`, e.g. `/rplot plot(mpg ~ cyl, mtcars)`. Interactive R
+consoles can use native graphics; headless/TUI sessions default to PNG artifacts;
+`devout-ascii` is available when the optional `devout` package is installed. The
+`r_eval` and `r_plot` tools are advertised to the model by default; set
 `allow_eval = FALSE` or use `/no-eval` in the TUI to remove them from the model
 tool catalog. Direct `/r` and `/rplot` remain user commands.
 
@@ -625,9 +630,18 @@ make rdm          # regenerate README.md from evaluated README.Rmd
 make dev-install  # install the package locally from source
 make test         # run tinytest tests
 make check        # build and run R CMD check --no-manual
+make tui-check    # install, run Rust PTY check, and verify TUI PNG graphics preview
 make vignettes    # precompile vignettes-raw/ into vignettes/ with rawvignette
 make site         # build the pkgdown site
 make clean        # remove generated build artifacts
 
-cd tui && cargo check  # check the standalone ARF-style terminal frontend
+cd tui && cargo check  # check the standalone ARF-inspired terminal frontend
 ```
+
+`make tui-check` is the real frontend/device check. It uses a Rust PTY
+runner plus optional R packages `nanonext` and `later`. The target starts a fake
+Rbebelm loop with the normal `GET /stream` + `POST /command` protocol, launches
+the installed `rbebelm-tui` in a pseudo-terminal, submits `/rplot`, and checks
+that the TUI renders an `image/png` artifact plus a braille thumbnail. This gate
+covers behavior that `R CMD check` and `cargo check` cannot observe because they
+do not run an interactive terminal.

@@ -13,10 +13,16 @@ name = "rbebelm-tui"
 path = "src/bin/rbebelm-tui.rs"
 required-features = ["tui-bin"]
 
+[[bin]]
+name = "rbebelm-tui-check"
+path = "src/bin/rbebelm-tui-check.rs"
+required-features = ["tui-check"]
+
 [features]
 default = ["portable"]
 portable = []
 native-simd = []
+tui-check = ["tui-bin", "dep:libc"]
 tui-bin = [
   "dep:anyhow",
   "dep:clap",
@@ -43,6 +49,7 @@ serde = { version = "1.0", features = ["derive"], optional = true }
 serde_json = { version = "1.0", optional = true }
 toml = { version = "0.8", optional = true }
 ureq = { version = "2.12", features = ["json"], optional = true }
+libc = { version = "0.2", optional = true }
 
 [target.'cfg(not(target_os = "emscripten"))'.dependencies]
 rayon = "1"

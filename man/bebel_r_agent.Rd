@@ -11,7 +11,7 @@ bebel_r_agent(
   env = .GlobalEnv,
   cwd = getwd(),
   allow_eval = TRUE,
-  prompt_style = c("compact", "full"),
+  prompt_detail = c("compact", "full"),
   greedy = FALSE,
   max_gen = 512,
   max_context = 4096,
@@ -36,7 +36,7 @@ the tool catalog.}
 \item{allow_eval}{Whether to include \code{r_eval} and \code{r_plot} tools that execute
 R code and render plots. Defaults to \code{TRUE}; set \code{FALSE} to start read-only.}
 
-\item{prompt_style}{Tool prompt verbosity. \code{"compact"} is faster for console
+\item{prompt_detail}{Tool prompt detail. \code{"compact"} is faster for console
 use; \code{"full"} includes descriptions for every argument.}
 
 \item{greedy, max_gen, max_context, max_think, temperature, top_k, repeat_penalty}{Generation options passed to \code{\link[=bebel_agent]{bebel_agent()}}.}
@@ -45,8 +45,8 @@ use; \code{"full"} includes descriptions for every argument.}
 A \code{bebelRAgent} environment.
 }
 \description{
-\code{bebel_r_agent()} is a higher-level layer inspired by R console agent
-harnesses. It keeps one BebeLM agent, a private tool context, and a small R
+\code{bebel_r_agent()} is a higher-level layer inspired by R console agents. It
+keeps one BebeLM agent, a private tool context, and a small R
 tool catalog together so the same object can be driven by a console loop or
 by the JSON-RPC server.
 }

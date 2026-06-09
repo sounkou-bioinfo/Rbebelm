@@ -27,5 +27,8 @@ A named list of \code{bebelAgentTool} objects.
 \description{
 The default catalog is intentionally small. It exposes read-only file and R
 session inspection tools plus optional R evaluation and plot rendering. These
-are ordinary R functions and run in the current R process.
+are ordinary R functions and run in the current R process. Plot rendering is
+device-backed: \code{options(Rbebelm.graphics.device=)} or the
+\code{RBEBELM_GRAPHICS_DEVICE} environment variable may be \code{"auto"}, \code{"native"},
+\code{"png"}, \code{"jgd"}, or \code{"devout-ascii"}.
 }

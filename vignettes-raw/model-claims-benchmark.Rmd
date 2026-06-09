@@ -19,7 +19,7 @@ This vignette shows how to evaluate the local
 [Liquid AI LFM2.5-8B-A1B](https://www.liquid.ai/blog/lfm2-5-8b-a1b) GGUF with
 [`vitals`](https://github.com/tidyverse/vitals). The goal is to evaluate model
 behavior on small, reproducible tasks, including tool use. It is not a
-reproduction of Liquid AI's benchmark harnesses.
+reproduction of Liquid AI's benchmark suite.
 
 The source is in `vignettes-raw/`; the rendered file in `vignettes/` is
 precompiled with `rawvignette` so `R CMD check`, pkgdown, and package installs do
@@ -41,7 +41,7 @@ install.packages("vitals")
 # or: pak::pak("tidyverse/vitals")
 ```
 
-## Evaluation harness
+## Evaluation driver
 
 `vitals::Task` expects solvers to return `result` and `solver_chat`. `Rbebelm` is
 not yet an ellmer provider, so the helper below returns a minimal placeholder
@@ -49,7 +49,7 @@ object with class `"Chat"` for `vitals` bookkeeping while storing Rbebelm-specif
 trace data in `solver_metadata`. The task is solved, scored, and measured; it is
 not logged to the Inspect viewer in this vignette.
 
-```{r harness, eval=has_weights && has_vitals}
+```{r evaluation-driver, eval=has_weights && has_vitals}
 library(vitals)
 
 model <- bebel_model_load(weights_file, num_threads = num_threads)

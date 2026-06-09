@@ -683,76 +683,150 @@ bebel_rpc_ndjson <- function(x) {
   paste0(bebel_rpc_json(bebel_rpc_sanitize(x)), "\n")
 }
 
-bebel_loop_command_handle <- function(loop, req) {
+bebel_loop_request_handler <- function(type, fun, response_type = NULL, rpc_methods = character()) {
+  structure(
+    list(type = type, fun = fun, response_type = response_type %||% type, rpc_methods = rpc_methods),
+    class = "bebelLoopRequestHandler"
+  )
+}
+
+bebel_loop_clear_runtime <- function(loop) {
+  bebel_backend_clear(loop$agent)
+  loop$turns <- list()
+  loop$tool_calls <- list()
+  loop$observations <- list()
+  loop$user_messages <- list()
+  loop$queue <- list(steering = character(), followUp = character())
+  bebel_loop_emit(loop, "session_clear")
+  list(ok = TRUE, state = bebel_loop_state(loop))
+}
+
+bebel_loop_run_turn_request <- function(loop, params) {
+  prompt <- params$prompt %||% stop("turn command requires prompt", call. = FALSE)
+  run <- bebel_loop_run(loop, prompt = prompt, max_steps = as.integer(params$max_steps %||% loop$policy$max_steps))
+  last <- if (length(run$turns)) run$turns[[length(run$turns)]] else list(text = "")
+  list(
+    text = last$text %||% "",
+    turns = run$turns,
+    tool_calls = run$tool_calls,
+    backend_info = run$backend_info,
+    events = run$events,
+    state = bebel_loop_state(loop),
+    done = isTRUE(run$done)
+  )
+}
+
+bebel_loop_execute_command_request <- function(loop, params) {
+  command <- params$command %||% stop("execute_command requires command", call. = FALSE)
+  start_events <- length(loop$events)
+  handled <- bebel_loop_execute_command(loop, command)
+  events <- bebel_loop_slice_since(loop$events, start_events)
+  end <- Filter(function(event) identical(event$type, "command_end"), events)
+  value <- if (length(end)) end[[length(end)]]$result else NULL
+  list(result = handled, value = value, events = events, state = bebel_loop_state(loop))
+}
+
+bebel_loop_request_handlers <- function() {
+  list(
+    session_info = bebel_loop_request_handler(
+      "session_info",
+      function(loop, params) list(state = bebel_loop_state(loop)),
+      rpc_methods = "session/info"
+    ),
+    tools_list = bebel_loop_request_handler(
+      "tools_list",
+      function(loop, params) list(tools = unname(lapply(loop$tools, bebel_loop_tool_descriptor))),
+      rpc_methods = "tools/list"
+    ),
+    commands_list = bebel_loop_request_handler(
+      "commands_list",
+      function(loop, params) list(commands = bebel_loop_command_catalog(loop)),
+      rpc_methods = "commands/list"
+    ),
+    catalog = bebel_loop_request_handler(
+      "catalog",
+      function(loop, params) list(catalog = bebel_loop_catalog(loop)),
+      rpc_methods = "catalog"
+    ),
+    transcript = bebel_loop_request_handler(
+      "transcript",
+      function(loop, params) list(transcript = bebel_backend_transcript(loop$agent)),
+      rpc_methods = "session/transcript"
+    ),
+    events = bebel_loop_request_handler(
+      "events",
+      function(loop, params) list(events = bebel_loop_events(loop, since = as.integer(params$since %||% 0L))),
+      rpc_methods = "events/list"
+    ),
+    clear = bebel_loop_request_handler(
+      "clear",
+      function(loop, params) bebel_loop_clear_runtime(loop),
+      response_type = "clear_result",
+      rpc_methods = "session/clear"
+    ),
+    turn = bebel_loop_request_handler(
+      "turn",
+      function(loop, params) bebel_loop_run_turn_request(loop, params),
+      response_type = "turn_result",
+      rpc_methods = "turn"
+    ),
+    steer = bebel_loop_request_handler(
+      "steer",
+      function(loop, params) {
+        message <- params$message %||% params$prompt %||% stop("steer command requires message", call. = FALSE)
+        bebel_loop_steer(loop, message)
+        list(ok = TRUE, state = bebel_loop_state(loop))
+      },
+      response_type = "steer_result",
+      rpc_methods = "steer"
+    ),
+    followUp = bebel_loop_request_handler(
+      "followUp",
+      function(loop, params) {
+        message <- params$message %||% params$prompt %||% stop("followUp command requires message", call. = FALSE)
+        bebel_loop_follow_up(loop, message)
+        list(ok = TRUE, state = bebel_loop_state(loop))
+      },
+      response_type = "followUp_result",
+      rpc_methods = "followUp"
+    ),
+    execute_command = bebel_loop_request_handler(
+      "execute_command",
+      function(loop, params) bebel_loop_execute_command_request(loop, params),
+      response_type = "command_result",
+      rpc_methods = "command/execute"
+    )
+  )
+}
+
+bebel_loop_request_handler_for <- function(type) {
+  type <- as.character(type %||% "")[[1L]]
+  handlers <- bebel_loop_request_handlers()
+  handler <- handlers[[type]]
+  if (is.null(handler)) stop("unknown command type: ", type, call. = FALSE)
+  handler
+}
+
+bebel_loop_rpc_method_map <- function() {
+  handlers <- bebel_loop_request_handlers()
+  methods <- unlist(lapply(names(handlers), function(type) {
+    stats::setNames(rep(type, length(handlers[[type]]$rpc_methods)), handlers[[type]]$rpc_methods)
+  }), use.names = TRUE)
+  methods
+}
+
+bebel_loop_request_handle <- function(loop, type, params = list()) {
   bebel_loop_check(loop)
+  params <- params %||% list()
+  handler <- bebel_loop_request_handler_for(type)
+  list(handler = handler, value = handler$fun(loop, params))
+}
+
+bebel_loop_command_handle <- function(loop, req) {
   type <- req$type %||% req$command %||% ""
   params <- req$params %||% req
-  switch(
-    type,
-    "session_info" = {
-      list(type = "session_info", state = bebel_loop_state(loop))
-    },
-    "tools_list" = {
-      list(type = "tools_list", tools = unname(lapply(loop$tools, bebel_loop_tool_descriptor)))
-    },
-    "commands_list" = {
-      list(type = "commands_list", commands = bebel_loop_command_catalog(loop))
-    },
-    "catalog" = {
-      list(type = "catalog", catalog = bebel_loop_catalog(loop))
-    },
-    "transcript" = {
-      list(type = "transcript", transcript = bebel_backend_transcript(loop$agent))
-    },
-    "events" = {
-      list(type = "events", events = bebel_loop_events(loop, since = as.integer(params$since %||% 0L)))
-    },
-    "clear" = {
-      bebel_backend_clear(loop$agent)
-      loop$turns <- list()
-      loop$tool_calls <- list()
-      loop$observations <- list()
-      loop$user_messages <- list()
-      loop$queue <- list(steering = character(), followUp = character())
-      bebel_loop_emit(loop, "session_clear")
-      list(type = "clear_result", ok = TRUE, state = bebel_loop_state(loop))
-    },
-    "turn" = {
-      prompt <- params$prompt %||% stop("turn command requires prompt", call. = FALSE)
-      run <- bebel_loop_run(loop, prompt = prompt, max_steps = as.integer(params$max_steps %||% loop$policy$max_steps))
-      last <- if (length(run$turns)) run$turns[[length(run$turns)]] else list(text = "")
-      list(
-        type = "turn_result",
-        text = last$text %||% "",
-        turns = run$turns,
-        tool_calls = run$tool_calls,
-        backend_info = run$backend_info,
-        events = run$events,
-        state = bebel_loop_state(loop),
-        done = isTRUE(run$done)
-      )
-    },
-    "steer" = {
-      message <- params$message %||% params$prompt %||% stop("steer command requires message", call. = FALSE)
-      bebel_loop_steer(loop, message)
-      list(type = "steer_result", ok = TRUE, state = bebel_loop_state(loop))
-    },
-    "followUp" = {
-      message <- params$message %||% params$prompt %||% stop("followUp command requires message", call. = FALSE)
-      bebel_loop_follow_up(loop, message)
-      list(type = "followUp_result", ok = TRUE, state = bebel_loop_state(loop))
-    },
-    "execute_command" = {
-      command <- params$command %||% stop("execute_command requires command", call. = FALSE)
-      start_events <- length(loop$events)
-      handled <- bebel_loop_execute_command(loop, command)
-      events <- bebel_loop_slice_since(loop$events, start_events)
-      end <- Filter(function(event) identical(event$type, "command_end"), events)
-      value <- if (length(end)) end[[length(end)]]$result else NULL
-      list(type = "command_result", result = handled, value = value, events = events, state = bebel_loop_state(loop))
-    },
-    stop("unknown command type: ", type, call. = FALSE)
-  )
+  out <- bebel_loop_request_handle(loop, type, params)
+  c(list(type = out$handler$response_type), out$value)
 }
 
 bebel_loop_rpc_handle <- function(loop, req) {
@@ -761,71 +835,9 @@ bebel_loop_rpc_handle <- function(loop, req) {
   id <- req$id %||% NULL
   params <- req$params %||% list()
   result <- tryCatch({
-    switch(
-      method,
-      "session/info" = {
-        bebel_loop_state(loop)
-      },
-      "tools/list" = {
-        list(tools = unname(lapply(loop$tools, bebel_loop_tool_descriptor)))
-      },
-      "commands/list" = {
-        list(commands = bebel_loop_command_catalog(loop))
-      },
-      "catalog" = {
-        list(catalog = bebel_loop_catalog(loop))
-      },
-      "session/transcript" = {
-        list(transcript = bebel_backend_transcript(loop$agent))
-      },
-      "events/list" = {
-        list(events = bebel_loop_events(loop, since = as.integer(params$since %||% 0L)))
-      },
-      "session/clear" = {
-        bebel_backend_clear(loop$agent)
-        loop$turns <- list()
-        loop$tool_calls <- list()
-        loop$observations <- list()
-        loop$user_messages <- list()
-        loop$queue <- list(steering = character(), followUp = character())
-        bebel_loop_emit(loop, "session_clear")
-        list(ok = TRUE, state = bebel_loop_state(loop))
-      },
-      "turn" = {
-        prompt <- params$prompt %||% stop("turn requires params$prompt", call. = FALSE)
-        run <- bebel_loop_run(loop, prompt = prompt, max_steps = as.integer(params$max_steps %||% loop$policy$max_steps))
-        last <- if (length(run$turns)) run$turns[[length(run$turns)]] else list(text = "")
-        list(
-          text = last$text %||% "",
-          turns = run$turns,
-          tool_calls = run$tool_calls,
-          backend_info = run$backend_info,
-          events = run$events,
-          state = bebel_loop_state(loop),
-          done = isTRUE(run$done)
-        )
-      },
-      "steer" = {
-        message <- params$message %||% params$prompt %||% stop("steer requires params$message", call. = FALSE)
-        bebel_loop_steer(loop, message)
-        list(ok = TRUE, state = bebel_loop_state(loop))
-      },
-      "followUp" = {
-        message <- params$message %||% params$prompt %||% stop("followUp requires params$message", call. = FALSE)
-        bebel_loop_follow_up(loop, message)
-        list(ok = TRUE, state = bebel_loop_state(loop))
-      },
-      "command/execute" = {
-        command <- params$command %||% stop("command/execute requires params$command", call. = FALSE)
-        start_events <- length(loop$events)
-        handled <- bebel_loop_execute_command(loop, command)
-        events <- bebel_loop_slice_since(loop$events, start_events)
-        end <- Filter(function(event) identical(event$type, "command_end"), events)
-        value <- if (length(end)) end[[length(end)]]$result else NULL
-        list(result = handled, value = value, events = events, state = bebel_loop_state(loop))
-      },
-      stop("unknown method: ", method, call. = FALSE)
-    )
+    type <- unname(bebel_loop_rpc_method_map()[method])
+    if (!length(type) || is.na(type)) stop("unknown method: ", method, call. = FALSE)
+    bebel_loop_request_handle(loop, type, params)$value
   }, error = function(e) {
     structure(list(code = -32000L, message = conditionMessage(e)), class = "bebel_rpc_error")
   })

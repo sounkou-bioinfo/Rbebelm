@@ -1,5 +1,8 @@
 library(Rbebelm)
 
+old_graphics_device <- getOption("Rbebelm.graphics.device", NULL)
+options(Rbebelm.graphics.device = "png")
+
 e <- new.env(parent = baseenv())
 e$x <- 1:3
 td <- tempfile("rbebelm-agent-")
@@ -27,6 +30,17 @@ expect_true(is.data.frame(catalog))
 expect_true("r_eval" %in% catalog$name)
 expect_true(grepl("tool_call_start", Rbebelm:::bebel_agent_tools_prompt(tools), fixed = TRUE))
 
+console_commands <- Rbebelm:::bebel_r_agent_console_commands()
+parsed_command <- Rbebelm:::bebel_console_parse_command("/graphics png")
+expect_equal(parsed_command$name, "graphics")
+expect_equal(parsed_command$args, "png")
+expect_true("graphics" %in% names(console_commands))
+expect_true(Rbebelm:::bebel_console_dispatch_command("/q", console_commands, new.env(parent = emptyenv()))$quit)
+graphics_out <- capture.output(graphics_dispatch <- Rbebelm:::bebel_console_dispatch_command("/graphics png", console_commands, new.env(parent = emptyenv())))
+expect_true(graphics_dispatch$handled)
+expect_true(any(grepl("graphics device set to: png", graphics_out, fixed = TRUE)))
+expect_false(Rbebelm:::bebel_console_dispatch_command("/unknown", console_commands, new.env(parent = emptyenv()))$handled)
+
 ctx <- new.env(parent = emptyenv())
 out <- Rbebelm:::invoke_bebel_tool(
   tools$r_eval$tool,
@@ -40,9 +54,11 @@ out <- Rbebelm:::invoke_bebel_tool(
   list(name = "r_plot", arguments = list(code = "plot(x, x)", width = 400L, height = 300L)),
   ctx
 )
-plot_path <- sub("^Plot saved to: ", "", out)
-expect_true(file.exists(plot_path))
-expect_true(grepl("rbebelm-plots", plot_path, fixed = TRUE))
+expect_true(inherits(out, "bebelPlotResult"))
+expect_equal(out$device, "png")
+expect_true(file.exists(out$path))
+expect_true(grepl("rbebelm-plots", out$path, fixed = TRUE))
+expect_true(grepl("Plot saved to:", Rbebelm:::format_bebel_tool_result(list(name = "r_plot"), out), fixed = TRUE))
 
 out <- Rbebelm:::invoke_bebel_tool(
   tools$read_file$tool,
@@ -131,4 +147,5 @@ rscript <- file.path(R.home("bin"), if (.Platform$OS.type == "windows") "Rscript
 help_out <- system2(rscript, c(agent_bin, "--help"), stdout = TRUE, stderr = TRUE)
 expect_true(any(grepl("Usage: rbebelm-agent", help_out, fixed = TRUE)))
 
+if (is.null(old_graphics_device)) options(Rbebelm.graphics.device = NULL) else options(Rbebelm.graphics.device = old_graphics_device)
 unlink(td, recursive = TRUE)

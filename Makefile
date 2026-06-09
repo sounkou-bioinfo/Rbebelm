@@ -12,6 +12,7 @@ help:
 	  '  make test        run tinytest package tests' \
 	  '  make build       build source tarball' \
 	  '  make check       run R CMD check --no-manual' \
+	  '  make tui-check   run the Rust PTY check for native TUI PNG graphics' \
 	  '  make vignettes   precompile vignettes-raw/ into vignettes/' \
 	  '  make site        build pkgdown site' \
 	  '  make clean       remove build artifacts'
@@ -47,6 +48,9 @@ test: dev-install
 cargo-check:
 	cd src/rust && cargo check --features portable
 
+tui-check: dev-install
+	cd src/rust && cargo run --no-default-features --features tui-check --bin rbebelm-tui-check --
+
 vignettes:
 	R -e 'if (requireNamespace("rawvignette", quietly = TRUE)) { rawvignette::precompile_raw_vignettes() } else { stop("rawvignette is required; install with remotes::install_github(\"matthewkling/rawvignette\")") }'
 
@@ -57,4 +61,4 @@ clean:
 	@rm -rf $(PKGNAME)_$(PKGVERS).tar.gz $(PKGNAME).Rcheck
 	@rm -rf src/rust/target src/rbebelm-backends src/backends src/vendor src/.cargo
 
-.PHONY: all help rd rdm build check install_deps dev-install install test cargo-check vignettes site clean
+.PHONY: all help rd rdm build check install_deps dev-install install test cargo-check tui-check vignettes site clean

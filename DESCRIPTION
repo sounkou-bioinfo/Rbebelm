@@ -20,5 +20,5 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 SystemRequirements: Rust toolchain with cargo (>= 1.85 for Rust 2024 vendored FFF crates), GNU make
 Imports: S7, s7contract, yyjsonr
-Suggests: tinytest, roxygen2, rmarkdown, knitr, pkgdown, nanonext
+Suggests: tinytest, roxygen2, rmarkdown, knitr, pkgdown, nanonext, later
 VignetteBuilder: knitr
