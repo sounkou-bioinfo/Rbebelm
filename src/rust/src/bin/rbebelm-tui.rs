@@ -597,6 +597,20 @@ fn local_command_catalog() -> Vec<CommandInfo> {
     ]
 }
 
+fn format_command_infos(title: &str, commands: &[CommandInfo]) -> String {
+    if commands.is_empty() { return format!("{title}\n(none)"); }
+    let mut lines = vec![format!("{title}:")];
+    for cmd in commands {
+        let usage = if cmd.usage.is_empty() { format!("/{}", cmd.name) } else { cmd.usage.clone() };
+        if cmd.description.is_empty() {
+            lines.push(format!("- {usage}"));
+        } else {
+            lines.push(format!("- {usage} - {}", cmd.description));
+        }
+    }
+    lines.join("\n")
+}
+
 fn parse_command_catalog(value: &Value) -> Vec<CommandInfo> {
     let Some(names) = value.get("name").and_then(Value::as_array) else { return Vec::new(); };
     let descs = value.get("description").and_then(Value::as_array);
@@ -751,6 +765,9 @@ struct ChatApp {
     command_catalog: Vec<CommandInfo>,
     busy_started: Option<Instant>,
     busy_label: String,
+    observed_loop_state: String,
+    last_loop_state: Option<Value>,
+    last_event_seq: Option<u64>,
 }
 
 impl ChatApp {
@@ -770,6 +787,9 @@ impl ChatApp {
             command_catalog,
             busy_started: None,
             busy_label: String::new(),
+            observed_loop_state: "unknown".to_string(),
+            last_loop_state: None,
+            last_event_seq: None,
         }
     }
 
@@ -840,9 +860,45 @@ impl ChatApp {
                 self.should_quit = true;
                 true
             }
+            "/state" if self.command_in_flight => {
+                self.push_observed_state();
+                true
+            }
+            "/help" | "/commands" if self.command_in_flight => {
+                self.push_cached_command_help();
+                true
+            }
             "//" => false,
             _ => false,
         }
+    }
+
+    fn push_cached_command_help(&mut self) {
+        let mut commands = self.command_catalog.clone();
+        commands.extend(local_command_catalog());
+        let text = format_command_infos("Slash commands (cached)", &commands);
+        self.messages.push(ChatMessage { role: "command", text });
+        self.status = "Showing cached command catalog while the R loop is busy".to_string();
+    }
+
+    fn push_observed_state(&mut self) {
+        let mut lines = vec!["Frontend-observed loop state".to_string()];
+        lines.push(format!("state: {}", self.observed_loop_state));
+        lines.push(format!("command in flight: {}", if self.command_in_flight { "yes" } else { "no" }));
+        if let Some(busy) = self.busy_status() { lines.push(format!("busy: {busy}")); }
+        if let Some(seq) = self.last_event_seq { lines.push(format!("last event seq: {seq}")); }
+        if let Some(state) = &self.last_loop_state {
+            push_state_field(&mut lines, state, "turns", "turns");
+            push_state_field(&mut lines, state, "tool_calls", "tool calls");
+            push_state_field(&mut lines, state, "user_messages", "user messages");
+            push_state_field(&mut lines, state, "observations", "observations");
+            push_state_field(&mut lines, state, "queue", "queue");
+            push_state_field(&mut lines, state, "commands", "commands");
+            push_state_field(&mut lines, state, "extensions", "extensions");
+        }
+        lines.push("note: R is running the active turn, so /state is served from the TUI stream cache until the turn finishes.".to_string());
+        self.messages.push(ChatMessage { role: "state", text: lines.join("\n") });
+        self.status = "Showing locally observed state while the R loop is busy".to_string();
     }
 
     fn clear(&mut self) {
@@ -858,7 +914,11 @@ impl ChatApp {
 
     fn process_event_record(&mut self, record: Value) {
         match record.get("type").and_then(Value::as_str).unwrap_or("") {
-            "stream_open" => self.status = "Connected. /help or Tab after / for commands; /quit exits".to_string(),
+            "stream_open" => {
+                if let Some(state) = record.get("state") { self.update_observed_state_from_snapshot(state); }
+                if let Some(seq) = record.get("seq").and_then(Value::as_u64) { self.last_event_seq = Some(seq); }
+                self.status = "Connected. /help or Tab after / for commands; /quit exits".to_string();
+            }
             "client_error" => {
                 self.end_busy("Client error");
                 self.messages.push(ChatMessage { role: "error", text: record.get("message").and_then(Value::as_str).unwrap_or("client error").to_string() });
@@ -887,9 +947,11 @@ impl ChatApp {
     }
 
     fn process_loop_event(&mut self, event: &Value) {
+        if let Some(seq) = event.get("seq").and_then(Value::as_u64) { self.last_event_seq = Some(seq); }
         match event.get("type").and_then(Value::as_str).unwrap_or("") {
             "state_change" => {
                 let to = event.get("to").and_then(Value::as_str).unwrap_or("?");
+                self.update_observed_state_name(to);
                 if self.command_in_flight {
                     self.busy_label = match to {
                         "running" => "Running loop...".to_string(),
@@ -913,6 +975,7 @@ impl ChatApp {
             }
             "tool_request" => {
                 let name = event.pointer("/call/name").and_then(Value::as_str).unwrap_or("tool");
+                self.increment_observed_counter("tool_calls");
                 self.busy_label = format!("Running tool {name}...");
                 self.messages.push(ChatMessage { role: "tool", text: format!("request: {name}") });
             }
@@ -943,6 +1006,9 @@ impl ChatApp {
                 let name = event.get("command").and_then(Value::as_str).unwrap_or("command");
                 let msg = event.get("message").and_then(Value::as_str).unwrap_or("command error");
                 self.messages.push(ChatMessage { role: "error", text: format!("/{name}: {msg}") });
+            }
+            "turn_end" => {
+                self.increment_observed_counter("turns");
             }
             "catalog_changed" => {
                 if let Ok(commands) = fetch_command_catalog(&self.url) {
@@ -1015,6 +1081,26 @@ impl ChatApp {
         }
     }
 
+    fn update_observed_state_from_snapshot(&mut self, state: &Value) {
+        self.last_loop_state = Some(state.clone());
+        if let Some(name) = state.get("state").and_then(Value::as_str) {
+            self.observed_loop_state = name.to_string();
+        }
+    }
+
+    fn update_observed_state_name(&mut self, name: &str) {
+        self.observed_loop_state = name.to_string();
+        if let Some(Value::Object(map)) = self.last_loop_state.as_mut() {
+            map.insert("state".to_string(), Value::String(name.to_string()));
+        }
+    }
+
+    fn increment_observed_counter(&mut self, key: &str) {
+        let Some(Value::Object(map)) = self.last_loop_state.as_mut() else { return; };
+        let next = map.get(key).and_then(Value::as_u64).unwrap_or(0).saturating_add(1);
+        map.insert(key.to_string(), Value::Number(serde_json::Number::from(next)));
+    }
+
     fn has_recent_assistant_text(&self) -> bool {
         self.messages.iter().rev().take(4).any(|m| m.role == "assistant" && !m.text.is_empty())
     }
@@ -1030,6 +1116,23 @@ fn plot_path_from_text(text: &str) -> Option<String> {
     let rest = text[idx + marker.len()..].trim();
     let path = rest.lines().next().unwrap_or("").trim();
     if path.ends_with(".png") { Some(path.to_string()) } else { None }
+}
+
+fn value_inline(value: &Value) -> String {
+    match value {
+        Value::Null => "null".to_string(),
+        Value::Bool(x) => x.to_string(),
+        Value::Number(x) => x.to_string(),
+        Value::String(x) => x.clone(),
+        Value::Array(xs) if xs.iter().all(Value::is_string) => xs.iter().filter_map(Value::as_str).collect::<Vec<_>>().join(", "),
+        _ => serde_json::to_string(value).unwrap_or_else(|_| String::new()),
+    }
+}
+
+fn push_state_field(lines: &mut Vec<String>, state: &Value, key: &str, label: &str) {
+    if let Some(value) = state.get(key) {
+        lines.push(format!("{label}: {}", value_inline(value)));
+    }
 }
 
 fn value_preview(value: &Value) -> String {
@@ -1071,6 +1174,7 @@ fn role_color(role: &str) -> Color {
         "assistant" => Color::Green,
         "error" => Color::Red,
         "command" => Color::Magenta,
+        "state" => Color::Cyan,
         "artifact" => Color::Blue,
         "tool" | "tool_call" => Color::Yellow,
         "thinking" => Color::DarkGray,
