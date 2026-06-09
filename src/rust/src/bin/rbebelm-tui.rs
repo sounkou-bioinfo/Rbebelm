@@ -768,6 +768,7 @@ struct ChatApp {
     observed_loop_state: String,
     last_loop_state: Option<Value>,
     last_event_seq: Option<u64>,
+    queued_prompts: Vec<String>,
 }
 
 impl ChatApp {
@@ -790,6 +791,7 @@ impl ChatApp {
             observed_loop_state: "unknown".to_string(),
             last_loop_state: None,
             last_event_seq: None,
+            queued_prompts: Vec::new(),
         }
     }
 
@@ -825,32 +827,58 @@ impl ChatApp {
             return;
         }
         if self.command_in_flight {
-            self.status = "Command already in flight; wait or use steer/followUp later".to_string();
+            if is_remote_slash(&prompt) {
+                self.messages.push(ChatMessage { role: "notice", text: "That slash command needs R, which is busy. /state and /help are available locally while a turn runs.".to_string() });
+                self.status = "R is busy; only local /state and cached /help run immediately".to_string();
+            } else {
+                self.queued_prompts.push(prompt.clone());
+                self.messages.push(ChatMessage { role: "queued", text: format!("{prompt}\nQueued follow-up; it will be sent after the active turn finishes.") });
+                self.status = format!("Queued follow-up #{}", self.queued_prompts.len());
+            }
             return;
         }
-        self.messages.push(ChatMessage { role: "user", text: prompt.clone() });
+        if is_remote_slash(&prompt) {
+            self.start_slash_command(prompt);
+        } else {
+            self.start_turn(prompt, true);
+        }
+    }
+
+    fn start_slash_command(&mut self, prompt: String) {
+        let url = self.url.clone();
+        let tx = self.event_tx.clone();
+        self.begin_busy("Executing slash command...");
+        thread::spawn(move || {
+            let result = command_call(&url, json!({"type":"execute_command", "command": prompt}));
+            match result {
+                Ok(value) => { let _ = tx.send(json!({"type":"client_command_result", "result": value})); }
+                Err(err) => { let _ = tx.send(json!({"type":"client_error", "message": err.to_string()})); }
+            }
+        });
+    }
+
+    fn start_turn(&mut self, prompt: String, show_user: bool) {
+        if show_user {
+            self.messages.push(ChatMessage { role: "user", text: prompt.clone() });
+        }
         let url = self.url.clone();
         let max_steps = self.max_steps;
         let tx = self.event_tx.clone();
-        if is_remote_slash(&prompt) {
-            self.begin_busy("Executing slash command...");
-            thread::spawn(move || {
-                let result = command_call(&url, json!({"type":"execute_command", "command": prompt}));
-                match result {
-                    Ok(value) => { let _ = tx.send(json!({"type":"client_command_result", "result": value})); }
-                    Err(err) => { let _ = tx.send(json!({"type":"client_error", "message": err.to_string()})); }
-                }
-            });
-        } else {
-            self.begin_busy("Waiting for R/model prefill...");
-            thread::spawn(move || {
-                let result = command_call(&url, json!({"type":"turn", "prompt": prompt, "max_steps": max_steps}));
-                match result {
-                    Ok(value) => { let _ = tx.send(json!({"type":"client_command_result", "result": value})); }
-                    Err(err) => { let _ = tx.send(json!({"type":"client_error", "message": err.to_string()})); }
-                }
-            });
-        }
+        self.begin_busy("Waiting for R/model prefill...");
+        thread::spawn(move || {
+            let result = command_call(&url, json!({"type":"turn", "prompt": prompt, "max_steps": max_steps}));
+            match result {
+                Ok(value) => { let _ = tx.send(json!({"type":"client_command_result", "result": value})); }
+                Err(err) => { let _ = tx.send(json!({"type":"client_error", "message": err.to_string()})); }
+            }
+        });
+    }
+
+    fn start_next_queued_prompt(&mut self) {
+        if self.command_in_flight || self.queued_prompts.is_empty() { return; }
+        let prompt = self.queued_prompts.remove(0);
+        self.messages.push(ChatMessage { role: "notice", text: "Sending queued follow-up now.".to_string() });
+        self.start_turn(prompt, false);
     }
 
     fn handle_local_slash(&mut self, prompt: &str) -> bool {
@@ -936,6 +964,7 @@ impl ChatApp {
                         }
                     }
                 }
+                self.start_next_queued_prompt();
             }
             "event" => {
                 if let Some(event) = record.get("event") {
@@ -1124,7 +1153,7 @@ fn png_artifact_text(path: &str, command: Option<&str>) -> String {
         None => format!("image/png: {path}"),
     };
     match png_text_preview(path) {
-        Some(preview) => format!("{header}\n{preview}\nPreview: monochrome terminal thumbnail; open the PNG path above for full fidelity."),
+        Some(preview) => format!("{header}\n{preview}\nPreview: braille terminal thumbnail; open the PNG path above for full fidelity."),
         None => format!("{header}\nPreview unavailable; open the PNG path above."),
     }
 }
@@ -1134,25 +1163,48 @@ fn png_text_preview(path: &str) -> Option<String> {
     let gray = img.to_luma8();
     let (width, height) = gray.dimensions();
     if width == 0 || height == 0 { return None; }
-    let max_cols = 72.0_f64;
-    let max_rows = 24.0_f64;
-    let scale = (width as f64 / max_cols).max(height as f64 / max_rows).max(1.0);
-    let cols = ((width as f64 / scale).round() as u32).max(1);
-    let rows = ((height as f64 / scale).round() as u32).max(1);
-    let thumb = image::imageops::resize(&gray, cols, rows, image::imageops::FilterType::Triangle);
-    let ramp = b" .:-=+*#%@";
+    let max_cols = 76.0_f64;
+    let max_rows = 28.0_f64;
+    let scale = (width as f64 / (max_cols * 2.0)).max(height as f64 / (max_rows * 4.0)).max(1.0);
+    let cols = ((width as f64 / (scale * 2.0)).round() as u32).max(1);
+    let rows = ((height as f64 / (scale * 4.0)).round() as u32).max(1);
+    let px_w = cols * 2;
+    let px_h = rows * 4;
+    let thumb = image::imageops::resize(&gray, px_w, px_h, image::imageops::FilterType::CatmullRom);
     let mut lines = Vec::with_capacity(rows as usize + 2);
-    lines.push(format!("thumbnail: {width}x{height} -> {cols}x{rows} chars"));
-    for y in 0..rows {
+    lines.push(format!("thumbnail: {width}x{height} -> {cols}x{rows} braille chars"));
+    for row in 0..rows {
         let mut line = String::with_capacity(cols as usize);
-        for x in 0..cols {
-            let lum = thumb.get_pixel(x, y)[0] as usize;
-            let idx = ((255usize.saturating_sub(lum)) * (ramp.len() - 1) / 255).min(ramp.len() - 1);
-            line.push(ramp[idx] as char);
+        for col in 0..cols {
+            let mut mask = 0u8;
+            for dy in 0..4 {
+                for dx in 0..2 {
+                    let lum = thumb.get_pixel(col * 2 + dx, row * 4 + dy)[0];
+                    if lum < 245 {
+                        mask |= braille_dot(dx, dy);
+                    }
+                }
+            }
+            line.push(char::from_u32(0x2800 + mask as u32).unwrap_or(' '));
         }
-        lines.push(line.trim_end().to_string());
+        let braille_blank = char::from_u32(0x2800).unwrap_or(' ');
+        lines.push(line.trim_end_matches(braille_blank).to_string());
     }
     Some(lines.join("\n"))
+}
+
+fn braille_dot(dx: u32, dy: u32) -> u8 {
+    match (dx, dy) {
+        (0, 0) => 0x01,
+        (0, 1) => 0x02,
+        (0, 2) => 0x04,
+        (0, 3) => 0x40,
+        (1, 0) => 0x08,
+        (1, 1) => 0x10,
+        (1, 2) => 0x20,
+        (1, 3) => 0x80,
+        _ => 0,
+    }
 }
 
 fn value_inline(value: &Value) -> String {
@@ -1212,6 +1264,7 @@ fn role_color(role: &str) -> Color {
         "error" => Color::Red,
         "command" => Color::Magenta,
         "state" => Color::Cyan,
+        "queued" | "notice" => Color::Cyan,
         "artifact" => Color::Blue,
         "tool" | "tool_call" => Color::Yellow,
         "thinking" => Color::DarkGray,

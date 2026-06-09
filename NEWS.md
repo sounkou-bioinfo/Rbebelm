@@ -1,7 +1,8 @@
 # Rbebelm 0.2.0-0.1.0
 
 - Added the standalone ARF-style `tui/` Rust module with TOML config, headless Rbebelm RPC hosting, a JSON-RPC client, and a minimal `crossterm`/`ratatui` chat frontend.
-- Added a portable monochrome PNG thumbnail renderer for TUI plot artifacts, so `r_plot`/`/rplot` outputs display in the transcript even without Kitty/iTerm2/sixel support.
+- Added a portable braille PNG thumbnail renderer for TUI plot artifacts, so `r_plot`/`/rplot` outputs display in the transcript even without Kitty/iTerm2/sixel support.
+- Queued normal prompts submitted while a TUI turn is still running; they are visibly marked and sent after the active turn finishes instead of making the UI appear unresponsive.
 - Fixed the TUI transcript to follow the bottom of the chat while assistant text is streaming, so cached `/help` or `/state` output does not hide the active response.
 - Fixed the TUI so `/state` and cached `/help` remain responsive while a model turn is running, using the frontend's stream-observed loop state instead of waiting for the busy R command handler.
 - Reordered README and getting-started documentation around clear entry points: generic framework, concrete local backend, native file search, and terminal frontend.
