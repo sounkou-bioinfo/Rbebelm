@@ -315,10 +315,10 @@ bebel_session_append_message(
   model = "demo-model",
   stopReason = "stop"
 )
-#> [1] "07b1f9c5"
+#> [1] "31a82a22"
 
 bebel_session_leaf_id(store)
-#> <bebelSessionLeafId> 07b1f9c5
+#> <bebelSessionLeafId> 31a82a22
 bebel_session_context(store)$messages
 #> [[1]]
 #> [[1]]$role
@@ -459,10 +459,10 @@ bebel_file_search(finder, "agent", limit = 5)
 #> <bebelFileSearchResult> 1 rows / 1 matched
 #>                path
 #>  src/bamako_agent.R
-#>                                                         absolute_path
-#>  /tmp/Rtmpculu6Q/rbebelm-fff-readme-3fbf4e5f65a2f0/src/bamako_agent.R
+#>                                                        absolute_path
+#>  /tmp/RtmpwBHlF5/rbebelm-fff-readme-2403f173eb9f5/src/bamako_agent.R
 #>       file_name git_status size            modified score base_score
-#>  bamako_agent.R      clean    5 2026-06-09 08:08:16    74         64
+#>  bamako_agent.R      clean    5 2026-06-09 12:10:32    74         64
 #>      match_type exact_match is_binary
 #>  fuzzy_filename       FALSE     FALSE
 ```
@@ -517,11 +517,12 @@ enabled by default for local TUI hosts; use `--no-eval` at startup or
 Plots should follow the same frontend-agnostic idea as `jgd`: R records
 or renders graphics and frontends consume an external representation.
 Today the built-in `r_plot` tool saves a PNG and returns an image
-artifact path. The TUI marks it as an `image/png` artifact and shows the
-path. Inline pixel preview requires a terminal image backend such as
-Kitty graphics, iTerm2 inline images, or sixel; a jgd-style JSONL
-graphics stream is the right longer-term renderer boundary, not a
-TUI-owned R graphics device.
+artifact path. The TUI marks it as an `image/png` artifact, shows the
+path, and renders a portable monochrome thumbnail from the PNG bytes.
+Full-color inline pixel preview still requires a terminal image backend
+such as Kitty graphics, iTerm2 inline images, or sixel; a jgd-style
+JSONL graphics stream is the right longer-term vector/event renderer
+boundary, not a TUI-owned R graphics device.
 
 For split-terminal, remote, automation, or editor integrations, use the
 lower level endpoint clients:

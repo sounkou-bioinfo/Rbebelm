@@ -436,10 +436,11 @@ startup or `/no-eval` at runtime to remove them from the model tool catalog.
 Plots should follow the same frontend-agnostic idea as `jgd`: R records or
 renders graphics and frontends consume an external representation. Today the
 built-in `r_plot` tool saves a PNG and returns an image artifact path. The TUI
-marks it as an `image/png` artifact and shows the path. Inline pixel preview
+marks it as an `image/png` artifact, shows the path, and renders a portable
+monochrome thumbnail from the PNG bytes. Full-color inline pixel preview still
 requires a terminal image backend such as Kitty graphics, iTerm2 inline images,
-or sixel; a jgd-style JSONL graphics stream is the right longer-term renderer
-boundary, not a TUI-owned R graphics device.
+or sixel; a jgd-style JSONL graphics stream is the right longer-term vector/event
+renderer boundary, not a TUI-owned R graphics device.
 
 For split-terminal, remote, automation, or editor integrations, use the lower
 level endpoint clients:

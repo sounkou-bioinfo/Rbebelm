@@ -983,7 +983,7 @@ impl ChatApp {
                 let name = event.pointer("/call/name").and_then(Value::as_str).unwrap_or("tool");
                 let result = event.get("result").map(|v| value_preview(v)).unwrap_or_default();
                 if let Some(path) = plot_path_from_text(&result) {
-                    self.messages.push(ChatMessage { role: "artifact", text: format!("image/png: {path}\nPreview: terminal image backend not enabled; open the PNG path above.") });
+                    self.messages.push(ChatMessage { role: "artifact", text: png_artifact_text(&path, None) });
                 } else {
                     self.messages.push(ChatMessage { role: "tool", text: format!("result {name}: {result}") });
                 }
@@ -997,7 +997,7 @@ impl ChatApp {
                 let name = event.get("command").and_then(Value::as_str).unwrap_or("command");
                 let result = event.get("result").map(value_preview).unwrap_or_else(|| "OK".to_string());
                 if let Some(path) = plot_path_from_text(&result) {
-                    self.messages.push(ChatMessage { role: "artifact", text: format!("/{name}: image/png\n{path}\nPreview: terminal image backend not enabled; open the PNG path above.") });
+                    self.messages.push(ChatMessage { role: "artifact", text: png_artifact_text(&path, Some(name)) });
                 } else {
                     self.messages.push(ChatMessage { role: "command", text: format!("/{name}: {result}") });
                 }
@@ -1116,6 +1116,43 @@ fn plot_path_from_text(text: &str) -> Option<String> {
     let rest = text[idx + marker.len()..].trim();
     let path = rest.lines().next().unwrap_or("").trim();
     if path.ends_with(".png") { Some(path.to_string()) } else { None }
+}
+
+fn png_artifact_text(path: &str, command: Option<&str>) -> String {
+    let header = match command {
+        Some(name) => format!("/{name}: image/png\n{path}"),
+        None => format!("image/png: {path}"),
+    };
+    match png_text_preview(path) {
+        Some(preview) => format!("{header}\n{preview}\nPreview: monochrome terminal thumbnail; open the PNG path above for full fidelity."),
+        None => format!("{header}\nPreview unavailable; open the PNG path above."),
+    }
+}
+
+fn png_text_preview(path: &str) -> Option<String> {
+    let img = image::open(path).ok()?;
+    let gray = img.to_luma8();
+    let (width, height) = gray.dimensions();
+    if width == 0 || height == 0 { return None; }
+    let max_cols = 72.0_f64;
+    let max_rows = 24.0_f64;
+    let scale = (width as f64 / max_cols).max(height as f64 / max_rows).max(1.0);
+    let cols = ((width as f64 / scale).round() as u32).max(1);
+    let rows = ((height as f64 / scale).round() as u32).max(1);
+    let thumb = image::imageops::resize(&gray, cols, rows, image::imageops::FilterType::Triangle);
+    let ramp = b" .:-=+*#%@";
+    let mut lines = Vec::with_capacity(rows as usize + 2);
+    lines.push(format!("thumbnail: {width}x{height} -> {cols}x{rows} chars"));
+    for y in 0..rows {
+        let mut line = String::with_capacity(cols as usize);
+        for x in 0..cols {
+            let lum = thumb.get_pixel(x, y)[0] as usize;
+            let idx = ((255usize.saturating_sub(lum)) * (ramp.len() - 1) / 255).min(ramp.len() - 1);
+            line.push(ramp[idx] as char);
+        }
+        lines.push(line.trim_end().to_string());
+    }
+    Some(lines.join("\n"))
 }
 
 fn value_inline(value: &Value) -> String {

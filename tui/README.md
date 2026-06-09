@@ -154,10 +154,12 @@ frontends refresh local palettes/widgets when they see `catalog_changed` events.
 ## Plots
 
 Plots are R-owned. The `r_plot` tool renders R plotting code to PNG via R and
-returns `Plot saved to: <path>`. The TUI marks this as an `image/png` artifact and
-shows the path. Inline pixel preview needs a terminal image protocol backend
-(Kitty graphics, iTerm2 inline images, or sixel); the TUI does not own an R
-graphics device.
+returns `Plot saved to: <path>`. The TUI marks this as an `image/png` artifact,
+shows the path, and renders a portable monochrome thumbnail from the PNG bytes.
+Full-color inline pixel preview still needs a terminal image protocol backend
+(Kitty graphics, iTerm2 inline images, or sixel), while a jgd-style graphics
+stream would be the richer vector/event renderer boundary. The TUI does not own
+an R graphics device.
 
 ## Testing
 

@@ -22,6 +22,7 @@ tui-bin = [
   "dep:clap",
   "dep:crossterm",
   "dep:dirs",
+  "dep:image",
   "dep:ratatui",
   "dep:serde",
   "dep:serde_json",
@@ -36,6 +37,7 @@ anyhow = { version = "1.0", optional = true }
 clap = { version = "4.5", features = ["derive", "env"], optional = true }
 crossterm = { version = "0.29", optional = true }
 dirs = { version = "6.0", optional = true }
+image = { version = "0.25", default-features = false, features = ["png"], optional = true }
 ratatui = { version = "0.29", default-features = false, features = ["crossterm"], optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 serde_json = { version = "1.0", optional = true }

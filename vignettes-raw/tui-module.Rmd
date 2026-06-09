@@ -145,9 +145,11 @@ aligned. Runtime extension registration happens in R via
 
 Plots are managed by R, not by the terminal frontend. The `r_plot` tool renders
 plotting code to PNG under the agent working directory and returns the saved
-path. The TUI marks this as an `image/png` artifact and shows the path. Inline
-pixel preview needs a terminal image protocol backend (Kitty graphics, iTerm2
-inline images, or sixel); the TUI does not own an R graphics device.
+path. The TUI marks this as an `image/png` artifact, shows the path, and renders
+a portable monochrome thumbnail from the PNG bytes. Full-color inline pixel
+preview still needs a terminal image protocol backend (Kitty graphics, iTerm2
+inline images, or sixel), while a jgd-style graphics stream would be the richer
+vector/event renderer boundary. The TUI does not own an R graphics device.
 
 ## Testing
 
