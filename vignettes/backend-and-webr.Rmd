@@ -26,18 +26,18 @@ dispatch; model code lives in Rust backend libraries.
 library(Rbebelm)
 rbebelm_cpuid_info()
 #> <Rbebelm CPU features>
-#>   x86_64-v3: yes 
-#>   x86_64-v4: no 
-#>   NEON: no 
-#>   ARM dotprod: no 
+#>   x86_64-v3: yes
+#>   x86_64-v4: no
+#>   NEON: no
+#>   ARM dotprod: no
 #>   wasm simd128: no
 rbebelm_backend_info()
 #> <Rbebelm backend dispatch>
-#>   mode: dynamic 
-#>   requested: auto 
-#>   selected: avx2 
-#>   loaded: yes 
-#>   installed: scalar,avx2,avx512 
+#>   mode: dynamic
+#>   requested: auto
+#>   selected: avx2
+#>   loaded: yes
+#>   installed: scalar,avx2,avx512
 #>   supported: scalar,avx2
 ```
 
@@ -53,23 +53,23 @@ rbebelm_set_backend("auto")
 #> ! Rbebelm backend is already initialized; call rbebelm_set_backend() before loading a model or querying backend features
 rbebelm_backend_features()
 #> <Rbebelm backend features>
-#>   backend: avx2 
-#>   target: x86_64-linux 
-#>   Rust crate: rbebelm_backend 0.1.0 
-#>   native SIMD feature: yes 
+#>   backend: avx2
+#>   target: x86_64-linux
+#>   Rust crate: rbebelm_backend 0.1.0
+#>   native SIMD feature: yes
 #>   compiled features:
-#>     AVX2: yes 
-#>     AVX-512F: no 
-#>     NEON: no 
-#>     ARM dotprod: no 
+#>     AVX2: yes
+#>     AVX-512F: no
+#>     NEON: no
+#>     ARM dotprod: no
 #>     wasm simd128: no
 rbebelm_backend_info()
 #> <Rbebelm backend dispatch>
-#>   mode: dynamic 
-#>   requested: auto 
-#>   selected: avx2 
-#>   loaded: yes 
-#>   installed: scalar,avx2,avx512 
+#>   mode: dynamic
+#>   requested: auto
+#>   selected: avx2
+#>   loaded: yes
+#>   installed: scalar,avx2,avx512
 #>   supported: scalar,avx2
 ```
 

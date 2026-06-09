@@ -65,6 +65,12 @@ bebel_loop_emit <- function(loop, type, ...) {
       call_bebel_hook(loop$hooks, "event", event = event, loop = loop, context = loop$context, agent = loop$agent),
       error = function(e) NULL
     )
+    for (sink in loop$event_sinks %||% list()) {
+      tryCatch(
+        sink(event = event, loop = loop, context = loop$context, agent = loop$agent),
+        error = function(e) NULL
+      )
+    }
   }
   invisible(event)
 }
@@ -256,6 +262,8 @@ bebel_agent_loop <- function(
 
   loop <- new.env(parent = emptyenv())
   loop$agent <- agent
+  loop$user_tools <- tools
+  loop$user_hooks <- user_hooks
   loop$tools <- bebel_merge_named_lists(list(tools, contributed_tools), what = "tool")
   loop$commands <- contributed_commands
   loop$skill_providers <- contributed_skill_providers
@@ -272,6 +280,7 @@ bebel_agent_loop <- function(
   loop$state <- "idle"
   loop$events <- list()
   loop$event_seq <- 0L
+  loop$event_sinks <- list()
   loop$turns <- list()
   loop$tool_calls <- list()
   loop$observations <- list()
@@ -283,11 +292,11 @@ bebel_agent_loop <- function(
   bebel_loop_emit(
     loop,
     "loop_created",
-    tools = names(loop$tools),
-    commands = names(loop$commands),
-    extensions = names(loop$extensions),
-    skill_providers = names(loop$skill_providers),
-    prompt_template_providers = names(loop$prompt_template_providers),
+    tools = bebel_loop_names(loop$tools),
+    commands = bebel_loop_names(loop$commands),
+    extensions = bebel_loop_names(loop$extensions),
+    skill_providers = bebel_loop_names(loop$skill_providers),
+    prompt_template_providers = bebel_loop_names(loop$prompt_template_providers),
     session_file = if (!is.null(loop$session)) bebel_session_file(loop$session) else NULL
   )
   loop
@@ -311,6 +320,8 @@ bebel_r_agent_loop <- function(
   check_interrupt = TRUE
 ) {
   bebel_agent_layer_stopif(inherits(session, "bebelRAgent"), "session must be a bebelRAgent")
+  extensions <- if (is.null(extensions)) list() else if (bebel_implements(extensions, BebelAgentExtension)) list(extensions) else extensions
+  extensions <- c(list(r_agent_commands = bebel_r_agent_loop_extension(session)), extensions)
   bebel_agent_loop(
     session$agent,
     tools = bebel_agent_as_bebel_tools(session$tools),
@@ -339,16 +350,16 @@ bebel_loop_state <- function(loop) {
     user_messages = length(loop$user_messages),
     tool_calls = length(loop$tool_calls),
     observations = length(loop$observations),
-    extensions = names(loop$extensions),
-    commands = names(loop$commands),
-    skill_providers = names(loop$skill_providers),
-    prompt_template_providers = names(loop$prompt_template_providers),
+    extensions = bebel_loop_names(loop$extensions),
+    commands = bebel_loop_names(loop$commands),
+    skill_providers = bebel_loop_names(loop$skill_providers),
+    prompt_template_providers = bebel_loop_names(loop$prompt_template_providers),
     queue = loop$queue,
     steering_mode = loop$policy$steering_mode,
     follow_up_mode = loop$policy$follow_up_mode,
     session_id = if (!is.null(loop$session)) bebel_session_header(loop$session)$id else NULL,
     session_file = if (!is.null(loop$session)) bebel_session_file(loop$session) else NULL,
-    backend_info = bebel_backend_info(loop$agent)
+    backend_info = tryCatch(bebel_backend_info(loop$agent), error = function(e) list(error = conditionMessage(e)))
   )
 }
 
@@ -645,6 +656,296 @@ bebel_loop_cancel <- function(loop) {
   cleared <- bebel_loop_clear_queue(loop)
   bebel_loop_emit(loop, "cancelled", cleared = cleared)
   invisible(loop)
+}
+
+bebel_loop_tool_descriptor <- function(tool) {
+  list(
+    name = tool$name,
+    description = tool$description %||% tool$name,
+    inputSchema = normalize_bebel_tool_schema_json(tool$schema %||% list())
+  )
+}
+
+bebel_rpc_sanitize <- function(x, depth = 0L) {
+  if (depth > 8L) return("<max-depth>")
+  if (is.null(x) || is.logical(x) || is.numeric(x) || is.character(x)) return(x)
+  if (inherits(x, "POSIXt")) return(format(x, "%Y-%m-%dT%H:%M:%OS3Z", tz = "UTC"))
+  if (inherits(x, "condition")) return(list(message = conditionMessage(x), class = class(x)))
+  if (is.environment(x)) return("<environment>")
+  if (is.function(x)) return("<function>")
+  if (is.raw(x)) return(paste(as.character(x), collapse = ""))
+  if (is.atomic(x)) return(as.vector(x))
+  if (is.list(x)) return(lapply(x, bebel_rpc_sanitize, depth = depth + 1L))
+  as.character(x)
+}
+
+bebel_rpc_ndjson <- function(x) {
+  paste0(bebel_rpc_json(bebel_rpc_sanitize(x)), "\n")
+}
+
+bebel_loop_command_handle <- function(loop, req) {
+  bebel_loop_check(loop)
+  type <- req$type %||% req$command %||% ""
+  params <- req$params %||% req
+  switch(
+    type,
+    "session_info" = {
+      list(type = "session_info", state = bebel_loop_state(loop))
+    },
+    "tools_list" = {
+      list(type = "tools_list", tools = unname(lapply(loop$tools, bebel_loop_tool_descriptor)))
+    },
+    "commands_list" = {
+      list(type = "commands_list", commands = bebel_loop_command_catalog(loop))
+    },
+    "catalog" = {
+      list(type = "catalog", catalog = bebel_loop_catalog(loop))
+    },
+    "transcript" = {
+      list(type = "transcript", transcript = bebel_backend_transcript(loop$agent))
+    },
+    "events" = {
+      list(type = "events", events = bebel_loop_events(loop, since = as.integer(params$since %||% 0L)))
+    },
+    "clear" = {
+      bebel_backend_clear(loop$agent)
+      loop$turns <- list()
+      loop$tool_calls <- list()
+      loop$observations <- list()
+      loop$user_messages <- list()
+      loop$queue <- list(steering = character(), followUp = character())
+      bebel_loop_emit(loop, "session_clear")
+      list(type = "clear_result", ok = TRUE, state = bebel_loop_state(loop))
+    },
+    "turn" = {
+      prompt <- params$prompt %||% stop("turn command requires prompt", call. = FALSE)
+      run <- bebel_loop_run(loop, prompt = prompt, max_steps = as.integer(params$max_steps %||% loop$policy$max_steps))
+      last <- if (length(run$turns)) run$turns[[length(run$turns)]] else list(text = "")
+      list(
+        type = "turn_result",
+        text = last$text %||% "",
+        turns = run$turns,
+        tool_calls = run$tool_calls,
+        backend_info = run$backend_info,
+        events = run$events,
+        state = bebel_loop_state(loop),
+        done = isTRUE(run$done)
+      )
+    },
+    "steer" = {
+      message <- params$message %||% params$prompt %||% stop("steer command requires message", call. = FALSE)
+      bebel_loop_steer(loop, message)
+      list(type = "steer_result", ok = TRUE, state = bebel_loop_state(loop))
+    },
+    "followUp" = {
+      message <- params$message %||% params$prompt %||% stop("followUp command requires message", call. = FALSE)
+      bebel_loop_follow_up(loop, message)
+      list(type = "followUp_result", ok = TRUE, state = bebel_loop_state(loop))
+    },
+    "execute_command" = {
+      command <- params$command %||% stop("execute_command requires command", call. = FALSE)
+      start_events <- length(loop$events)
+      handled <- bebel_loop_execute_command(loop, command)
+      events <- bebel_loop_slice_since(loop$events, start_events)
+      end <- Filter(function(event) identical(event$type, "command_end"), events)
+      value <- if (length(end)) end[[length(end)]]$result else NULL
+      list(type = "command_result", result = handled, value = value, events = events, state = bebel_loop_state(loop))
+    },
+    stop("unknown command type: ", type, call. = FALSE)
+  )
+}
+
+bebel_loop_rpc_handle <- function(loop, req) {
+  bebel_loop_check(loop)
+  method <- req$method %||% ""
+  id <- req$id %||% NULL
+  params <- req$params %||% list()
+  result <- tryCatch({
+    switch(
+      method,
+      "session/info" = {
+        bebel_loop_state(loop)
+      },
+      "tools/list" = {
+        list(tools = unname(lapply(loop$tools, bebel_loop_tool_descriptor)))
+      },
+      "commands/list" = {
+        list(commands = bebel_loop_command_catalog(loop))
+      },
+      "catalog" = {
+        list(catalog = bebel_loop_catalog(loop))
+      },
+      "session/transcript" = {
+        list(transcript = bebel_backend_transcript(loop$agent))
+      },
+      "events/list" = {
+        list(events = bebel_loop_events(loop, since = as.integer(params$since %||% 0L)))
+      },
+      "session/clear" = {
+        bebel_backend_clear(loop$agent)
+        loop$turns <- list()
+        loop$tool_calls <- list()
+        loop$observations <- list()
+        loop$user_messages <- list()
+        loop$queue <- list(steering = character(), followUp = character())
+        bebel_loop_emit(loop, "session_clear")
+        list(ok = TRUE, state = bebel_loop_state(loop))
+      },
+      "turn" = {
+        prompt <- params$prompt %||% stop("turn requires params$prompt", call. = FALSE)
+        run <- bebel_loop_run(loop, prompt = prompt, max_steps = as.integer(params$max_steps %||% loop$policy$max_steps))
+        last <- if (length(run$turns)) run$turns[[length(run$turns)]] else list(text = "")
+        list(
+          text = last$text %||% "",
+          turns = run$turns,
+          tool_calls = run$tool_calls,
+          backend_info = run$backend_info,
+          events = run$events,
+          state = bebel_loop_state(loop),
+          done = isTRUE(run$done)
+        )
+      },
+      "steer" = {
+        message <- params$message %||% params$prompt %||% stop("steer requires params$message", call. = FALSE)
+        bebel_loop_steer(loop, message)
+        list(ok = TRUE, state = bebel_loop_state(loop))
+      },
+      "followUp" = {
+        message <- params$message %||% params$prompt %||% stop("followUp requires params$message", call. = FALSE)
+        bebel_loop_follow_up(loop, message)
+        list(ok = TRUE, state = bebel_loop_state(loop))
+      },
+      "command/execute" = {
+        command <- params$command %||% stop("command/execute requires params$command", call. = FALSE)
+        start_events <- length(loop$events)
+        handled <- bebel_loop_execute_command(loop, command)
+        events <- bebel_loop_slice_since(loop$events, start_events)
+        end <- Filter(function(event) identical(event$type, "command_end"), events)
+        value <- if (length(end)) end[[length(end)]]$result else NULL
+        list(result = handled, value = value, events = events, state = bebel_loop_state(loop))
+      },
+      stop("unknown method: ", method, call. = FALSE)
+    )
+  }, error = function(e) {
+    structure(list(code = -32000L, message = conditionMessage(e)), class = "bebel_rpc_error")
+  })
+  if (inherits(result, "bebel_rpc_error")) {
+    bebel_rpc_response(id, error = unclass(result))
+  } else {
+    bebel_rpc_response(id, result = result)
+  }
+}
+
+#' Serve a generic Rbebelm agent loop over HTTP(S)
+#'
+#' This optional SDK surface exposes a backend-agnostic [bebel_agent_loop()] over
+#' a transport endpoint with `GET /stream` NDJSON events, `POST /command` typed
+#' commands, and `POST /rpc` JSON-RPC compatibility. The endpoint may be local
+#' HTTP, remote HTTP, or HTTPS/TLS when `nanonext` is configured with TLS.
+#' External frontends such as the native `rbebelm-tui` binary call the loop
+#' protocol and never assume the backend is a concrete `BebelAgent`.
+#'
+#' @param loop A `bebelAgentLoop`.
+#' @param url URL to listen on, e.g. `"http://127.0.0.1:8080"` or
+#'   `"https://0.0.0.0:8443"`.
+#' @param tls Optional TLS configuration from `nanonext::tls_config()` for
+#'   HTTPS/WSS endpoints.
+#' @return A `nanoServer` object from `nanonext`.
+#' @export
+bebel_loop_rpc_server <- function(loop, url = "http://127.0.0.1:8080", tls = NULL) {
+  bebel_loop_check(loop)
+  bebel_agent_require("nanonext")
+
+  stream_conns <- new.env(parent = emptyenv())
+  broadcast <- function(record) {
+    data <- bebel_rpc_ndjson(record)
+    for (id in ls(stream_conns, all.names = TRUE)) {
+      conn <- stream_conns[[id]]
+      tryCatch(conn$send(data), error = function(e) stream_conns[[id]] <- NULL)
+    }
+    invisible(NULL)
+  }
+
+  loop$event_sinks <- loop$event_sinks %||% list()
+  sink_id <- paste0("bebel_loop_rpc_server_", as.integer(Sys.time()), "_", sample.int(.Machine$integer.max, 1L))
+  loop$event_sinks[[sink_id]] <- function(event, loop, context, agent, ...) {
+    broadcast(list(type = "event", seq = event$seq, event = event))
+    invisible(NULL)
+  }
+
+  req_header <- function(req, name) {
+    headers <- req$headers %||% list()
+    nms <- names(headers)
+    if (!length(headers) || is.null(nms)) return(NULL)
+    hit <- which(tolower(nms) == tolower(name))
+    if (!length(hit)) return(NULL)
+    value <- headers[[hit[[1L]]]]
+    if (!length(value)) return(NULL)
+    value <- as.character(value[[1L]])
+    if (!nzchar(value)) NULL else value
+  }
+
+  parse_since <- function(req) {
+    header <- req_header(req, "Last-Event-ID")
+    if (!is.null(header)) return(suppressWarnings(as.integer(header)))
+    uri <- req$uri %||% ""
+    if (!grepl("?", uri, fixed = TRUE)) return(0L)
+    query <- sub("^[^?]*\\?", "", uri)
+    parts <- strsplit(query, "&", fixed = TRUE)[[1L]]
+    hit <- parts[startsWith(parts, "since=")]
+    if (!length(hit)) return(0L)
+    suppressWarnings(as.integer(utils::URLdecode(sub("^since=", "", hit[[1L]]))))
+  }
+
+  handlers <- list(
+    nanonext::handler("/health", function(req) {
+      list(status = 200L, headers = c("Content-Type" = "application/json"), body = bebel_rpc_json(list(ok = TRUE)))
+    }, method = "GET"),
+    nanonext::handler_stream(
+      "/stream",
+      on_request = function(conn, req) {
+        conn$set_header("Content-Type", "application/x-ndjson")
+        conn$set_header("Cache-Control", "no-cache")
+        id <- as.character(conn$id)
+        stream_conns[[id]] <- conn
+        conn$send(bebel_rpc_ndjson(list(type = "stream_open", seq = loop$event_seq, state = bebel_loop_state(loop))))
+        since <- parse_since(req)
+        if (!is.na(since) && since > 0L) {
+          for (event in bebel_loop_events(loop, since = since)) {
+            conn$send(bebel_rpc_ndjson(list(type = "event", seq = event$seq, event = event)))
+          }
+        }
+      },
+      on_close = function(conn) {
+        stream_conns[[as.character(conn$id)]] <- NULL
+      },
+      method = "GET"
+    ),
+    nanonext::handler("/command", function(req) {
+      body <- rawToChar(req$body %||% raw())
+      parsed <- tryCatch(bebel_json_read(body), error = function(e) NULL)
+      if (is.null(parsed)) {
+        response <- list(type = "error", error = list(code = -32700L, message = "parse error"))
+      } else {
+        response <- tryCatch(
+          bebel_loop_command_handle(loop, parsed),
+          error = function(e) list(type = "error", error = list(code = -32000L, message = conditionMessage(e)))
+        )
+      }
+      list(status = 200L, headers = c("Content-Type" = "application/json"), body = bebel_rpc_json(bebel_rpc_sanitize(response)))
+    }, method = "POST"),
+    nanonext::handler("/rpc", function(req) {
+      body <- rawToChar(req$body %||% raw())
+      parsed <- tryCatch(bebel_json_read(body), error = function(e) NULL)
+      if (is.null(parsed)) {
+        response <- bebel_rpc_response(NULL, error = list(code = -32700L, message = "parse error"))
+      } else {
+        response <- bebel_loop_rpc_handle(loop, parsed)
+      }
+      list(status = 200L, headers = c("Content-Type" = "application/json"), body = bebel_rpc_json(response))
+    }, method = "POST")
+  )
+  nanonext::http_server(url = url, handlers = handlers, tls = tls)
 }
 
 #' @export

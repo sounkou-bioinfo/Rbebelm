@@ -71,8 +71,8 @@ A \code{BebelFileFinder} object.
 \description{
 \code{bebel_file_finder()} creates a persistent native FFF/\code{fff-c}-based file
 index for a project directory. \code{bebel_file_search()} queries that index and
-returns a data frame suitable for consoles, RPC clients, and future TUI file
-pickers.
+returns a data frame suitable for consoles, RPC clients, and the standalone
+\verb{tui/} file picker.
 }
 \details{
 The FFF backend is native-only. In webR/wasm this API is present but creating

@@ -5,6 +5,8 @@ fake_loop <- function(policy = bebel_loop_policy()) {
   loop$agent <- NULL
   loop$context <- new.env(parent = emptyenv())
   loop$policy <- policy
+  loop$user_tools <- list()
+  loop$user_hooks <- list()
   loop$hooks <- list()
   loop$before_tool_call_hooks <- list()
   loop$commands <- list()
@@ -12,6 +14,7 @@ fake_loop <- function(policy = bebel_loop_policy()) {
   loop$state <- "idle"
   loop$events <- list()
   loop$event_seq <- 0L
+  loop$event_sinks <- list()
   loop$turns <- list()
   loop$tool_calls <- list()
   loop$observations <- list()
@@ -76,6 +79,57 @@ expect_true(grepl("Remember", catalog$description))
 decision <- Rbebelm:::bebel_loop_before_tool_call(loop2, list(name = "blocked", arguments = list()))
 expect_true(decision$block)
 expect_true(grepl("blocked", decision$message))
+
+loop3 <- fake_loop()
+bebel_loop_register_extension(loop3, ext)
+expect_equal(names(loop3$extensions), "demo")
+expect_equal(names(loop3$tools), "echo")
+expect_equal(names(loop3$commands), "remember")
+expect_error(bebel_loop_register_extension(loop3, ext), "already registered")
+expect_true(any(vapply(loop3$events, function(x) identical(x$type, "extension_registered"), logical(1))))
+expect_true(any(vapply(loop3$events, function(x) identical(x$type, "catalog_changed"), logical(1))))
+bebel_loop_unregister_extension(loop3, "demo")
+expect_equal(length(loop3$extensions), 0L)
+expect_equal(length(loop3$tools), 0L)
+expect_equal(length(loop3$commands), 0L)
+expect_true(any(vapply(loop3$events, function(x) identical(x$type, "extension_unregistered"), logical(1))))
+
+CustomExtensionS3 <- S7::new_S3_class("rbebelmCustomExtensionTest")
+S7::method(bebel_extension_manifest, CustomExtensionS3) <- function(extension) {
+  list(
+    name = extension$name,
+    tools = names(extension$tools),
+    commands = lapply(extension$commands, function(command) list(name = command$name, description = command$description, usage = command$usage)),
+    hooks = names(extension$hooks),
+    skill_providers = character(),
+    prompt_template_providers = character(),
+    keybindings = list(),
+    widgets = list(),
+    metadata = list(kind = "custom")
+  )
+}
+S7::method(bebel_extension_tools, CustomExtensionS3) <- function(extension) extension$tools
+S7::method(bebel_extension_commands, CustomExtensionS3) <- function(extension) extension$commands
+S7::method(bebel_extension_hooks, CustomExtensionS3) <- function(extension) extension$hooks
+S7::method(bebel_extension_skill_providers, CustomExtensionS3) <- function(extension) list()
+S7::method(bebel_extension_prompt_template_providers, CustomExtensionS3) <- function(extension) list()
+custom_ext <- structure(
+  list(
+    name = "custom",
+    tools = list(),
+    commands = list(ping = bebel_loop_command("ping", function(args, loop, context) {
+      context$ping <- args
+      TRUE
+    })),
+    hooks = list()
+  ),
+  class = "rbebelmCustomExtensionTest"
+)
+loop4 <- fake_loop()
+bebel_loop_register_extension(loop4, custom_ext)
+expect_equal(names(loop4$commands), "ping")
+expect_true(bebel_loop_execute_command(loop4, "/ping pong"))
+expect_equal(loop4$context$ping, "pong")
 
 cleared <- bebel_loop_clear_queue(loop)
 expect_true(is.list(cleared))

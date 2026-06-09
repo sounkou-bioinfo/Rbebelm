@@ -10,7 +10,7 @@ bebel_r_agent(
   tools = NULL,
   env = .GlobalEnv,
   cwd = getwd(),
-  allow_eval = FALSE,
+  allow_eval = TRUE,
   prompt_style = c("compact", "full"),
   greedy = FALSE,
   max_gen = 512,
@@ -33,7 +33,8 @@ the tool catalog.}
 
 \item{cwd}{Working directory for file tools.}
 
-\item{allow_eval}{Whether to include an \code{r_eval} tool that executes code.}
+\item{allow_eval}{Whether to include \code{r_eval} and \code{r_plot} tools that execute
+R code and render plots. Defaults to \code{TRUE}; set \code{FALSE} to start read-only.}
 
 \item{prompt_style}{Tool prompt verbosity. \code{"compact"} is faster for console
 use; \code{"full"} includes descriptions for every argument.}

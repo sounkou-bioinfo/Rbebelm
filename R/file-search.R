@@ -2,8 +2,8 @@
 #'
 #' `bebel_file_finder()` creates a persistent native FFF/`fff-c`-based file
 #' index for a project directory. `bebel_file_search()` queries that index and
-#' returns a data frame suitable for consoles, RPC clients, and future TUI file
-#' pickers.
+#' returns a data frame suitable for consoles, RPC clients, and the standalone
+#' `tui/` file picker.
 #'
 #' The FFF backend is native-only. In webR/wasm this API is present but creating
 #' a finder raises an explicit unsupported error so the rest of the package can

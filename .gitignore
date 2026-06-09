@@ -15,6 +15,7 @@
 /src/Makevars.win
 /src/rust/target/
 /src/rbebelm-backends/
+/src/rbebelm-tools/
 /src/backends/
 /src/vendor/
 /src/rust/.cargo/

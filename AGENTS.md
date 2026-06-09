@@ -20,8 +20,8 @@ BebeLM should implement the framework provider contracts.
   itself.
 - `bebel_agent_loop()` owns lifecycle, queues, events, tool dispatch,
   extensions, and session persistence.
-- Consoles, RPC handlers, and future TUIs consume the loop; they must not own or
-  duplicate agent logic.
+- Consoles, RPC handlers, and the standalone `tui/` Rust module consume the
+  loop; they must not own or duplicate agent logic.
 - Native fuzzy file search is based on the vendored FFF engine (`fff-c`/
   `fff-search`) through `bebel_file_finder()` and `bebel_file_search()`. Keep it
   native-only and preserve webR package loadability with explicit unsupported
@@ -75,8 +75,9 @@ BebeLM should implement the framework provider contracts.
   contract layer.
 - Do not add TerminalR, rcurses, or eventloop as hard dependencies for the core
   framework.
-- For a serious terminal TUI, prefer a separate Rust frontend using
-  `crossterm`/`ratatui` that consumes loop/RPC/events.
+- The serious terminal TUI lives in the separate `tui/` Rust frontend using
+  `crossterm`/`ratatui`. It consumes Rbebelm loop/RPC/events and must not
+  reimplement the agent loop, tool dispatcher, session tree, or model backend.
 - ARM baseline is NEON; dotprod is a separate runtime-selected backend.
 - Windows targets the GNU Rust/Rtools path.
 

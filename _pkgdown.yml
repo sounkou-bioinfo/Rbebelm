@@ -138,6 +138,7 @@ articles:
       - agents-and-tools
       - agent-framework
       - r-native-agent-layer
+      - tui-module
       - events-and-adapters
       - backend-and-webr
       - model-claims-benchmark

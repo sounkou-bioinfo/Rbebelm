@@ -19,8 +19,9 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 
 The framework layer is deliberately small and interface-driven. The loop owns
 agent lifecycle, queues, events, tool dispatch, extension registration, and JSONL
-session persistence. Frontends such as a console, RPC server, or future Rust TUI
-consume the same loop instead of reimplementing or owning agent logic.
+session persistence. Frontends such as a console, RPC server, or the standalone
+`tui/` Rust module consume the same loop instead of reimplementing or owning
+agent logic.
 
 ## Backend contract
 
@@ -202,7 +203,7 @@ not into a particular terminal UI. It should implement the
 
 The helper `bebel_extension()` creates a simple extension object implementing
 that interface. Extensions register into the loop; they do not own the loop or a
-TUI.
+terminal frontend.
 
 ```{r extension}
 state_command <- bebel_loop_command(

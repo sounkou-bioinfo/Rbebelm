@@ -64,7 +64,7 @@ bebel_validate_hook_list <- function(hooks, what = "hooks") {
 #'
 #' Extensions contribute tools, commands, hooks, and optional UI metadata to the
 #' agent loop. They are registered into [bebel_agent_loop()] and are deliberately
-#' UI-independent: a future Rust TUI can consume the same command/metadata catalog
+#' UI-independent: the standalone `tui/` Rust frontend can consume the same command/metadata catalog
 #' without owning business logic.
 #'
 #' @param name Extension name.
@@ -119,7 +119,11 @@ print.bebelExtension <- function(x, ...) {
 
 bebel_validate_provider_list <- function(providers, interface, what = "providers") {
   if (is.null(providers)) return(list())
-  if (!is.list(providers) || inherits(providers, "bebelSkillProvider") || inherits(providers, "bebelPromptTemplateProvider")) providers <- list(providers)
+  if (bebel_implements(providers, interface)) {
+    providers <- list(providers)
+  } else if (!is.list(providers)) {
+    stop(what, " must be a list", call. = FALSE)
+  }
   out <- list()
   for (i in seq_along(providers)) {
     provider <- providers[[i]]
@@ -133,7 +137,7 @@ bebel_validate_provider_list <- function(providers, interface, what = "providers
 
 bebel_normalize_extensions <- function(extensions) {
   if (is.null(extensions)) return(list())
-  if (inherits(extensions, "bebelExtension")) extensions <- list(extensions)
+  if (bebel_implements(extensions, BebelAgentExtension)) extensions <- list(extensions)
   if (!is.list(extensions)) stop("extensions must be a list", call. = FALSE)
   out <- list()
   for (i in seq_along(extensions)) {
@@ -225,6 +229,125 @@ bebel_loop_extensions <- function(loop) {
   lapply(loop$extensions, bebel_extension_manifest)
 }
 
+bebel_loop_names <- function(x) {
+  nms <- names(x %||% list())
+  if (is.null(nms)) character() else nms
+}
+
+bebel_loop_rebuild_catalogs <- function(loop) {
+  bebel_loop_check(loop)
+  extensions <- loop$extensions %||% list()
+  user_tools <- loop$user_tools %||% list()
+  user_hooks <- loop$user_hooks %||% list()
+  contributed_tools <- bebel_extension_collect_tools(extensions)
+  contributed_commands <- bebel_extension_collect_commands(extensions)
+  contributed_skill_providers <- bebel_extension_collect_skill_providers(extensions)
+  contributed_prompt_template_providers <- bebel_extension_collect_prompt_template_providers(extensions)
+  contributed_hooks <- bebel_extension_collect_hooks(extensions)
+  loop$tools <- bebel_merge_named_lists(list(user_tools, contributed_tools), what = "tool")
+  loop$commands <- contributed_commands
+  loop$skill_providers <- contributed_skill_providers
+  loop$prompt_template_providers <- contributed_prompt_template_providers
+  loop$hooks <- bebel_combine_hook_lists(user_hooks, contributed_hooks)
+  loop$before_tool_call_hooks <- bebel_collect_before_tool_call_hooks(user_hooks, contributed_hooks)
+  invisible(loop)
+}
+
+#' Return a loop's frontend catalog
+#'
+#' @param loop A `bebelAgentLoop`.
+#' @return A list with tool, command, extension, skill-provider, and prompt-template-provider catalogs.
+#' @export
+bebel_loop_catalog <- function(loop) {
+  bebel_loop_check(loop)
+  list(
+    tools = unname(lapply(loop$tools %||% list(), bebel_loop_tool_descriptor)),
+    commands = bebel_loop_command_catalog(loop),
+    extensions = bebel_loop_extensions(loop),
+    skill_providers = bebel_loop_names(loop$skill_providers),
+    prompt_template_providers = bebel_loop_names(loop$prompt_template_providers)
+  )
+}
+
+#' Register extensions on a running loop
+#'
+#' Adds one or more extension objects to an existing `bebelAgentLoop`, rebuilds
+#' the loop's tool/command/provider/hook catalogs, and emits extension/catalog
+#' events for frontends. This is normal R environment mutation, not a core
+#' reload command.
+#'
+#' @param loop A `bebelAgentLoop`.
+#' @param extensions A [bebel_extension()] object or list of objects implementing
+#'   `BebelAgentExtension`.
+#' @param replace Replace existing extensions with the same manifest name.
+#' @return Invisibly returns `loop`.
+#' @export
+bebel_loop_register_extension <- function(loop, extensions, replace = FALSE) {
+  bebel_loop_check(loop)
+  extensions <- bebel_normalize_extensions(extensions)
+  if (!length(extensions)) return(invisible(loop))
+  old_extensions <- loop$extensions %||% list()
+  old_state <- list(
+    tools = loop$tools %||% list(),
+    commands = loop$commands %||% list(),
+    skill_providers = loop$skill_providers %||% list(),
+    prompt_template_providers = loop$prompt_template_providers %||% list(),
+    hooks = loop$hooks %||% list(),
+    before_tool_call_hooks = loop$before_tool_call_hooks %||% list()
+  )
+  existing <- intersect(names(extensions), names(old_extensions))
+  if (length(existing) && !isTRUE(replace)) {
+    stop("extension already registered: ", paste(existing, collapse = ", "), call. = FALSE)
+  }
+  loop$extensions <- old_extensions
+  for (nm in names(extensions)) loop$extensions[[nm]] <- extensions[[nm]]
+  tryCatch(
+    bebel_loop_rebuild_catalogs(loop),
+    error = function(e) {
+      loop$extensions <- old_extensions
+      loop$tools <- old_state$tools
+      loop$commands <- old_state$commands
+      loop$skill_providers <- old_state$skill_providers
+      loop$prompt_template_providers <- old_state$prompt_template_providers
+      loop$hooks <- old_state$hooks
+      loop$before_tool_call_hooks <- old_state$before_tool_call_hooks
+      stop(e)
+    }
+  )
+  for (nm in names(extensions)) {
+    bebel_loop_emit(loop, "extension_registered", extension = bebel_extension_manifest(extensions[[nm]]), replace = nm %in% existing)
+  }
+  bebel_loop_emit(loop, "catalog_changed", reason = "extension_registered", catalog = bebel_loop_catalog(loop))
+  invisible(loop)
+}
+
+#' Unregister an extension from a running loop
+#'
+#' Removes an extension by manifest name, rebuilds contributed catalogs, and emits
+#' extension/catalog events for frontends.
+#'
+#' @inheritParams bebel_loop_register_extension
+#' @param name Extension manifest name.
+#' @param missing_ok If `TRUE`, missing extensions are ignored.
+#' @export
+bebel_loop_unregister_extension <- function(loop, name, missing_ok = FALSE) {
+  bebel_loop_check(loop)
+  if (!is.character(name) || length(name) != 1L || !nzchar(name)) {
+    stop("name must be a non-empty string", call. = FALSE)
+  }
+  old_extensions <- loop$extensions %||% list()
+  if (!name %in% names(old_extensions)) {
+    if (isTRUE(missing_ok)) return(invisible(loop))
+    stop("extension is not registered: ", name, call. = FALSE)
+  }
+  removed <- old_extensions[[name]]
+  loop$extensions <- old_extensions[setdiff(names(old_extensions), name)]
+  bebel_loop_rebuild_catalogs(loop)
+  bebel_loop_emit(loop, "extension_unregistered", extension = bebel_extension_manifest(removed))
+  bebel_loop_emit(loop, "catalog_changed", reason = "extension_unregistered", catalog = bebel_loop_catalog(loop))
+  invisible(loop)
+}
+
 bebel_parse_loop_command <- function(text) {
   text <- as.character(text)
   if (!length(text) || !startsWith(text[[1L]], "/")) return(NULL)
@@ -255,6 +378,22 @@ bebel_loop_command_catalog <- function(loop) {
     stringsAsFactors = FALSE,
     row.names = NULL
   )
+}
+
+bebel_format_name_description_catalog <- function(title, name, description, usage = NULL) {
+  name <- as.character(name %||% character())
+  description <- as.character(description %||% rep("", length(name)))
+  if (length(description) < length(name)) description <- rep_len(description, length(name))
+  usage <- usage %||% paste0("/", name)
+  usage <- as.character(usage)
+  if (length(usage) < length(name)) usage <- rep_len(usage, length(name))
+  if (!length(name)) return(paste(title, "(none)", sep = "\n"))
+  paste(c(paste0(title, ":"), sprintf("- %s - %s", usage, description)), collapse = "\n")
+}
+
+bebel_format_command_catalog <- function(catalog, title = "Slash commands") {
+  if (is.null(catalog) || !nrow(catalog)) return(paste(title, "(none)", sep = "\n"))
+  bebel_format_name_description_catalog(title, catalog$name, catalog$description, catalog$usage)
 }
 
 #' Execute a loop command

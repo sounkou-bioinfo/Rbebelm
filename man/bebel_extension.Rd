@@ -42,6 +42,6 @@ A \code{bebelExtension} object.
 \description{
 Extensions contribute tools, commands, hooks, and optional UI metadata to the
 agent loop. They are registered into \code{\link[=bebel_agent_loop]{bebel_agent_loop()}} and are deliberately
-UI-independent: a future Rust TUI can consume the same command/metadata catalog
+UI-independent: the standalone \verb{tui/} Rust frontend can consume the same command/metadata catalog
 without owning business logic.
 }

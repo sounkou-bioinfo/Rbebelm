@@ -14,12 +14,13 @@ has_weights <- nzchar(Sys.getenv("BEBELM_WEIGHTS_FILE")) && file.exists(Sys.gete
 
 RbebelM's low-level API exposes model loading, ChatML turns, events, and tool
 orchestration. The R-native agent layer builds a small harness on top of those
-pieces: one session object can be driven from a console loop or from a JSON-RPC
-server.
+pieces: one session object can be driven from the R console loop, from a small
+JSON-RPC SDK helper, or wrapped in a generic `bebelAgentLoop` endpoint for the
+standalone `rbebelm-tui` frontend.
 
 The layer is intentionally separate from the core model bindings. The hot path
 is still BebeLM/Rust inference; the R layer owns session policy, tool metadata,
-console interaction, and RPC.
+console interaction, optional RPC helpers, and external TUI clients.
 
 ## Create a session
 
@@ -29,7 +30,7 @@ library(Rbebelm)
 model <- bebel_model_load(Sys.getenv("BEBELM_WEIGHTS_FILE"), num_threads = 2)
 agent <- bebel_r_agent(
   model,
-  allow_eval = FALSE,
+  allow_eval = TRUE,
   greedy = TRUE,
   max_gen = 128,
   max_think = 16
@@ -37,17 +38,15 @@ agent <- bebel_r_agent(
 agent
 ```
 
-The default tools are deliberately small:
+The default agent tool set includes R object/documentation inspection, file
+tools, and model-callable `r_eval`/`r_plot`. Use `allow_eval = FALSE`, TUI
+`--no-eval`, or `/no-eval` if you want a read-only model tool catalog.
 
 ```{r}
 library(Rbebelm)
-tools <- bebel_default_r_tools(allow_eval = FALSE)
+tools <- bebel_default_r_tools(allow_eval = TRUE)
 bebel_agent_tool_catalog(tools)
 ```
-
-They include R object/documentation inspection and read-only file tools. The
-`r_eval` tool is only included when the agent is created with
-`allow_eval = TRUE`.
 
 ## Run a turn
 
@@ -87,8 +86,9 @@ the agent's R tools. For example, `/r x <- mtcars` creates an object that
 not flood the chat prompt; assign objects or use summaries such as `/r str(x)`
 for inspection. In an `Rscript` terminal, use `/rplot plot(mpg ~ cyl, mtcars)`
 to save graphics as PNG files under `rbebelm-plots/`. The `r_eval` and `r_plot`
-tools are only advertised to the model when the session is created with
-`allow_eval = TRUE`. The console prints a compact token/timing stats line after
+tools are advertised to the model by default for `bebel_r_agent()`; disable with
+`allow_eval = FALSE` or `/no-eval` when you want read-only model tools. The
+console prints a compact token/timing stats line after
 each user turn.
 
 ## JSON-RPC SDK surface
@@ -119,5 +119,7 @@ Example request body for `POST /rpc`:
 {"jsonrpc":"2.0","id":1,"method":"turn","params":{"prompt":"List objects in the R session."}}
 ```
 
-The console and RPC layers share the same session, transcript, tool catalog, and
-BebeLM agent state.
+The console, this RPC helper, and the generic loop endpoint share the same R
+session, transcript, tool catalog, and BebeLM agent state. The TUI does not
+duplicate agent logic; it talks to the generic loop endpoint (`GET /stream`,
+`POST /command`, plus `/rpc` compatibility) built from the R-native session.

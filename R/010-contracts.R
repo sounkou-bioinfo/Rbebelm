@@ -163,14 +163,17 @@ BebelPromptTemplateProvider <- s7contract::new_interface(
   generics = list(bebel_prompt_template_list = bebel_prompt_template_list, bebel_prompt_template_render = bebel_prompt_template_render)
 )
 
-bebel_assert_implements <- function(x, interface, arg = deparse(substitute(x))) {
-  if (s7contract::implements(x, interface)) return(invisible(x))
-
+bebel_implements <- function(x, interface) {
+  if (s7contract::implements(x, interface)) return(TRUE)
   for (cls in class(x)) {
     adapter <- tryCatch(S7::new_S3_class(cls), error = function(e) NULL)
-    if (!is.null(adapter) && s7contract::implements(adapter, interface)) return(invisible(x))
+    if (!is.null(adapter) && s7contract::implements(adapter, interface)) return(TRUE)
   }
+  FALSE
+}
 
+bebel_assert_implements <- function(x, interface, arg = deparse(substitute(x))) {
+  if (bebel_implements(x, interface)) return(invisible(x))
   s7contract::assert_implements(x, interface, arg = arg)
 }
 

@@ -180,15 +180,40 @@ bebel_agent_tools_prompt <- function(tools, detail = c("compact", "full")) {
 
 bebel_agent_default_system <- function(tools, detail = c("compact", "full")) {
   detail <- match.arg(detail)
+  tools <- bebel_agent_normalize_tools(tools)
+  has_r_plot <- "r_plot" %in% names(tools)
+  plot_hint <- if (has_r_plot) {
+    "For simple plot requests, use r_plot directly with reasonable base R code. Built-in datasets such as mtcars are available; for example use plot(mtcars$wt, mtcars$mpg, xlab='wt', ylab='mpg'). If a tool error reports a typo, correct it and retry."
+  } else {
+    "If the user asks for a plot, tell them they can use the UI slash command /rplot [plot-code], or restart with --allow-eval if they want the model to call r_plot."
+  }
+  guidelines <- c(
+    "Be concise and direct.",
+    "Use the declared tools when you need R objects, files, documentation, code execution, or plots; do not pretend to have used a tool.",
+    "If a tool is needed, emit only one tool call in the advertised BebeLM tool-call format, then wait for the tool result.",
+    "After a tool result, answer from the observed result. If a tool errors because of a typo or missing object, correct the call when the correction is clear; otherwise explain the issue briefly.",
+    "Do not claim a common R dataset or object is unavailable until you have checked or a tool result proves it.",
+    plot_hint
+  )
   if (identical(detail, "compact")) {
-    return("Concise R assistant. Use tools only when needed; never invent tool results.")
+    return(paste(
+      "You are an expert R-native assistant operating inside Rbebelm, an R agent/frontend harness.",
+      "Available tools are declared separately by the host.",
+      "Guidelines:",
+      paste0("- ", guidelines, collapse = "\n"),
+      sprintf("Current working directory: %s", normalizePath(getwd(), mustWork = FALSE)),
+      sep = "\n"
+    ))
   }
 
   paste(
-    "You are an R-native assistant running inside the user's R session.",
-    "Be concise and use tools only when they are needed to inspect files, R objects, documentation, or code results.",
-    "Do not invent tool results. If a tool is needed, emit only the tool call in the format advertised by the system tool list.",
-    sep = "\n\n"
+    "You are an expert R-native assistant operating inside Rbebelm, an R agent/frontend harness.",
+    "You help users inspect R state, read files, run R code when enabled, create plots, and explain results.",
+    "Available tools are declared separately by the host.",
+    "Guidelines:",
+    paste0("- ", guidelines, collapse = "\n"),
+    sprintf("Current working directory: %s", normalizePath(getwd(), mustWork = FALSE)),
+    sep = "\n"
   )
 }
 
@@ -280,14 +305,30 @@ bebel_default_r_tools <- function(env = .GlobalEnv, cwd = getwd(), allow_eval = 
       ),
       fun = function(args, context, call) {
         if (!isTRUE(allow_eval)) {
-          return("r_plot is disabled for this agent. Recreate the agent with allow_eval = TRUE to enable it.")
+          return("r_plot is disabled for this agent. Recreate the agent with allow_eval = TRUE to enable it, or use the UI command /rplot [plot-code].")
         }
         code <- args$code %||% ""
-        expr <- parse(text = code)
+        expr <- tryCatch(parse(text = code), error = function(e) e)
+        if (inherits(expr, "error")) return(paste("r_plot parse error:", conditionMessage(expr)))
         width <- suppressWarnings(as.integer(args$width %||% 800L))
         height <- suppressWarnings(as.integer(args$height %||% 600L))
-        path <- bebel_console_save_plot(expr, env, cwd = cwd, width = width, height = height)
-        paste("Plot saved to:", path)
+        out <- tryCatch(
+          {
+            path <- bebel_console_save_plot(expr, env, cwd = cwd, width = width, height = height)
+            paste("Plot saved to:", path)
+          },
+          error = function(e) {
+            msg <- conditionMessage(e)
+            hint <- ""
+            if (grepl("object 'mtgcars' not found", msg, fixed = TRUE)) {
+              hint <- " Did you mean the built-in dataset 'mtcars'? Try plot(mtcars$wt, mtcars$mpg, xlab='wt', ylab='mpg')."
+            } else if (grepl("object .* not found", msg)) {
+              hint <- " Check object names with r_objects, or use a built-in dataset such as mtcars."
+            }
+            paste0("r_plot error: ", msg, hint)
+          }
+        )
+        out
       }
     ),
     r_help = bebel_agent_tool(
@@ -419,7 +460,8 @@ bebel_default_r_tools <- function(env = .GlobalEnv, cwd = getwd(), allow_eval = 
 #' @param tools Tool catalog. Defaults to [bebel_default_r_tools()].
 #' @param env Environment exposed to R tools.
 #' @param cwd Working directory for file tools.
-#' @param allow_eval Whether to include an `r_eval` tool that executes code.
+#' @param allow_eval Whether to include `r_eval` and `r_plot` tools that execute
+#'   R code and render plots. Defaults to `TRUE`; set `FALSE` to start read-only.
 #' @param prompt_style Tool prompt verbosity. `"compact"` is faster for console
 #'   use; `"full"` includes descriptions for every argument.
 #' @param greedy,max_gen,max_context,max_think,temperature,top_k,repeat_penalty
@@ -432,7 +474,7 @@ bebel_r_agent <- function(
   tools = NULL,
   env = .GlobalEnv,
   cwd = getwd(),
-  allow_eval = FALSE,
+  allow_eval = TRUE,
   prompt_style = c("compact", "full"),
   greedy = FALSE,
   max_gen = 512,
@@ -467,6 +509,9 @@ bebel_r_agent <- function(
   x$context <- new.env(parent = emptyenv())
   x$context$env <- env
   x$context$cwd <- cwd
+  x$allow_eval <- isTRUE(allow_eval)
+  x$prompt_style <- prompt_style
+  x$max_chars <- getOption("Rbebelm.agent.max_chars", 4000L)
   x$history <- list()
   x$turns <- list()
   x$created_at <- Sys.time()
@@ -535,6 +580,115 @@ bebel_r_agent_clear <- function(session) {
   session$history <- list()
   session$turns <- list()
   invisible(session)
+}
+
+bebel_r_agent_set_eval <- function(session, loop = NULL, allow_eval = TRUE) {
+  bebel_agent_layer_stopif(inherits(session, "bebelRAgent"), "session must be a bebelRAgent")
+  session$allow_eval <- isTRUE(allow_eval)
+  session$tools <- bebel_agent_normalize_tools(bebel_default_r_tools(
+    env = session$context$env,
+    cwd = session$context$cwd,
+    allow_eval = session$allow_eval,
+    max_chars = session$max_chars %||% 4000L
+  ))
+  session$system_prompt <- bebel_agent_default_system(session$tools, detail = session$prompt_style %||% "compact")
+  bebel_append_system(session$agent, session$system_prompt, tools = bebel_agent_as_bebel_tools(session$tools))
+  if (!is.null(loop)) {
+    loop$user_tools <- bebel_agent_as_bebel_tools(session$tools)
+    bebel_loop_rebuild_catalogs(loop)
+    bebel_loop_emit(loop, "catalog_changed", reason = if (session$allow_eval) "eval_enabled" else "eval_disabled", catalog = bebel_loop_catalog(loop))
+  }
+  invisible(session)
+}
+
+bebel_r_eval_text <- function(code, envir, max_chars = getOption("Rbebelm.console.r_output_chars", 4000L)) {
+  if (!nzchar(trimws(code))) return("Usage: /r <R code>")
+  exprs <- parse(text = code, srcfile = NULL)
+  value <- NULL
+  output <- utils::capture.output({
+    for (expr in exprs) {
+      result <- withVisible(eval(expr, envir = envir))
+      value <- result$value
+      if (isTRUE(result$visible)) print(result$value)
+    }
+  }, type = "output")
+  if (length(output)) {
+    bebel_agent_format_value(paste(output, collapse = "\n"), max_chars)
+  } else if (is.null(value)) {
+    "NULL"
+  } else {
+    bebel_agent_format_value(value, max_chars)
+  }
+}
+
+bebel_r_agent_loop_extension <- function(session) {
+  bebel_agent_layer_stopif(inherits(session, "bebelRAgent"), "session must be a bebelRAgent")
+  command_help <- function(args, loop, context) {
+    bebel_format_command_catalog(bebel_loop_command_catalog(loop))
+  }
+  bebel_extension(
+    "r-agent-commands",
+    commands = list(
+      help = bebel_loop_command("help", command_help, description = "Show slash commands.", usage = "/help"),
+      commands = bebel_loop_command("commands", command_help, description = "List slash commands.", usage = "/commands"),
+      tools = bebel_loop_command("tools", function(args, loop, context) {
+        catalog <- bebel_agent_tool_catalog(session$tools)
+        bebel_format_name_description_catalog("Model tools", catalog$name, catalog$description, catalog$name)
+      }, description = "List model tools advertised by the R agent.", usage = "/tools"),
+      state = bebel_loop_command("state", function(args, loop, context) {
+        s <- bebel_loop_state(loop)
+        paste(
+          sprintf("state: %s", s$state),
+          sprintf("turns: %d", s$turns),
+          sprintf("tool calls: %d", s$tool_calls),
+          sprintf("commands: %s", paste(s$commands, collapse = ", ")),
+          sprintf("tools: %s", paste(names(loop$tools), collapse = ", ")),
+          sep = "\n"
+        )
+      }, description = "Show loop state.", usage = "/state"),
+      transcript = bebel_loop_command("transcript", function(args, loop, context) {
+        bebel_transcript(session$agent)
+      }, description = "Show backend transcript.", usage = "/transcript"),
+      clear = bebel_loop_command("clear", function(args, loop, context) {
+        bebel_r_agent_clear(session)
+        loop$turns <- list()
+        loop$tool_calls <- list()
+        loop$observations <- list()
+        loop$user_messages <- list()
+        loop$queue <- list(steering = character(), followUp = character())
+        bebel_loop_emit(loop, "session_clear")
+        "Cleared."
+      }, description = "Clear transcript, loop state, and queues.", usage = "/clear"),
+      `allow-eval` = bebel_loop_command("allow-eval", function(args, loop, context) {
+        bebel_r_agent_set_eval(session, loop, allow_eval = TRUE)
+        "Enabled model tools r_eval and r_plot for subsequent turns."
+      }, description = "Enable model-side R eval and plotting tools.", usage = "/allow-eval"),
+      `eval-on` = bebel_loop_command("eval-on", function(args, loop, context) {
+        bebel_r_agent_set_eval(session, loop, allow_eval = TRUE)
+        "Enabled model tools r_eval and r_plot for subsequent turns."
+      }, description = "Enable model-side R eval and plotting tools.", usage = "/eval-on"),
+      `no-eval` = bebel_loop_command("no-eval", function(args, loop, context) {
+        bebel_r_agent_set_eval(session, loop, allow_eval = FALSE)
+        "Disabled model tools r_eval and r_plot for subsequent turns. Direct /r and /rplot remain available."
+      }, description = "Disable model-side R eval and plotting tools.", usage = "/no-eval"),
+      `eval-off` = bebel_loop_command("eval-off", function(args, loop, context) {
+        bebel_r_agent_set_eval(session, loop, allow_eval = FALSE)
+        "Disabled model tools r_eval and r_plot for subsequent turns. Direct /r and /rplot remain available."
+      }, description = "Disable model-side R eval and plotting tools.", usage = "/eval-off"),
+      r = bebel_loop_command("r", function(args, loop, context) {
+        bebel_r_eval_text(args, session$context$env)
+      }, description = "Evaluate R code directly in the agent environment.", usage = "/r <R code>"),
+      rplot = bebel_loop_command("rplot", function(args, loop, context) {
+        code <- trimws(args)
+        if (!nzchar(code)) {
+          code <- "plot(1:10, (1:10)^2, type = 'b', main = 'Simple plot', xlab = 'x', ylab = 'x^2')"
+        }
+        exprs <- parse(text = code, srcfile = NULL)
+        path <- bebel_console_save_plot(exprs, session$context$env, cwd = session$context$cwd)
+        paste("Plot saved to:", path)
+      }, description = "Render R plotting code to a PNG path; no args creates a simple plot.", usage = "/rplot [plot-code]")
+    )
+  )
 }
 
 bebel_console_input_complete <- function(text) {
