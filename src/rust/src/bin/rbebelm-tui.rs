@@ -1274,9 +1274,12 @@ fn draw<W: Write>(terminal: &mut Terminal<CrosstermBackend<W>>, app: &ChatApp) -
         } else {
             app.title.clone()
         };
+        let visible_rows = chunks[0].height.saturating_sub(2) as usize;
+        let scroll_y = lines.len().saturating_sub(visible_rows).min(u16::MAX as usize) as u16;
         let transcript = Paragraph::new(lines)
             .block(Block::default().title(title).borders(Borders::ALL))
-            .wrap(Wrap { trim: false });
+            .wrap(Wrap { trim: false })
+            .scroll((scroll_y, 0));
         frame.render_widget(transcript, chunks[0]);
 
         let input = Paragraph::new(app.input.as_str())
