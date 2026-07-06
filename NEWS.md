@@ -1,4 +1,4 @@
-# Rbebelm 0.2.0-0.1.0
+# Rbebelm 0.3.6-0.1.0
 
 - Refocused the package on native BebeLM model loading, tokenization, embeddings,
   generation, persistent agents, R tool calls, and async jobs.

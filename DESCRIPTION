@@ -1,6 +1,6 @@
 Package: Rbebelm
 Title: Native 'BebeLM' CPU Backend for R
-Version: 0.2.0-0.1.0
+Version: 0.3.6-0.1.0
 Authors@R: c(
     person(given = "Sounkou Mahamane", family = "Toure",
            email = "sounkoutoure@gmail.com", role = c("aut", "cre")),
