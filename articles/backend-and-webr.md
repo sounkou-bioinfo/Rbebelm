@@ -89,8 +89,8 @@ bebel_agent_generate(a, on_event = NULL)
     ## <BebeLM agent generation>
     ##   stop: max_new
     ##   tokens: 8 generated; 6 prompt
-    ##   prefill: 9.7 tok/s
-    ##   decode: 11.80 tok/s
+    ##   prefill: 10.1 tok/s
+    ##   decode: 11.37 tok/s
     ##   text:
     ##  the city of Bamako. city of
 
@@ -102,8 +102,8 @@ bebel_agent_generate(b, on_event = NULL)
     ## <BebeLM agent generation>
     ##   stop: max_new
     ##   tokens: 8 generated; 6 prompt
-    ##   prefill: 11.3 tok/s
-    ##   decode: 12.15 tok/s
+    ##   prefill: 11.2 tok/s
+    ##   decode: 11.27 tok/s
     ##   text:
     ##  Rome. city of... ... ... ...
 
