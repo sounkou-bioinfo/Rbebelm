@@ -3,6 +3,10 @@ PKGVERS := $(shell sed -n 's/Version: *\([^ ]*\)/\1/p' DESCRIPTION 2>/dev/null)
 
 all: check
 
+RBEBELM_BUILD_VIGNETTES ?= true
+BUILD_VIGNETTES_ARG := $(if $(filter false,$(RBEBELM_BUILD_VIGNETTES)),--no-build-vignettes,)
+CHECK_VIGNETTES_ARG := $(if $(filter false,$(RBEBELM_BUILD_VIGNETTES)),--ignore-vignettes,)
+
 help:
 	@printf '%s\n' \
 	  'Common development targets:' \
@@ -20,14 +24,15 @@ rd:
 	Rscript tools/write-dispatch-init.R
 	R -e 'if (requireNamespace("roxygen2", quietly = TRUE)) { roxygen2::roxygenize(load_code = "source") } else { stop("roxygen2 is required") }'
 
-rdm:
+rdm: dev-install
 	R -e 'if (requireNamespace("rmarkdown", quietly = TRUE)) { rmarkdown::render("README.Rmd", output_format = "github_document") } else { stop("rmarkdown is required") }'
+	Rscript tools/normalize-markdown.R README.md
 
 build:
-	R CMD build .
+	R CMD build $(BUILD_VIGNETTES_ARG) .
 
 check: build
-	R CMD check --no-manual $(PKGNAME)_$(PKGVERS).tar.gz
+	R CMD check --no-manual $(CHECK_VIGNETTES_ARG) $(PKGNAME)_$(PKGVERS).tar.gz
 
 install_deps:
 	R \

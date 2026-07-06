@@ -12,8 +12,8 @@ R tool calls, async jobs, and backend diagnostics.
 - `BebelModel` instances load GGUF weights once. `BebelAgent` instances keep
   independent transcript/decode state and share the model weights through the
   Rust backend.
-- Async APIs return `BebelAsyncJob` objects. They must not call R callbacks from
-  worker threads.
+- Async APIs return `BebelAsyncJob` objects. Event delivery and R tool
+  execution belong on the R main thread.
 - Tools are `BebelToolSpec` S7 objects. Keep validation in S7 properties and
   validators instead of adding checker helper functions.
 - JSON handling uses imported `yyjsonr`.

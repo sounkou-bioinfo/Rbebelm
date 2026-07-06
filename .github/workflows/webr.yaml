@@ -29,10 +29,8 @@ jobs:
               make clean || true
               R CMD build --no-build-vignettes .
               Rscript -e "if (!requireNamespace(\"pak\", quietly = TRUE)) install.packages(\"pak\", repos = \"https://repo.r-wasm.org/\"); pak::pak(\"r-wasm/rwasm\", ask = FALSE)"
-              Rscript -e "source_path <- download.packages(\"s7contract\", destdir = \".\", repos = \"https://sounkou-bioinfo.r-universe.dev\", type = \"source\")[1, 2]; target <- \"s7contract_0.1.0.9000.tar.gz\"; if (file.exists(target)) unlink(target); stopifnot(file.rename(source_path, target)); rwasm::build(paste0(\"./\", target), dependencies = FALSE)"
               version=$(Rscript -e "cat(read.dcf(\"DESCRIPTION\")[1, \"Version\"])")
               Rscript -e "rwasm::build(sprintf(\"./Rbebelm_%s.tar.gz\", read.dcf(\"DESCRIPTION\")[1, \"Version\"]))"
-              test -f "s7contract_0.1.0.9000.tgz"
               test -f "Rbebelm_${version}.tgz"
             '
 

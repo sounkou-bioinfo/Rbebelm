@@ -14,7 +14,7 @@ stopifnot(file.exists(weights_file))
 model <- bebel_model_load(weights_file, num_threads = 2)
 ```
 
-This vignette is a package-level harness for deterministic smoke benchmarks. It
+This vignette is a package-level harness for deterministic regression benchmarks. It
 records outputs, token counts, and throughput. Domain benchmarks for HPO, MONDO,
 ORPHANET, negation, and graph grounding can reuse the same shape with real
 ontology prompts and expected labels.
@@ -58,7 +58,7 @@ jobs <- lapply(tasks$prompt, function(prompt) {
   bebel_generate_async(model, prompt, greedy = TRUE, max_gen = 8, max_think = 0)
 })
 
-async <- lapply(jobs, bebel_async_result, wait = TRUE)
+async <- lapply(jobs, bebel_async_collect, wait = TRUE)
 data.frame(
   id = tasks$id,
   text = vapply(async, function(x) trimws(x$text), character(1)),

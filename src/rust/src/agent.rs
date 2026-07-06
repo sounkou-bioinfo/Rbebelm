@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use bebelm::agent::Turn;
 use bebelm::cache::Cache;
@@ -12,7 +12,7 @@ use crate::generation::{absorb_tokens, run_state, turn_to_list};
 use crate::model::BebelModel;
 use crate::options::{maybe_update_sampler, GenerationOptions};
 use crate::tools::render_system_turn;
-use crate::util::{checked_positive_usize, checked_usize, ids_from_integer, ids_to_sexp, int_scalar, real_scalar, str_scalar};
+use crate::util::{checked_positive_usize, checked_usize, err, ids_from_integer, ids_to_sexp, int_scalar, real_scalar, str_scalar};
 
 /// Persistent BebeLM conversation agent with transcript and decode caches.
 /// @export
@@ -20,6 +20,7 @@ use crate::util::{checked_positive_usize, checked_usize, ids_from_integer, ids_t
 #[derive(Clone)]
 pub struct BebelAgent {
     model: Arc<Model>,
+    exec_lock: Arc<Mutex<()>>,
     model_path: String,
     cache: Cache,
     sampler: Sampler,
@@ -46,6 +47,7 @@ impl BebelAgent {
         let opts = GenerationOptions::new(greedy, true, None, max_gen, max_context, max_think, temperature, top_k, repeat_penalty)?;
         Ok(Self {
             model: Arc::clone(&model.inner),
+            exec_lock: Arc::clone(&model.exec_lock),
             model_path: model.path.clone(),
             cache: Cache::new(),
             sampler: opts.sampler,
@@ -230,6 +232,7 @@ impl BebelAgent {
     }
 
     pub(crate) fn generate_turn(&mut self, check_interrupt: bool, on_event: Option<FunctionSexp>) -> savvy::Result<Turn> {
+        let _guard = self.exec_lock.lock().map_err(|_| err("model execution lock poisoned"))?;
         run_state(
             self.model.as_ref(),
             &mut self.cache,
@@ -246,18 +249,21 @@ impl BebelAgent {
 
     pub(crate) fn assistant_turn_impl(&mut self, check_interrupt: bool, on_event: Option<FunctionSexp>, stop_on_tool_call: bool) -> savvy::Result<Turn> {
         self.append_text(ASSISTANT_OPEN);
-        let turn = run_state(
-            self.model.as_ref(),
-            &mut self.cache,
-            &mut self.history,
-            &mut self.sampler,
-            check_interrupt,
-            &on_event,
-            self.max_gen,
-            self.max_context,
-            self.max_think,
-            stop_on_tool_call,
-        )?;
+        let turn = {
+            let _guard = self.exec_lock.lock().map_err(|_| err("model execution lock poisoned"))?;
+            run_state(
+                self.model.as_ref(),
+                &mut self.cache,
+                &mut self.history,
+                &mut self.sampler,
+                check_interrupt,
+                &on_event,
+                self.max_gen,
+                self.max_context,
+                self.max_think,
+                stop_on_tool_call,
+            )?
+        };
         self.history.push(TOKEN_IM_END);
         let newline = self.model.tokenizer().encode("\n", false);
         self.history.extend(newline);

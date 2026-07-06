@@ -920,8 +920,9 @@ bebel_chat <- function(
 
 #' Start a background raw generation job
 #'
-#' Async jobs run on Rust threads and reuse the loaded model weights. They do
-#' not call R callbacks while running. Collect with `bebel_async_result()`.
+#' Async jobs run BebeLM generation on Rust worker threads and reuse the loaded
+#' model weights. They are polled with `bebel_async_poll()` and collected with
+#' `bebel_async_collect()`.
 #'
 #' @inheritParams bebel_generate
 #' @return A `BebelAsyncJob`.
@@ -1044,14 +1045,25 @@ bebel_assistant_turn_tool_stop_async <- function(agent) {
   job
 }
 
-#' Test whether a BebeLM async job has finished
-#'
-#' @param job A `BebelAsyncJob`.
-#' @return `TRUE` when the result can be collected without waiting.
-#' @export
-bebel_async_ready <- function(job) {
+# Test whether a BebeLM async job has finished.
+#
+# Kept as an internal boolean wrapper around the Rust method. The public API is
+# poll/collect, matching aio-style usage.
+#
+# @param job A `BebelAsyncJob`.
+# @return `TRUE` when the result can be collected without waiting.
+bebel_async_is_ready <- function(job) {
   job <- S7::prop(BebelAsyncJobRef(value = list(job)), "value")[[1L]]
   isTRUE(job$ready())
+}
+
+#' Poll a BebeLM async job
+#'
+#' @param job A `BebelAsyncJob`.
+#' @return `"ready"` or `"pending"`.
+#' @export
+bebel_async_poll <- function(job) {
+  if (bebel_async_is_ready(job)) "ready" else "pending"
 }
 
 #' Collect a BebeLM async job result
@@ -1060,7 +1072,7 @@ bebel_async_ready <- function(job) {
 #' @param wait If `FALSE`, return `NULL` when the job is still running.
 #' @return A classed generation result, or `NULL`.
 #' @export
-bebel_async_result <- function(job, wait = TRUE) {
+bebel_async_collect <- function(job, wait = TRUE) {
   job_class <- class(job)
   job <- S7::prop(BebelAsyncJobRef(value = list(job)), "value")[[1L]]
   out <- job$result(wait = isTRUE(wait))
@@ -1095,7 +1107,7 @@ print.BebelAsyncJob <- function(x, ...) {
     "unknown"
   }
   cat("  kind: ", kind, "\n", sep = "")
-  cat("  ready: ", format_bebel_yes_no(bebel_async_ready(x)), "\n", sep = "")
+  cat("  status: ", bebel_async_poll(x), "\n", sep = "")
   invisible(x)
 }
 
@@ -1122,7 +1134,7 @@ print.BebelAgent <- function(x, ...) {
 #' Print a BebeLM generation result
 #'
 #' @param x A result returned by [bebel_generate()], [bebel_chat()], or
-#'   `bebel_async_result()`.
+#'   `bebel_async_collect()`.
 #' @param ... Unused.
 #' @return Invisibly returns `x`.
 #' @export

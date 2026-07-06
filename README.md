@@ -65,6 +65,11 @@ created from one `BebelModel` share the same in-process `Arc<Model>`.
 Separate processes that load the same GGUF can share physical pages
 through the operating-system page cache.
 
+Threading is set when the model is loaded. `num_threads` initializes the
+process-global Rayon pool once; generation calls use that pool. Async
+calls add one Rust worker per job, so total concurrency is controlled by
+the model-load thread count and by how many jobs the caller launches.
+
 ## Tokenizer and embeddings
 
 ``` r
@@ -104,8 +109,8 @@ answer
 #> <BebeLM generation result>
 #>   stop: max_new
 #>   tokens: 8 generated; 6 prompt
-#>   prefill: 14.1 tok/s
-#>   decode: 14.70 tok/s
+#>   prefill: 14.3 tok/s
+#>   decode: 12.63 tok/s
 #>   text:
 #>  the city of Paris. city of Paris
 unique(events)
@@ -128,8 +133,8 @@ chat
 #> <BebeLM chat result>
 #>   stop: eos
 #>   tokens: 20 generated; 21 prompt
-#>   prefill: 17.3 tok/s
-#>   decode: 13.59 tok/s
+#>   prefill: 17.7 tok/s
+#>   decode: 13.57 tok/s
 #>   text:
 #> <|tool_call_start|>[constraints(word_count=5, question="what does mmap help with?")]<|tool_call_end|>
 ```
@@ -151,8 +156,8 @@ turn1
 #> <BebeLM assistant turn>
 #>   stop: eos
 #>   tokens: 10 generated; 15 prompt
-#>   prefill: 16.8 tok/s
-#>   decode: 13.46 tok/s
+#>   prefill: 16.6 tok/s
+#>   decode: 13.70 tok/s
 #>   text:
 #> <
 #> </think>
@@ -162,8 +167,8 @@ turn2
 #> <BebeLM assistant turn>
 #>   stop: eos
 #>   tokens: 11 generated; 17 prompt
-#>   prefill: 17.1 tok/s
-#>   decode: 13.59 tok/s
+#>   prefill: 17.7 tok/s
+#>   decode: 13.31 tok/s
 #>   text:
 #> <
 #> </Answer>
@@ -174,7 +179,7 @@ bebel_agent_info(agent)[c("history_tokens", "processed_tokens", "kv_tokens")]
 #>
 #> $processed_tokens
 #> [1] 53
-#> 
+#>
 #> $kv_tokens
 #> [1] 53
 substr(bebel_transcript(agent), 1, 160)
@@ -191,10 +196,10 @@ identical(agent$history(), bebel_history(agent))
 agent$clear()[c("history_tokens", "processed_tokens", "kv_tokens")]
 #> $history_tokens
 #> [1] 0
-#> 
+#>
 #> $processed_tokens
 #> [1] 0
-#> 
+#>
 #> $kv_tokens
 #> [1] 0
 ```
@@ -236,10 +241,11 @@ ctx$calls
 
 ## Async jobs
 
-Async jobs run generation on Rust threads and collect a finished `Turn`
-back on the R thread. They do not invoke R callbacks while running.
-Agent async jobs run on a cloned agent snapshot: the original agent is
-not mutated, but the model weights are shared.
+Async jobs use an aio-style surface: submit work, poll the handle, then
+collect the completed `Turn` on the R thread. Several jobs can share one
+loaded model; the weights stay shared and model execution is serialized
+until the event monitor queue lands. Agent async jobs currently run on a
+cloned agent snapshot: the original agent is not mutated.
 
 ``` r
 job_a <- bebel_generate_async(
@@ -254,25 +260,25 @@ job_b_agent <- bebel_agent(model, greedy = TRUE, max_gen = 8, max_think = 0)
 bebel_append(job_b_agent, "The capital of Mali is")
 job_b <- bebel_agent_generate_async(job_b_agent)
 
-bebel_async_ready(job_a)
-#> [1] FALSE
-async_a <- bebel_async_result(job_a, wait = TRUE)
-async_b <- bebel_async_result(job_b, wait = TRUE)
+bebel_async_poll(job_a)
+#> [1] "pending"
+async_a <- bebel_async_collect(job_a, wait = TRUE)
+async_b <- bebel_async_collect(job_b, wait = TRUE)
 
 async_a
 #> <BebeLM generation result>
 #>   stop: max_new
 #>   tokens: 8 generated; 6 prompt
-#>   prefill: 7.8 tok/s
-#>   decode: 8.03 tok/s
+#>   prefill: 14.5 tok/s
+#>   decode: 15.49 tok/s
 #>   text:
 #>  Rome. city of... ... ... ...
 async_b
 #> <BebeLM generation result>
 #>   stop: max_new
 #>   tokens: 8 generated; 6 prompt
-#>   prefill: 7.5 tok/s
-#>   decode: 8.17 tok/s
+#>   prefill: 14.6 tok/s
+#>   decode: 15.98 tok/s
 #>   text:
 #>  the city of Bamako. city of
 bebel_agent_info(job_b_agent)[c("history_tokens", "processed_tokens")]
@@ -286,8 +292,8 @@ bebel_agent_info(job_b_agent)[c("history_tokens", "processed_tokens")]
 ## Small benchmark table
 
 This is not a model-quality benchmark. It is a reproducible
-package-level smoke benchmark that records prompt size, generation size,
-and throughput for a few deterministic tasks.
+package-level regression benchmark that records prompt size, generation
+size, and throughput for a few deterministic tasks.
 
 ``` r
 prompts <- c(
@@ -315,7 +321,7 @@ do.call(rbind, bench)
 #> 2 The capital of Italy is      Rome. city of... ... ... ...             6
 #> 3 The capital of Japan is Tokyo. city. The capital of Japan             6
 #>   generated_tokens prefill_tps decode_tps
-#> 1                8    14.94632   15.55756
-#> 2                8    14.65512   15.95840
-#> 3                8    14.79516   15.96408
+#> 1                8    14.64088   15.81038
+#> 2                8    14.90955   15.73636
+#> 3                8    14.59386   15.52764
 ```

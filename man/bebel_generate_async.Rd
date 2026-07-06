@@ -31,6 +31,7 @@ bebel_generate_async(
 A \code{BebelAsyncJob}.
 }
 \description{
-Async jobs run on Rust threads and reuse the loaded model weights. They do
-not call R callbacks while running. Collect with \code{bebel_async_result()}.
+Async jobs run BebeLM generation on Rust worker threads and reuse the loaded
+model weights. They are polled with \code{bebel_async_poll()} and collected with
+\code{bebel_async_collect()}.
 }

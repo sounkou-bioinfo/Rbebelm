@@ -66,11 +66,23 @@ job <- bebel_generate_async(
   max_think = 0
 )
 expect_true(inherits(job, "BebelAsyncJob"))
-async <- bebel_async_result(job, wait = TRUE)
+expect_true(bebel_async_poll(job) %in% c("pending", "ready"))
+async <- bebel_async_collect(job, wait = TRUE)
 expect_true(inherits(async, "bebelGeneration"))
 expect_true(nzchar(async$text))
 
 agent_job <- bebel_assistant_turn_async(agent)
-agent_async <- bebel_async_result(agent_job, wait = TRUE)
+agent_async <- bebel_async_collect(agent_job, wait = TRUE)
 expect_true(inherits(agent_async, "bebelGeneration"))
 expect_true(nzchar(agent_async$text))
+
+jobs <- lapply(
+  c("The capital of Mali is", "The capital of Italy is", "The capital of Japan is"),
+  function(prompt) {
+    bebel_generate_async(model, prompt, greedy = TRUE, max_gen = 6, max_think = 0)
+  }
+)
+expect_true(all(vapply(jobs, function(job) bebel_async_poll(job) %in% c("pending", "ready"), logical(1))))
+many_async <- lapply(jobs, bebel_async_collect, wait = TRUE)
+expect_true(all(vapply(many_async, function(out) inherits(out, "bebelGeneration"), logical(1))))
+expect_true(all(vapply(many_async, function(out) nzchar(out$text), logical(1))))

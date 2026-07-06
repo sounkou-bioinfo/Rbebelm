@@ -19,15 +19,17 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - {os: ubuntu-latest,   r: 'release'}
-          - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
-          - {os: macos-latest,    r: 'release'}
-          - {os: windows-latest,  r: 'release'}
+          - {os: ubuntu-latest,   r: 'release', build_vignettes: 'true'}
+          - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release', build_vignettes: 'false'}
+          - {os: macos-latest,    r: 'release', build_vignettes: 'false'}
+          - {os: windows-latest,  r: 'release', build_vignettes: 'false'}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
       CARGO_BUILD_JOBS: 2
+      BEBELM_WEIGHTS_FILE: ${{ github.workspace }}/.models/LFM2.5-8B-A1B-Q4_K_M.gguf
+      RBEBELM_BUILD_VIGNETTES: ${{ matrix.config.build_vignettes }}
 
     steps:
       - uses: actions/checkout@v4
@@ -53,6 +55,25 @@ jobs:
         with:
           extra-packages: any::rcmdcheck, any::knitr, any::rmarkdown, any::tinytest
           needs: check
+
+      - name: Cache GGUF weights
+        if: env.RBEBELM_BUILD_VIGNETTES == 'true'
+        id: cache-weights
+        uses: actions/cache@v4
+        with:
+          path: .models/LFM2.5-8B-A1B-Q4_K_M.gguf
+          key: LFM2.5-8B-A1B-Q4_K_M.gguf-v1
+
+      - name: Download GGUF weights
+        if: env.RBEBELM_BUILD_VIGNETTES == 'true' && steps.cache-weights.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p .models
+          curl -L --fail --retry 3 --retry-delay 5 \
+            -o "$BEBELM_WEIGHTS_FILE" \
+            "https://huggingface.co/LiquidAI/LFM2.5-8B-A1B-GGUF/resolve/main/LFM2.5-8B-A1B-Q4_K_M.gguf"
+          test -s "$BEBELM_WEIGHTS_FILE"
 
       - name: Windows Rust/Rtools diagnostics
         if: runner.os == 'Windows'

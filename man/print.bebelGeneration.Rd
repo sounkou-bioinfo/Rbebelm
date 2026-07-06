@@ -8,7 +8,7 @@
 }
 \arguments{
 \item{x}{A result returned by \code{\link[=bebel_generate]{bebel_generate()}}, \code{\link[=bebel_chat]{bebel_chat()}}, or
-\code{bebel_async_result()}.}
+\code{bebel_async_collect()}.}
 
 \item{...}{Unused.}
 }
