@@ -37,6 +37,7 @@ jobs:
         with:
           path: .models/LFM2.5-8B-A1B-Q4_K_M.gguf
           key: LFM2.5-8B-A1B-Q4_K_M.gguf-v1
+          enableCrossOsArchive: true
 
       - name: Download GGUF weights
         if: steps.cache-weights.outputs.cache-hit != 'true'

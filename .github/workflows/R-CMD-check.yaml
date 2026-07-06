@@ -57,15 +57,15 @@ jobs:
           needs: check
 
       - name: Cache GGUF weights
-        if: env.RBEBELM_BUILD_VIGNETTES == 'true'
         id: cache-weights
         uses: actions/cache@v4
         with:
           path: .models/LFM2.5-8B-A1B-Q4_K_M.gguf
           key: LFM2.5-8B-A1B-Q4_K_M.gguf-v1
+          enableCrossOsArchive: true
 
       - name: Download GGUF weights
-        if: env.RBEBELM_BUILD_VIGNETTES == 'true' && steps.cache-weights.outputs.cache-hit != 'true'
+        if: steps.cache-weights.outputs.cache-hit != 'true'
         shell: bash
         run: |
           set -euxo pipefail
