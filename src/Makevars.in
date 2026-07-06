@@ -17,6 +17,7 @@ $(SHLIB): $(RUST_STAMP)
 $(RUST_STAMP):
 	set -e; \
 	export PATH="$(PATH):$(HOME)/.cargo/bin"; \
+	CARGO_CMD="$${RBEBELM_CARGO:-cargo}"; \
 	CARGO_JOBS="$${CARGO_BUILD_JOBS:-2}"; \
 	CARGO_FLAGS="-j $$CARGO_JOBS"; \
 	if [ -f ./rust/vendor.tar.xz ]; then \
@@ -46,6 +47,7 @@ $(RUST_STAMP):
 		CARGO_TARGET_FLAG="--target=$$RUST_TARGET"; \
 		RUSTFLAGS_ENV="CARGO_TARGET_$$(printf '%s' "$$RUST_TARGET" | tr '[:lower:]-' '[:upper:]_')_RUSTFLAGS"; \
 		BUILD_BACKENDS="wasm_simd128"; \
+		if [ -x "$$HOME/.cargo/bin/cargo" ]; then CARGO_CMD="$$HOME/.cargo/bin/cargo"; fi; \
 	else \
 		case "$$RUST_HOST" in \
 			x86_64-*) BUILD_BACKENDS="scalar,avx2,avx512";; \
@@ -60,9 +62,9 @@ $(RUST_STAMP):
 		feature_args="--no-default-features --features $$features"; \
 		echo "=== Building Rbebelm Rust backend: $$backend ($$features $$rustflags_extra) ==="; \
 		if [ "$$RUST_TARGET" = "wasm32-unknown-emscripten" ]; then \
-			env CARGO_PROFILE_RELEASE_PANIC="abort" "$$RUSTFLAGS_ENV=$$RUSTFLAGS_BASE $$rustflags_extra -C relocation-model=pic -Zdefault-visibility=hidden" CFLAGS_wasm32_unknown_emscripten="$$CFLAGS -fPIC" cargo +nightly rustc $$CARGO_FLAGS $$feature_args $$CARGO_TARGET_FLAG --lib --release --manifest-path=./rust/Cargo.toml --target-dir="$$target_dir" -Zbuild-std=panic_abort,std -- --crate-type staticlib; \
+			env CARGO_PROFILE_RELEASE_PANIC="abort" "$$RUSTFLAGS_ENV=$$RUSTFLAGS_BASE $$rustflags_extra -C relocation-model=pic -Zdefault-visibility=hidden" CFLAGS_wasm32_unknown_emscripten="$$CFLAGS -fPIC" "$$CARGO_CMD" +nightly rustc $$CARGO_FLAGS $$feature_args $$CARGO_TARGET_FLAG --lib --release --manifest-path=./rust/Cargo.toml --target-dir="$$target_dir" -Zbuild-std=panic_abort,std -- --crate-type staticlib; \
 		else \
-			env "$$RUSTFLAGS_ENV=$$RUSTFLAGS_BASE $$rustflags_extra $$DYLIB_RUSTFLAGS" cargo build $$CARGO_FLAGS $$feature_args $$CARGO_TARGET_FLAG --lib --release --manifest-path=./rust/Cargo.toml --target-dir="$$target_dir"; \
+			env "$$RUSTFLAGS_ENV=$$RUSTFLAGS_BASE $$rustflags_extra $$DYLIB_RUSTFLAGS" "$$CARGO_CMD" build $$CARGO_FLAGS $$feature_args $$CARGO_TARGET_FLAG --lib --release --manifest-path=./rust/Cargo.toml --target-dir="$$target_dir"; \
 		fi; \
 		rel="$$target_dir/$$RUST_TARGET/release"; \
 		if [ "$$RUST_TARGET" = "wasm32-unknown-emscripten" ] && [ -f "$$rel/librbebelm_backend.a" ]; then mkdir -p "$(WASM_LIBDIR)"; cp "$$rel/librbebelm_backend.a" "$(WASM_STATLIB)"; fi; \
@@ -90,7 +92,7 @@ $(RUST_STAMP):
 		case "$$RUST_HOST" in x86_64-*) tui_rustflags="$$X86_64_BASELINE_RUSTFLAGS";; esac; \
 		tui_target_dir="$(TARGET_DIR)/tui"; \
 		echo "=== Building Rbebelm Rust tool: rbebelm-tui ==="; \
-		env "$$RUSTFLAGS_ENV=$$RUSTFLAGS_BASE $$tui_rustflags $$DYLIB_RUSTFLAGS" cargo build $$CARGO_FLAGS --no-default-features --features tui-bin $$CARGO_TARGET_FLAG --bin rbebelm-tui --release --manifest-path=./rust/Cargo.toml --target-dir="$$tui_target_dir"; \
+		env "$$RUSTFLAGS_ENV=$$RUSTFLAGS_BASE $$tui_rustflags $$DYLIB_RUSTFLAGS" "$$CARGO_CMD" build $$CARGO_FLAGS --no-default-features --features tui-bin $$CARGO_TARGET_FLAG --bin rbebelm-tui --release --manifest-path=./rust/Cargo.toml --target-dir="$$tui_target_dir"; \
 		tui_bin="$$tui_target_dir/$$RUST_TARGET/release/rbebelm-tui$$BIN_EXT"; \
 		if [ ! -f "$$tui_bin" ]; then echo "ERROR: rbebelm-tui binary not found at $$tui_bin" >&2; exit 1; fi; \
 		cp "$$tui_bin" "$(TOOL_DIR)/rbebelm-tui$$BIN_EXT"; \
