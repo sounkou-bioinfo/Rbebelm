@@ -1,0 +1,210 @@
+# ARF-inspired TUI module
+
+`Rbebelm` installs a serious terminal UI as a native Rust binary
+compiled during R package source installation. The binary follows ARF’s
+separation of concerns:
+
+- Rust owns terminal rendering, key handling, TOML configuration, and
+  transport client behavior.
+- R owns model loading, tool execution, extension registration, loop
+  state, session persistence, JSON, and the loop endpoint.
+- The endpoint exposes `GET /stream` NDJSON events, `POST /command`
+  typed commands, and `POST /rpc` JSON-RPC compatibility.
+- The TUI does not reimplement the agent loop and does not have a core
+  `/reload`. Extensions are registered by R; frontends refresh local
+  keybindings, widgets, palettes, and file watchers when catalogs
+  change.
+
+## Build and installed location
+
+The TUI source lives in `src/rust/src/bin/rbebelm-tui.rs`. A normal
+source install builds both the R backend libraries and the TUI binary:
+
+``` sh
+R CMD INSTALL .
+```
+
+The compiled binary is copied into the installed package `bin/`
+directory:
+
+``` r
+
+tui <- system.file("bin/rbebelm-tui", package = "Rbebelm")
+system2(tui, "config path")
+```
+
+For direct development checks without a full R install:
+
+``` sh
+cd src/rust
+cargo check --no-default-features --features tui-bin --bin rbebelm-tui
+cargo run --no-default-features --features tui-bin --bin rbebelm-tui -- config default
+```
+
+## Configuration
+
+``` sh
+rbebelm-tui config path
+rbebelm-tui config init
+rbebelm-tui config default
+```
+
+The default config path follows the platform config directory:
+
+- Linux: `~/.config/rbebelm/tui.toml`
+- macOS: `~/Library/Application Support/rbebelm/tui.toml`
+- Windows: `%APPDATA%\\rbebelm\\tui.toml`
+
+## Default one-terminal run
+
+Start an R-owned loop endpoint and attach the TUI with one command:
+
+``` sh
+TUI="$(Rscript -e 'cat(system.file("bin/rbebelm-tui", package = "Rbebelm"))')"
+
+"$TUI" run --weights /path/to/LFM2.5-8B-A1B-Q4_K_M.gguf
+```
+
+Or configure the weights in `BEBELM_WEIGHTS_FILE` / `startup.weights`
+and run the binary with no subcommand, like `pi` starts interactive mode
+by default:
+
+``` sh
+BEBELM_WEIGHTS_FILE=/path/to/LFM2.5-8B-A1B-Q4_K_M.gguf "$TUI"
+```
+
+`run` starts the R host, waits for readiness JSON, attaches chat, and
+stops the R host when the TUI exits.
+
+## Headless R host
+
+For split-terminal, remote, editor, or automation workflows, start only
+the R-owned loop endpoint:
+
+``` sh
+"$TUI" headless \
+  --weights /path/to/LFM2.5-8B-A1B-Q4_K_M.gguf \
+  --url http://127.0.0.1:8080 \
+  --json
+```
+
+This command requires the installed R package plus optional `nanonext`
+and `later`, because the loop endpoint is an R-level optional surface.
+The URL can be local HTTP, remote HTTP, or HTTPS/TLS when the R server
+is created with
+[`nanonext::tls_config()`](https://nanonext.r-lib.org/reference/tls_config.html).
+Headless mode is the R host side of the ARF-inspired split;
+terminal/editor clients attach to it.
+
+## Stream and command clients
+
+Use the stream as the rendering/event backbone and commands as the
+control path:
+
+``` sh
+"$TUI" stream --url http://127.0.0.1:8080
+"$TUI" command --url http://127.0.0.1:8080 --type session_info --params '{}'
+"$TUI" command --url http://127.0.0.1:8080 --type catalog --params '{}'
+"$TUI" command --url http://127.0.0.1:8080 --type turn \
+  --params '{"prompt":"Say hi","max_steps":2}'
+
+# JSON-RPC compatibility/control API:
+"$TUI" rpc --url http://127.0.0.1:8080 --method session/info
+```
+
+## Terminal chat frontend
+
+Attach the ratatui chat frontend to the running loop endpoint:
+
+``` sh
+"$TUI" chat --url http://127.0.0.1:8080
+```
+
+Keys and slash commands:
+
+- `Enter`: submit the current prompt or slash command
+- `Tab`: complete slash commands after `/`
+- `Backspace`: edit the prompt
+- `Ctrl-L`: clear the local screen
+- `Ctrl-Q`, `/quit`, `/exit`, `/q`: quit
+- default R-agent commands: `/help`, `/commands`, `/tools`, `/state`,
+  `/transcript`, `/clear`, `/allow-eval`, `/no-eval`,
+  `/graphics [device]`, `/r <code>`, `/rplot [plot-code]`
+
+Direct `/rplot` is a user command and creates a simple plot when no code
+is supplied. Model-side `r_eval` and `r_plot` are enabled by default for
+local TUI hosts; use `--no-eval` at startup or `/no-eval` at runtime to
+remove them from the model tool catalog. Use
+`/graphics auto|native|png|jgd|devout-ascii` to inspect or change plot
+handling.
+
+The current UI is intentionally small: it is a frontend shell around
+R-owned agent semantics. That keeps consoles, transport clients, and TUI
+consumers aligned. Runtime extension registration happens in R via
+[`bebel_loop_register_extension()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_register_extension.md)
+/
+[`bebel_loop_unregister_extension()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_unregister_extension.md)
+and emits `catalog_changed` events for frontends.
+
+## Plots
+
+Plots are managed by R, not by the terminal frontend. `r_plot` and
+`/rplot` use the configured R graphics device: `auto`, `native`, `png`,
+optional `jgd`, or optional `devout-ascii`. TUI/headless sessions
+default to PNG artifacts unless a jgd socket is configured. The TUI
+marks PNG output as an `image/png` artifact, shows the path, and renders
+a portable braille thumbnail from the PNG bytes so thin base-R
+axes/points survive terminal rendering better than plain ASCII.
+Full-color inline pixel preview still needs a terminal image protocol
+backend (Kitty graphics, iTerm2 inline images, or sixel), while a
+jgd-compatible graphics stream would be the richer vector/event renderer
+boundary. The TUI does not own an R graphics device.
+
+## Testing
+
+Real frontend/device check from the repository root:
+
+``` sh
+make tui-check
+```
+
+This target uses a Rust PTY runner plus optional R packages `nanonext`
+and `later`. It installs the current package, starts a fake loop
+endpoint, launches the installed `rbebelm-tui` through a
+pseudo-terminal, submits `/rplot`, and verifies that the terminal
+rendering contains an `image/png` artifact plus a braille thumbnail. It
+is intentionally outside `R CMD check` because it requires a real
+terminal.
+
+Non-model command checks after package installation:
+
+``` sh
+TUI="$(Rscript -e 'cat(system.file("bin/rbebelm-tui", package = "Rbebelm"))')"
+"$TUI" config default
+"$TUI" config path
+```
+
+End-to-end test with a local model, one terminal:
+
+``` sh
+"$TUI" run \
+  --weights /path/to/LFM2.5-8B-A1B-Q4_K_M.gguf \
+  --url http://127.0.0.1:8080
+```
+
+Split-terminal endpoint test:
+
+``` sh
+# terminal 1
+"$TUI" headless \
+  --weights /path/to/LFM2.5-8B-A1B-Q4_K_M.gguf \
+  --url http://127.0.0.1:8080 \
+  --json
+
+# terminal 2
+"$TUI" stream --url http://127.0.0.1:8080
+"$TUI" command --type session_info --url http://127.0.0.1:8080 --params '{}'
+"$TUI" command --type turn --url http://127.0.0.1:8080 \
+  --params '{"prompt":"Say hello from the TUI check","max_steps":1}'
+"$TUI" chat --url http://127.0.0.1:8080
+```

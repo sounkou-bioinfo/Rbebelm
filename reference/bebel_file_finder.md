@@ -2,8 +2,8 @@
 
 `bebel_file_finder()` creates a persistent native FFF/`fff-c`-based file
 index for a project directory. `bebel_file_search()` queries that index
-and returns a data frame suitable for consoles, RPC clients, and future
-TUI file pickers.
+and returns a data frame suitable for consoles, RPC clients, and the
+standalone `tui/` file picker.
 
 ## Usage
 

@@ -22,8 +22,8 @@ internals; BebeLM should implement the framework provider contracts.
 - [`bebel_agent_loop()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_loop.md)
   owns lifecycle, queues, events, tool dispatch, extensions, and session
   persistence.
-- Consoles, RPC handlers, and future TUIs consume the loop; they must
-  not own or duplicate agent logic.
+- Consoles, RPC handlers, and the standalone `tui/` Rust module consume
+  the loop; they must not own or duplicate agent logic.
 - Native fuzzy file search is based on the vendored FFF engine (`fff-c`/
   `fff-search`) through
   [`bebel_file_finder()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_file_finder.md)
@@ -36,12 +36,11 @@ internals; BebeLM should implement the framework provider contracts.
   runtime-guarded by CPU feature checks before `#[target_feature]`
   kernels. Never compile portable/scalar artifacts with
   `target-cpu=native` or unguarded AVX/AVX512/dotprod assumptions.
-- Do not add a Pi-style core `/reload`: S7/s7contract method
-  registration and extension objects should compose without a reload
-  concept. Refresh/reload commands belong only to frontends or
-  side-effecting extension consumers such as a TUI rebuilding
-  keybindings/widgets, command palettes, watcher state, or file-search
-  handles.
+- Do not add a Pi-like core `/reload`: S7/s7contract method registration
+  and extension objects should compose without a reload concept.
+  Refresh/reload commands belong only to frontends or side-effecting
+  extension consumers such as a TUI rebuilding keybindings/widgets,
+  command palettes, watcher state, or file-search handles.
 - Use Pi vocabulary for interactive queues: `steer`, `followUp`,
   `steering_mode`, and `follow_up_mode`.
 - Extensions are backend-agnostic capability bundles registered into the
@@ -83,8 +82,10 @@ internals; BebeLM should implement the framework provider contracts.
   weakening the contract layer.
 - Do not add TerminalR, rcurses, or eventloop as hard dependencies for
   the core framework.
-- For a serious terminal TUI, prefer a separate Rust frontend using
-  `crossterm`/`ratatui` that consumes loop/RPC/events.
+- The serious terminal TUI lives in the separate `tui/` Rust frontend
+  using `crossterm`/`ratatui`. It consumes Rbebelm loop/RPC/events and
+  must not reimplement the agent loop, tool dispatcher, session tree, or
+  model backend.
 - ARM baseline is NEON; dotprod is a separate runtime-selected backend.
 - Windows targets the GNU Rust/Rtools path.
 
@@ -116,7 +117,7 @@ Full check:
 make check
 ```
 
-Optional real-model smoke test:
+Optional real-model check:
 
 ``` sh
 BEBELM_WEIGHTS_FILE=/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf \

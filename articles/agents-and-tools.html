@@ -37,6 +37,7 @@
     <li><a class="dropdown-item" href="../articles/agents-and-tools.html">Agents and tools</a></li>
     <li><a class="dropdown-item" href="../articles/agent-framework.html">Generic agent and frontend framework</a></li>
     <li><a class="dropdown-item" href="../articles/r-native-agent-layer.html">R-native agent layer</a></li>
+    <li><a class="dropdown-item" href="../articles/tui-module.html">ARF-inspired TUI module</a></li>
     <li><a class="dropdown-item" href="../articles/events-and-adapters.html">Events and adapters</a></li>
     <li><a class="dropdown-item" href="../articles/backend-and-webr.html">Backends and webR</a></li>
     <li><a class="dropdown-item" href="../articles/model-claims-benchmark.html">Model evaluation with vitals</a></li>
@@ -98,37 +99,17 @@ generation.</p>
 <span><span class="va">turn2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bebel_assistant_turn.html">bebel_assistant_turn</a></span><span class="op">(</span><span class="va">agent</span>, on_event <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/bebel_agent_info.html">bebel_agent_info</a></span><span class="op">(</span><span class="va">agent</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"history_tokens"</span>, <span class="st">"processed_tokens"</span>, <span class="st">"kv_tokens"</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="co">#&gt; $history_tokens</span></span>
-<span><span class="co">#&gt; [1] 82</span></span>
-<span><span class="co">#&gt;</span></span>
-<span><span class="co">#&gt; $processed_tokens</span></span>
-<span><span class="co">#&gt; [1] 80</span></span>
-<span><span class="co">#&gt;</span></span>
-<span><span class="co">#&gt; $kv_tokens</span></span>
-<span><span class="co">#&gt; [1] 80</span></span>
 <span></span>
 <span><span class="co"># Direct methods are available on the agent object.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">agent</span><span class="op">$</span><span class="fu">history</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 82</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/substr.html" class="external-link">substr</a></span><span class="op">(</span><span class="va">agent</span><span class="op">$</span><span class="fu">transcript</span><span class="op">(</span><span class="op">)</span>, <span class="fl">1</span>, <span class="fl">80</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "&lt;|startoftext|&gt;&lt;|im_start|&gt;user\nSay exactly: Paris noted.&lt;|im_end|&gt;\n&lt;|im_start|&gt;"</span></span>
 <span></span>
 <span><span class="co"># Helper functions provide the same operations.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="fu"><a href="../reference/bebel_history.html">bebel_history</a></span><span class="op">(</span><span class="va">agent</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 82</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/substr.html" class="external-link">substr</a></span><span class="op">(</span><span class="fu"><a href="../reference/bebel_transcript.html">bebel_transcript</a></span><span class="op">(</span><span class="va">agent</span><span class="op">)</span>, <span class="fl">1</span>, <span class="fl">80</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "&lt;|startoftext|&gt;&lt;|im_start|&gt;user\nSay exactly: Paris noted.&lt;|im_end|&gt;\n&lt;|im_start|&gt;"</span></span>
 <span></span>
 <span><span class="co"># Reset the conversation while keeping the loaded weights and generation settings.</span></span>
-<span><span class="va">agent</span><span class="op">$</span><span class="fu">clear</span><span class="op">(</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"history_tokens"</span>, <span class="st">"processed_tokens"</span>, <span class="st">"kv_tokens"</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="co">#&gt; $history_tokens</span></span>
-<span><span class="co">#&gt; [1] 0</span></span>
-<span><span class="co">#&gt;</span></span>
-<span><span class="co">#&gt; $processed_tokens</span></span>
-<span><span class="co">#&gt; [1] 0</span></span>
-<span><span class="co">#&gt;</span></span>
-<span><span class="co">#&gt; $kv_tokens</span></span>
-<span><span class="co">#&gt; [1] 0</span></span></code></pre></div>
+<span><span class="va">agent</span><span class="op">$</span><span class="fu">clear</span><span class="op">(</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"history_tokens"</span>, <span class="st">"processed_tokens"</span>, <span class="st">"kv_tokens"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
 <p>Use <code><a href="../reference/bebel_append_system.html">bebel_append_system()</a></code> for an upstream-rendered
 ChatML system turn. With no tools, the low-level
 <code><a href="../reference/bebel_append.html">bebel_append()</a></code> form below is equivalent apart from being
@@ -139,27 +120,19 @@ preamble.</p>
 <code class="sourceCode R"><span><span class="va">system_agent</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bebel_agent.html">bebel_agent</a></span><span class="op">(</span><span class="va">model</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/bebel_append_system.html">bebel_append_system</a></span><span class="op">(</span><span class="va">system_agent</span>, <span class="st">"You are concise."</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/bebel_transcript.html">bebel_transcript</a></span><span class="op">(</span><span class="va">system_agent</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "&lt;|startoftext|&gt;&lt;|im_start|&gt;system\nYou are concise.&lt;|im_end|&gt;\n"</span></span>
 <span></span>
 <span><span class="va">raw_system_agent</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bebel_agent.html">bebel_agent</a></span><span class="op">(</span><span class="va">model</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/bebel_append.html">bebel_append</a></span><span class="op">(</span><span class="va">raw_system_agent</span>, <span class="st">"&lt;|im_start|&gt;system\nYou are concise.&lt;|im_end|&gt;\n"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="fu"><a href="../reference/bebel_transcript.html">bebel_transcript</a></span><span class="op">(</span><span class="va">system_agent</span><span class="op">)</span>, <span class="fu"><a href="../reference/bebel_transcript.html">bebel_transcript</a></span><span class="op">(</span><span class="va">raw_system_agent</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] TRUE</span></span>
 <span></span>
 <span><span class="va">raw_agent</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bebel_agent.html">bebel_agent</a></span><span class="op">(</span><span class="va">model</span>, greedy <span class="op">=</span> <span class="cn">TRUE</span>, max_gen <span class="op">=</span> <span class="fl">16</span>, max_think <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/bebel_append.html">bebel_append</a></span><span class="op">(</span><span class="va">raw_agent</span>, <span class="st">"The capital of Mali is"</span><span class="op">)</span></span>
 <span><span class="va">raw_turn</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bebel_agent_generate.html">bebel_agent_generate</a></span><span class="op">(</span><span class="va">raw_agent</span>, on_event <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span><span class="va">raw_turn</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"stop"</span>, <span class="st">"generated_tokens"</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="co">#&gt; $stop</span></span>
-<span><span class="co">#&gt; [1] "max_new"</span></span>
-<span><span class="co">#&gt;</span></span>
-<span><span class="co">#&gt; $generated_tokens</span></span>
-<span><span class="co">#&gt; [1] 16</span></span>
 <span></span>
 <span><span class="va">ids</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bebel_tokenize.html">bebel_tokenize</a></span><span class="op">(</span><span class="va">model</span>, <span class="st">" and Italy is"</span>, add_bos <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/bebel_append_tokens.html">bebel_append_tokens</a></span><span class="op">(</span><span class="va">raw_agent</span>, <span class="va">ids</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/bebel_history.html">bebel_history</a></span><span class="op">(</span><span class="va">raw_agent</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">8</span><span class="op">]</span></span>
-<span><span class="co">#&gt; [1] 124894    597   5205    302  46628    355  50593   6261</span></span></code></pre></div>
+<span><span class="fu"><a href="../reference/bebel_history.html">bebel_history</a></span><span class="op">(</span><span class="va">raw_agent</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">8</span><span class="op">]</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="tool-definitions">Tool definitions<a class="anchor" aria-label="anchor" href="#tool-definitions"></a>
@@ -256,10 +229,7 @@ path.</p>
 <span><span class="va">run</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bebel_agent_run.html">bebel_agent_run</a></span><span class="op">(</span><span class="va">agent</span>, tools <span class="op">=</span> <span class="va">tools</span>, context <span class="op">=</span> <span class="va">ctx</span>, hooks <span class="op">=</span> <span class="va">hooks</span>, max_steps <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">run</span><span class="op">$</span><span class="va">tool_calls</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 1</span></span>
-<span><span class="va">ctx</span><span class="op">$</span><span class="va">log</span></span>
-<span><span class="co">#&gt; [1] "request lookup_capital"     "tool lookup_capital Italy"</span></span>
-<span><span class="co">#&gt; [3] "result lookup_capital Rome"</span></span></code></pre></div>
+<span><span class="va">ctx</span><span class="op">$</span><span class="va">log</span></span></code></pre></div>
 <p>If a model uses a different tool-call format, pass a custom
 <code>parse_tool_call</code> function to
 <code><a href="../reference/bebel_agent_run.html">bebel_agent_run()</a></code>.</p>

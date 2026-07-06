@@ -9,8 +9,8 @@
 The framework layer is deliberately small and interface-driven. The loop
 owns agent lifecycle, queues, events, tool dispatch, extension
 registration, and JSONL session persistence. Frontends such as a
-console, RPC server, or future Rust TUI consume the same loop instead of
-reimplementing or owning agent logic.
+console, RPC server, or the standalone `tui/` Rust module consume the
+same loop instead of reimplementing or owning agent logic.
 
 ## Backend contract
 
@@ -111,12 +111,12 @@ backend$user
 bebel_loop_state(loop)[c("state", "turns", "session_file")]
 #> $state
 #> [1] "idle"
-#> 
+#>
 #> $turns
 #> [1] 1
-#> 
+#>
 #> $session_file
-#> [1] "/tmp/Rtmpiqz6mZ/rbebelm-framework-sessions/2026-06-08T23-02-27-587Z_c6be45ee-e358-44e7-ec1d-6ada44bc15ee.jsonl"
+#> [1] "/tmp/RtmpKqcpr9/rbebelm-framework-sessions/2026-06-09T08-08-17-688Z_6e1a145e-bf7e-68d0-d47c-213e393f1773.jsonl"
 ```
 
 The loop writes generic message entries to the session store. The
@@ -130,9 +130,9 @@ context <- bebel_session_context(store)
 vapply(context$messages, `[[`, character(1), "role")
 #> [1] "user"      "assistant"
 readLines(bebel_session_file(store), n = 3)
-#> [1] "{\"type\":\"session\",\"version\":3,\"id\":\"c6be45ee-e358-44e7-ec1d-6ada44bc15ee\",\"timestamp\":\"2026-06-08T23:02:27.586Z\",\"cwd\":\"/tmp/Rtmpiqz6mZ\"}"                                        
-#> [2] "{\"type\":\"session_info\",\"id\":\"3f1285a6\",\"parentId\":null,\"timestamp\":\"2026-06-08T23:02:27.590Z\",\"name\":\"fake backend\"}"                                                             
-#> [3] "{\"type\":\"message\",\"id\":\"f4585e9f\",\"parentId\":\"3f1285a6\",\"timestamp\":\"2026-06-08T23:02:27.608Z\",\"message\":{\"role\":\"user\",\"content\":\"Hello backend\",\"source\":\"prompt\"}}"
+#> [1] "{\"type\":\"session\",\"version\":3,\"id\":\"6e1a145e-bf7e-68d0-d47c-213e393f1773\",\"timestamp\":\"2026-06-09T08:08:17.688Z\",\"cwd\":\"/tmp/RtmpKqcpr9\"}"
+#> [2] "{\"type\":\"session_info\",\"id\":\"909aef6a\",\"parentId\":null,\"timestamp\":\"2026-06-09T08:08:17.690Z\",\"name\":\"fake backend\"}"
+#> [3] "{\"type\":\"message\",\"id\":\"37150fd9\",\"parentId\":\"909aef6a\",\"timestamp\":\"2026-06-09T08:08:17.705Z\",\"message\":{\"role\":\"user\",\"content\":\"Hello backend\",\"source\":\"prompt\"}}"
 ```
 
 ## JSONL session trees
@@ -190,11 +190,11 @@ entries:
 ``` r
 
 bebel_session_append_custom(s, "my-extension", list(counter = 1L))
-#> [1] "1f46a036"
+#> [1] "dab41e28"
 bebel_session_append_custom_message(s, "my-extension", "Hidden context", display = FALSE)
-#> [1] "6717828a"
+#> [1] "a6f1ca26"
 bebel_session_append_label(s, u1, "checkpoint")
-#> [1] "c5cc842c"
+#> [1] "66eb54a1"
 
 tail(vapply(bebel_session_entries(s), `[[`, character(1), "type"), 3)
 #> [1] "custom"         "custom_message" "label"
@@ -210,9 +210,9 @@ forked <- bebel_session_fork(bebel_session_file(s), cwd = tempdir(), session_dir
 cloned <- bebel_session_clone_branch(s, leaf_id = u2, session_dir = store_dir)
 
 bebel_session_header(forked)$parentSession
-#> [1] "/tmp/Rtmpiqz6mZ/rbebelm-framework-sessions/2026-06-08T23-02-27-754Z_512d08e1-470f-b2bb-fa92-169253906552.jsonl"
+#> [1] "/tmp/RtmpKqcpr9/rbebelm-framework-sessions/2026-06-09T08-08-17-731Z_be99eb8c-efee-5adf-2415-38b8e06bf33e.jsonl"
 vapply(bebel_session_entries(cloned), `[[`, character(1), "id")
-#> [1] "81f70b06" "b589156b" "040c500c"
+#> [1] "68de3bdd" "914845c8" "e035700f"
 ```
 
 ## Extensions
@@ -231,7 +231,8 @@ loop, not into a particular terminal UI. It should implement the
 The helper
 [`bebel_extension()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_extension.md)
 creates a simple extension object implementing that interface.
-Extensions register into the loop; they do not own the loop or a TUI.
+Extensions register into the loop; they do not own the loop or a
+terminal frontend.
 
 ``` r
 
@@ -253,38 +254,38 @@ ext <- bebel_extension(
 bebel_extension_manifest(ext)
 #> $name
 #> [1] "demo-extension"
-#> 
+#>
 #> $tools
 #> NULL
-#> 
+#>
 #> $commands
 #> $commands$state
 #> $commands$state$name
 #> [1] "state"
-#> 
+#>
 #> $commands$state$description
 #> [1] "Return loop state."
-#> 
+#>
 #> $commands$state$usage
 #> [1] "/state"
-#> 
-#> 
-#> 
+#>
+#>
+#>
 #> $hooks
 #> [1] "event"
-#> 
+#>
 #> $skill_providers
 #> NULL
-#> 
+#>
 #> $prompt_template_providers
 #> NULL
-#> 
+#>
 #> $keybindings
 #> list()
-#> 
+#>
 #> $widgets
 #> list()
-#> 
+#>
 #> $metadata
 #> $metadata$ui
 #> [1] "frontends may render this"

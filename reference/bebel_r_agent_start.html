@@ -26,6 +26,7 @@ to the launcher while the agent tools, /r, and /rplot commands share env."></hea
     <li><a class="dropdown-item" href="../articles/agents-and-tools.html">Agents and tools</a></li>
     <li><a class="dropdown-item" href="../articles/agent-framework.html">Generic agent and frontend framework</a></li>
     <li><a class="dropdown-item" href="../articles/r-native-agent-layer.html">R-native agent layer</a></li>
+    <li><a class="dropdown-item" href="../articles/tui-module.html">ARF-inspired TUI module</a></li>
     <li><a class="dropdown-item" href="../articles/events-and-adapters.html">Events and adapters</a></li>
     <li><a class="dropdown-item" href="../articles/backend-and-webr.html">Backends and webR</a></li>
     <li><a class="dropdown-item" href="../articles/model-claims-benchmark.html">Model evaluation with vitals</a></li>
@@ -71,7 +72,7 @@ to the launcher while the agent tools, <code>/r</code>, and <code>/rplot</code> 
 <span>  max_steps <span class="op">=</span> <span class="fl">4L</span>,</span>
 <span>  show_stats <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  blank_limit <span class="op">=</span> <span class="fl">10L</span>,</span>
-<span>  prompt_style <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"compact"</span>, <span class="st">"full"</span><span class="op">)</span></span>
+<span>  prompt_detail <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"compact"</span>, <span class="st">"full"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -120,8 +121,8 @@ to the launcher while the agent tools, <code>/r</code>, and <code>/rplot</code> 
 <dd><p>Number of consecutive blank inputs before exiting the console. Set to <code>Inf</code> to never auto-exit on blanks.</p></dd>
 
 
-<dt id="arg-prompt-style">prompt_style<a class="anchor" aria-label="anchor" href="#arg-prompt-style"></a></dt>
-<dd><p>Tool prompt verbosity passed to <code><a href="bebel_r_agent.html">bebel_r_agent()</a></code>.</p></dd>
+<dt id="arg-prompt-detail">prompt_detail<a class="anchor" aria-label="anchor" href="#arg-prompt-detail"></a></dt>
+<dd><p>Tool prompt detail passed to <code><a href="bebel_r_agent.html">bebel_r_agent()</a></code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

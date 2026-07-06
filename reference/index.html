@@ -22,6 +22,7 @@
     <li><a class="dropdown-item" href="../articles/agents-and-tools.html">Agents and tools</a></li>
     <li><a class="dropdown-item" href="../articles/agent-framework.html">Generic agent and frontend framework</a></li>
     <li><a class="dropdown-item" href="../articles/r-native-agent-layer.html">R-native agent layer</a></li>
+    <li><a class="dropdown-item" href="../articles/tui-module.html">ARF-inspired TUI module</a></li>
     <li><a class="dropdown-item" href="../articles/events-and-adapters.html">Events and adapters</a></li>
     <li><a class="dropdown-item" href="../articles/backend-and-webr.html">Backends and webR</a></li>
     <li><a class="dropdown-item" href="../articles/model-claims-benchmark.html">Model evaluation with vitals</a></li>
@@ -56,6 +57,13 @@
 
         </dt>
         <dd>Load a BebeLM GGUF model</dd>
+
+        <dt>
+
+          <code><a href="bebel_embed.html">bebel_embed()</a></code>
+
+        </dt>
+        <dd>Embed text with pooled BebeLM hidden states</dd>
 
         <dt>
 
@@ -439,6 +447,27 @@
 
         <dt>
 
+          <code><a href="bebel_loop_catalog.html">bebel_loop_catalog()</a></code>
+
+        </dt>
+        <dd>Return a loop's frontend catalog</dd>
+
+        <dt>
+
+          <code><a href="bebel_loop_register_extension.html">bebel_loop_register_extension()</a></code>
+
+        </dt>
+        <dd>Register extensions on a running loop</dd>
+
+        <dt>
+
+          <code><a href="bebel_loop_unregister_extension.html">bebel_loop_unregister_extension()</a></code>
+
+        </dt>
+        <dd>Unregister an extension from a running loop</dd>
+
+        <dt>
+
           <code><a href="bebel_loop_command.html">bebel_loop_command()</a></code>
 
         </dt>
@@ -471,6 +500,13 @@
 
         </dt>
         <dd>Return a loop's command catalog</dd>
+
+        <dt>
+
+          <code><a href="bebel_loop_rpc_server.html">bebel_loop_rpc_server()</a></code>
+
+        </dt>
+        <dd>Serve a generic Rbebelm agent loop over HTTP(S)</dd>
 
         <dt>
 

@@ -1,9 +1,9 @@
 # Create an R-native Rbebelm agent session
 
-`bebel_r_agent()` is a higher-level layer inspired by R console agent
-harnesses. It keeps one BebeLM agent, a private tool context, and a
-small R tool catalog together so the same object can be driven by a
-console loop or by the JSON-RPC server.
+`bebel_r_agent()` is a higher-level layer inspired by R console agents.
+It keeps one BebeLM agent, a private tool context, and a small R tool
+catalog together so the same object can be driven by a console loop or
+by the JSON-RPC server.
 
 ## Usage
 
@@ -14,8 +14,8 @@ bebel_r_agent(
   tools = NULL,
   env = .GlobalEnv,
   cwd = getwd(),
-  allow_eval = FALSE,
-  prompt_style = c("compact", "full"),
+  allow_eval = TRUE,
+  prompt_detail = c("compact", "full"),
   greedy = FALSE,
   max_gen = 512,
   max_context = 4096,
@@ -52,11 +52,12 @@ bebel_r_agent(
 
 - allow_eval:
 
-  Whether to include an `r_eval` tool that executes code.
+  Whether to include `r_eval` and `r_plot` tools that execute R code and
+  render plots. Defaults to `TRUE`; set `FALSE` to start read-only.
 
-- prompt_style:
+- prompt_detail:
 
-  Tool prompt verbosity. `"compact"` is faster for console use; `"full"`
+  Tool prompt detail. `"compact"` is faster for console use; `"full"`
   includes descriptions for every argument.
 
 - greedy, max_gen, max_context, max_think, temperature, top_k,

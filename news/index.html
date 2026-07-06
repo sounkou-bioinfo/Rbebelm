@@ -22,6 +22,7 @@
     <li><a class="dropdown-item" href="../articles/agents-and-tools.html">Agents and tools</a></li>
     <li><a class="dropdown-item" href="../articles/agent-framework.html">Generic agent and frontend framework</a></li>
     <li><a class="dropdown-item" href="../articles/r-native-agent-layer.html">R-native agent layer</a></li>
+    <li><a class="dropdown-item" href="../articles/tui-module.html">ARF-inspired TUI module</a></li>
     <li><a class="dropdown-item" href="../articles/events-and-adapters.html">Events and adapters</a></li>
     <li><a class="dropdown-item" href="../articles/backend-and-webr.html">Backends and webR</a></li>
     <li><a class="dropdown-item" href="../articles/model-claims-benchmark.html">Model evaluation with vitals</a></li>
@@ -43,7 +44,15 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.2.0-0.1.0" id="rbebelm-020-010">Rbebelm 0.2.0-0.1.0<a class="anchor" aria-label="anchor" href="#rbebelm-020-010"></a></h2>
-<ul><li>Reoriented the package around the public <code>bebel_*</code> / <code>Bebel*</code> API for the generic R agent/frontend framework.</li>
+<ul><li>Added the standalone ARF-inspired <code>tui/</code> Rust module with TOML config, headless Rbebelm RPC hosting, a JSON-RPC client, and a minimal <code>crossterm</code>/<code>ratatui</code> chat frontend.</li>
+<li>Added a graphics-device policy for R plot tools and <code>/rplot</code>: <code>auto</code>, <code>native</code>, <code>png</code>, optional <code>jgd</code>, and optional <code>devout-ascii</code>, reflecting that graphics is a first-class R capability rather than text-only output.</li>
+<li>Added a portable braille PNG thumbnail renderer for TUI plot artifacts, so <code>r_plot</code>/<code>/rplot</code> outputs display in the transcript even without Kitty/iTerm2/sixel support.</li>
+<li>Added <code>make tui-check</code>, a PTY-driven check that launches the installed native TUI, submits <code>/rplot</code> against a fake loop endpoint, and verifies PNG artifact plus braille-thumbnail rendering.</li>
+<li>Queued normal prompts submitted while a TUI turn is still running; they are visibly marked and sent after the active turn finishes instead of making the UI appear unresponsive.</li>
+<li>Fixed the TUI transcript to follow the bottom of the chat while assistant text is streaming, so cached <code>/help</code> or <code>/state</code> output does not hide the active response.</li>
+<li>Fixed the TUI so <code>/state</code> and cached <code>/help</code> remain responsive while a model turn is running, using the frontend’s stream-observed loop state instead of waiting for the busy R command handler.</li>
+<li>Reordered README and getting-started documentation around clear entry points: generic framework, concrete local backend, native file search, and terminal frontend.</li>
+<li>Reoriented the package around the public <code>bebel_*</code> / <code>Bebel*</code> API for the generic R agent/frontend framework.</li>
 <li>Added S7/s7contract contracts for backends, extensions, skills, prompt templates, loop commands/events, and Pi-inspired JSONL session trees.</li>
 <li>Added native FFF-backed fuzzy file search through <code><a href="../reference/bebel_file_finder.html">bebel_file_finder()</a></code> and <code><a href="../reference/bebel_file_finder.html">bebel_file_search()</a></code> with explicit webR/wasm unsupported diagnostics.</li>
 <li>Hardened native SIMD dispatch: scalar builds use a baseline x86-64 target, optimized dylibs are selected by runtime CPU checks, and FFF/neo_frizbee SIMD remains runtime-gated.</li>

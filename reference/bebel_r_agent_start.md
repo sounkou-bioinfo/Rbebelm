@@ -27,7 +27,7 @@ bebel_r_agent_start(
   max_steps = 4L,
   show_stats = TRUE,
   blank_limit = 10L,
-  prompt_style = c("compact", "full")
+  prompt_detail = c("compact", "full")
 )
 ```
 
@@ -81,9 +81,9 @@ bebel_r_agent_start(
   Number of consecutive blank inputs before exiting the console. Set to
   `Inf` to never auto-exit on blanks.
 
-- prompt_style:
+- prompt_detail:
 
-  Tool prompt verbosity passed to
+  Tool prompt detail passed to
   [`bebel_r_agent()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_r_agent.md).
 
 ## Value

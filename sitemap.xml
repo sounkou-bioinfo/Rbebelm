@@ -10,6 +10,7 @@
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/articles/index.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/articles/model-claims-benchmark.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/articles/r-native-agent-layer.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/articles/tui-module.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/authors.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/index.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/news/index.html</loc></url>
@@ -48,6 +49,7 @@
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_console_event.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_default_r_tools.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_detokenize.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_embed.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_event_handler.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_event_types.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_extension.html</loc></url>
@@ -62,6 +64,7 @@
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_history.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_live_console.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_cancel.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_catalog.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_clear_queue.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_command.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_command_catalog.html</loc></url>
@@ -71,10 +74,13 @@
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_follow_up.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_policy.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_prompt.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_register_extension.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_rpc_server.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_run.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_state.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_steer.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_step.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_unregister_extension.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_model_load.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_parse_tool_call.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_parse_tool_calls.html</loc></url>

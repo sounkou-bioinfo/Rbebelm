@@ -8,7 +8,7 @@ finite event protocol reported by
 
 library(Rbebelm)
 bebel_event_types()
-#>  [1] "start"           "thinking_start"  "thinking_delta"  "thinking_end"   
+#>  [1] "start"           "thinking_start"  "thinking_delta"  "thinking_end"
 #>  [5] "text_start"      "text_delta"      "text_end"        "tool_list_start"
 #>  [9] "tool_list_delta" "tool_list_end"   "tool_call_start" "tool_call_delta"
 #> [13] "tool_call_end"   "done"
@@ -43,13 +43,7 @@ turn <- bebel_generate(
 )
 
 paste0(text, collapse = "")
-#> [1] " be used to update a text field in a UI component."
 turn[c("stop", "generated_tokens")]
-#> $stop
-#> [1] "max_new"
-#> 
-#> $generated_tokens
-#> [1] 12
 ```
 
 ## Handler lists
@@ -75,8 +69,6 @@ invisible(bebel_generate(
 ))
 
 counts
-#>     text_delta thinking_delta           done 
-#>              4              0              1
 ```
 
 ## SSE example

@@ -4,6 +4,8 @@
 
 - [`bebel_model_load()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_model_load.md)
   : Load a BebeLM GGUF model
+- [`bebel_embed()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_embed.md)
+  : Embed text with pooled BebeLM hidden states
 - [`bebel_generate()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_generate.md)
   : Generate a raw continuation from a prompt
 - [`bebel_chat()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_chat.md)
@@ -114,6 +116,12 @@
   : Return agent-loop events
 - [`bebel_loop_extensions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_extensions.md)
   : Return a loop's extension manifests
+- [`bebel_loop_catalog()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_catalog.md)
+  : Return a loop's frontend catalog
+- [`bebel_loop_register_extension()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_register_extension.md)
+  : Register extensions on a running loop
+- [`bebel_loop_unregister_extension()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_unregister_extension.md)
+  : Unregister an extension from a running loop
 - [`bebel_loop_command()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_command.md)
   : Define an agent-loop command
 - [`bebel_loop_execute_command()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_execute_command.md)
@@ -124,6 +132,8 @@
   : Clear queued steering and follow-up messages
 - [`bebel_loop_command_catalog()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_command_catalog.md)
   : Return a loop's command catalog
+- [`bebel_loop_rpc_server()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_rpc_server.md)
+  : Serve a generic Rbebelm agent loop over HTTP(S)
 - [`bebel_extension()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_extension.md)
   : Define an agent-loop extension
 - [`bebel_extension_manifest()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_extension_manifest.md)

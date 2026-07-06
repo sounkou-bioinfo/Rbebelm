@@ -3,7 +3,10 @@
 The default catalog is intentionally small. It exposes read-only file
 and R session inspection tools plus optional R evaluation and plot
 rendering. These are ordinary R functions and run in the current R
-process.
+process. Plot rendering is device-backed:
+`options(Rbebelm.graphics.device=)` or the `RBEBELM_GRAPHICS_DEVICE`
+environment variable may be `"auto"`, `"native"`, `"png"`, `"jgd"`, or
+`"devout-ascii"`.
 
 ## Usage
 

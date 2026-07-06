@@ -4,7 +4,7 @@ This vignette shows how to evaluate the local [Liquid AI
 LFM2.5-8B-A1B](https://www.liquid.ai/blog/lfm2-5-8b-a1b) GGUF with
 [`vitals`](https://github.com/tidyverse/vitals). The goal is to evaluate
 model behavior on small, reproducible tasks, including tool use. It is
-not a reproduction of Liquid AI’s benchmark harnesses.
+not a reproduction of Liquid AI’s benchmark suite.
 
 The source is in `vignettes-raw/`; the rendered file in `vignettes/` is
 precompiled with `rawvignette` so `R CMD check`, pkgdown, and package
@@ -18,8 +18,8 @@ data.frame(
   has_weights = has_weights,
   has_vitals = has_vitals
 )
-#>                  model_file has_weights has_vitals
-#> 1 LFM2.5-8B-A1B-Q4_K_M.gguf        TRUE       TRUE
+#>   model_file has_weights has_vitals
+#> 1       <NA>       FALSE       TRUE
 ```
 
 If `vitals` is not installed, install it before regenerating this
@@ -31,7 +31,7 @@ install.packages("vitals")
 # or: pak::pak("tidyverse/vitals")
 ```
 
-## Evaluation harness
+## Evaluation driver
 
 `vitals::Task` expects solvers to return `result` and `solver_chat`.
 `Rbebelm` is not yet an ellmer provider, so the helper below returns a
@@ -136,8 +136,6 @@ qa_task <- vitals::Task$new(
 
 qa_eval <- run_task(qa_task, model = model)
 qa_eval$metrics
-#> accuracy 
-#>      100
 data.frame(
   sample = seq_len(nrow(qa_eval$samples)),
   target = qa_eval$samples$target,
@@ -146,10 +144,6 @@ data.frame(
   explanation = qa_eval$samples$scorer_explanation,
   row.names = NULL
 )
-#>   sample target                    result score         explanation
-#> 1      1 Bamako < </think> ANSWER: Bamako     C matched ANSWER line
-#> 2      2   Rome   < </think> ANSWER: Rome     C matched ANSWER line
-#> 3      3  Tokyo  < </think> ANSWER: Tokyo     C matched ANSWER line
 ```
 
 ## Tool-use task
@@ -252,8 +246,6 @@ tool_task <- vitals::Task$new(
 
 tool_eval <- run_task(tool_task, model = model, expected_tool = tool_data$expected_tool)
 tool_eval$metrics
-#> accuracy 
-#> 66.66667
 data.frame(
   sample = seq_len(nrow(tool_eval$samples)),
   target = tool_eval$samples$target,
@@ -265,22 +257,6 @@ data.frame(
   explanation = tool_eval$samples$scorer_explanation,
   row.names = NULL
 )
-#>   sample target
-#> 1      1 Bamako
-#> 2      2    XOF
-#> 3      3   Rome
-#>                                                                                                                        result
-#> 1                                                                                                              ANSWER: Bamako
-#> 2 <tool_call> {"name": "lookup_currency", "arguments": {"country": "Mali"}} </tool_call> <tool_result> {"currency": "Mali ...
-#> 3                                                                                                                ANSWER: Rome
-#>   score answer_ok tool_ok                                     calls
-#> 1     C      TRUE    TRUE lookup_capital:Mali | lookup_capital:Mali
-#> 2     I     FALSE   FALSE                                          
-#> 3     C      TRUE    TRUE                      lookup_capital:Italy
-#>                                  explanation
-#> 1          expected tool and answer observed
-#> 2 missing expected tool call or final answer
-#> 3          expected tool and answer observed
 ```
 
 ## Instruction-following task
@@ -343,8 +319,6 @@ instruction_task <- vitals::Task$new(
 
 instruction_eval <- run_task(instruction_task, model = model)
 instruction_eval$metrics
-#> accuracy 
-#> 33.33333
 data.frame(
   sample = seq_len(nrow(instruction_eval$samples)),
   target = instruction_eval$samples$target,
@@ -353,18 +327,6 @@ data.frame(
   explanation = instruction_eval$samples$scorer_explanation,
   row.names = NULL
 )
-#>   sample            target
-#> 1      1      comma_colors
-#> 2      2 json_city_country
-#> 3      3      answer_ready
-#>                                                                                                                        result
-#> 1                                                                                    { "output": [ "red", "green", "blue" ] }
-#> 2                                    { "city": "Bamako", "country": "Mali" } </think> { "city": "Bamako", "country": "Mali" }
-#> 3 <REASONING> The user's request is to "solve the following problem" and then "return exactly one line beginning with ANSW...
-#>   score          explanation
-#> 1     I format did not match
-#> 2     C       format matched
-#> 3     I format did not match
 ```
 
 ## Interpreting the results

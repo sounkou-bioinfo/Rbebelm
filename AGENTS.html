@@ -22,6 +22,7 @@
     <li><a class="dropdown-item" href="articles/agents-and-tools.html">Agents and tools</a></li>
     <li><a class="dropdown-item" href="articles/agent-framework.html">Generic agent and frontend framework</a></li>
     <li><a class="dropdown-item" href="articles/r-native-agent-layer.html">R-native agent layer</a></li>
+    <li><a class="dropdown-item" href="articles/tui-module.html">ARF-inspired TUI module</a></li>
     <li><a class="dropdown-item" href="articles/events-and-adapters.html">Events and adapters</a></li>
     <li><a class="dropdown-item" href="articles/backend-and-webr.html">Backends and webR</a></li>
     <li><a class="dropdown-item" href="articles/model-claims-benchmark.html">Model evaluation with vitals</a></li>
@@ -55,9 +56,9 @@
 <code>BebelAgentBackend</code> is the generic LLM-provider contract. It is expressed as S7/s7contract interfaces. BebeLM is one implementation, not the framework itself.</li>
 <li>
 <code><a href="reference/bebel_agent_loop.html">bebel_agent_loop()</a></code> owns lifecycle, queues, events, tool dispatch, extensions, and session persistence.</li>
-<li>Consoles, RPC handlers, and future TUIs consume the loop; they must not own or duplicate agent logic.</li>
+<li>Consoles, RPC handlers, and the standalone <code>tui/</code> Rust module consume the loop; they must not own or duplicate agent logic.</li>
 <li>Native fuzzy file search is based on the vendored FFF engine (<code>fff-c</code>/ <code>fff-search</code>) through <code><a href="reference/bebel_file_finder.html">bebel_file_finder()</a></code> and <code><a href="reference/bebel_file_finder.html">bebel_file_search()</a></code>. Keep it native-only and preserve webR package loadability with explicit unsupported diagnostics rather than hard wasm linkage. Be strict about SIMD: FFF and <code>neo_frizbee</code> SIMD must remain either backend-selected by Rbebelm’s existing dylib dispatcher or runtime-guarded by CPU feature checks before <code>#[target_feature]</code> kernels. Never compile portable/scalar artifacts with <code>target-cpu=native</code> or unguarded AVX/AVX512/dotprod assumptions.</li>
-<li>Do not add a Pi-style core <code>/reload</code>: S7/s7contract method registration and extension objects should compose without a reload concept. Refresh/reload commands belong only to frontends or side-effecting extension consumers such as a TUI rebuilding keybindings/widgets, command palettes, watcher state, or file-search handles.</li>
+<li>Do not add a Pi-like core <code>/reload</code>: S7/s7contract method registration and extension objects should compose without a reload concept. Refresh/reload commands belong only to frontends or side-effecting extension consumers such as a TUI rebuilding keybindings/widgets, command palettes, watcher state, or file-search handles.</li>
 <li>Use Pi vocabulary for interactive queues: <code>steer</code>, <code>followUp</code>, <code>steering_mode</code>, and <code>follow_up_mode</code>.</li>
 <li>Extensions are backend-agnostic capability bundles registered into the loop. An extension should implement/provide:
 <ul><li>manifest metadata,</li>
@@ -86,7 +87,7 @@
 <ul><li>JSON handling uses imported <code>yyjsonr</code>; do not reintroduce <code>jsonlite</code> or an ad hoc parser.</li>
 <li>Keep <code>nanonext</code>, <code>ellmer</code>, and <code>vitals</code> optional. <code>S7</code>, <code>s7contract</code>, and <code>yyjsonr</code> are hard runtime dependencies, including for webR; if webR fails, fix the wasm dependency repository/build path rather than weakening the contract layer.</li>
 <li>Do not add TerminalR, rcurses, or eventloop as hard dependencies for the core framework.</li>
-<li>For a serious terminal TUI, prefer a separate Rust frontend using <code>crossterm</code>/<code>ratatui</code> that consumes loop/RPC/events.</li>
+<li>The serious terminal TUI lives in the separate <code>tui/</code> Rust frontend using <code>crossterm</code>/<code>ratatui</code>. It consumes Rbebelm loop/RPC/events and must not reimplement the agent loop, tool dispatcher, session tree, or model backend.</li>
 <li>ARM baseline is NEON; dotprod is a separate runtime-selected backend.</li>
 <li>Windows targets the GNU Rust/Rtools path.</li>
 </ul></div>
@@ -101,7 +102,7 @@
 <span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">'tinytest::test_package("Rbebelm")'</span></span></code></pre></div>
 <p>Full check:</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">make</span> check</span></code></pre></div>
-<p>Optional real-model smoke test:</p>
+<p>Optional real-model check:</p>
 <div class="sourceCode" id="cb5"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="va">BEBELM_WEIGHTS_FILE</span><span class="op">=</span>/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf <span class="dt">\</span></span>
 <span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>  <span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">'tinytest::run_test_file("inst/tinytest/test-real-model.R")'</span></span></code></pre></div>
 </div>

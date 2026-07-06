@@ -37,6 +37,7 @@
     <li><a class="dropdown-item" href="../articles/agents-and-tools.html">Agents and tools</a></li>
     <li><a class="dropdown-item" href="../articles/agent-framework.html">Generic agent and frontend framework</a></li>
     <li><a class="dropdown-item" href="../articles/r-native-agent-layer.html">R-native agent layer</a></li>
+    <li><a class="dropdown-item" href="../articles/tui-module.html">ARF-inspired TUI module</a></li>
     <li><a class="dropdown-item" href="../articles/events-and-adapters.html">Events and adapters</a></li>
     <li><a class="dropdown-item" href="../articles/backend-and-webr.html">Backends and webR</a></li>
     <li><a class="dropdown-item" href="../articles/model-claims-benchmark.html">Model evaluation with vitals</a></li>
@@ -81,7 +82,7 @@
 LFM2.5-8B-A1B</a> GGUF with <a href="https://github.com/tidyverse/vitals" class="external-link"><code>vitals</code></a>. The
 goal is to evaluate model behavior on small, reproducible tasks,
 including tool use. It is not a reproduction of Liquid AI’s benchmark
-harnesses.</p>
+suite.</p>
 <p>The source is in <code>vignettes-raw/</code>; the rendered file in
 <code>vignettes/</code> is precompiled with <code>rawvignette</code> so
 <code>R CMD check</code>, pkgdown, and package installs do not rerun the
@@ -93,15 +94,15 @@ model.</p>
 <span>  has_weights <span class="op">=</span> <span class="va">has_weights</span>,</span>
 <span>  has_vitals <span class="op">=</span> <span class="va">has_vitals</span></span>
 <span><span class="op">)</span></span>
-<span><span class="co">#&gt;                  model_file has_weights has_vitals</span></span>
-<span><span class="co">#&gt; 1 LFM2.5-8B-A1B-Q4_K_M.gguf        TRUE       TRUE</span></span></code></pre></div>
+<span><span class="co">#&gt;   model_file has_weights has_vitals</span></span>
+<span><span class="co">#&gt; 1       &lt;NA&gt;       FALSE       TRUE</span></span></code></pre></div>
 <p>If <code>vitals</code> is not installed, install it before
 regenerating this vignette:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"vitals"</span><span class="op">)</span></span>
 <span><span class="co"># or: pak::pak("tidyverse/vitals")</span></span></code></pre></div>
 <div class="section level2">
-<h2 id="evaluation-harness">Evaluation harness<a class="anchor" aria-label="anchor" href="#evaluation-harness"></a>
+<h2 id="evaluation-driver">Evaluation driver<a class="anchor" aria-label="anchor" href="#evaluation-driver"></a>
 </h2>
 <p><code>vitals::Task</code> expects solvers to return
 <code>result</code> and <code>solver_chat</code>. <code>Rbebelm</code>
@@ -203,8 +204,6 @@ extracts an <code>ANSWER:</code> line and compares it to the target.</p>
 <span></span>
 <span><span class="va">qa_eval</span> <span class="op">&lt;-</span> <span class="fu">run_task</span><span class="op">(</span><span class="va">qa_task</span>, model <span class="op">=</span> <span class="va">model</span><span class="op">)</span></span>
 <span><span class="va">qa_eval</span><span class="op">$</span><span class="va">metrics</span></span>
-<span><span class="co">#&gt; accuracy </span></span>
-<span><span class="co">#&gt;      100</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>  sample <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">qa_eval</span><span class="op">$</span><span class="va">samples</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  target <span class="op">=</span> <span class="va">qa_eval</span><span class="op">$</span><span class="va">samples</span><span class="op">$</span><span class="va">target</span>,</span>
@@ -212,11 +211,7 @@ extracts an <code>ANSWER:</code> line and compares it to the target.</p>
 <span>  score <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="va">qa_eval</span><span class="op">$</span><span class="va">samples</span><span class="op">$</span><span class="va">score</span><span class="op">)</span>,</span>
 <span>  explanation <span class="op">=</span> <span class="va">qa_eval</span><span class="op">$</span><span class="va">samples</span><span class="op">$</span><span class="va">scorer_explanation</span>,</span>
 <span>  row.names <span class="op">=</span> <span class="cn">NULL</span></span>
-<span><span class="op">)</span></span>
-<span><span class="co">#&gt;   sample target                    result score         explanation</span></span>
-<span><span class="co">#&gt; 1      1 Bamako &lt; &lt;/think&gt; ANSWER: Bamako     C matched ANSWER line</span></span>
-<span><span class="co">#&gt; 2      2   Rome   &lt; &lt;/think&gt; ANSWER: Rome     C matched ANSWER line</span></span>
-<span><span class="co">#&gt; 3      3  Tokyo  &lt; &lt;/think&gt; ANSWER: Tokyo     C matched ANSWER line</span></span></code></pre></div>
+<span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="tool-use-task">Tool-use task<a class="anchor" aria-label="anchor" href="#tool-use-task"></a>
@@ -317,8 +312,6 @@ answer cannot be obtained by calling an external service.</p>
 <span></span>
 <span><span class="va">tool_eval</span> <span class="op">&lt;-</span> <span class="fu">run_task</span><span class="op">(</span><span class="va">tool_task</span>, model <span class="op">=</span> <span class="va">model</span>, expected_tool <span class="op">=</span> <span class="va">tool_data</span><span class="op">$</span><span class="va">expected_tool</span><span class="op">)</span></span>
 <span><span class="va">tool_eval</span><span class="op">$</span><span class="va">metrics</span></span>
-<span><span class="co">#&gt; accuracy </span></span>
-<span><span class="co">#&gt; 66.66667</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>  sample <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">tool_eval</span><span class="op">$</span><span class="va">samples</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  target <span class="op">=</span> <span class="va">tool_eval</span><span class="op">$</span><span class="va">samples</span><span class="op">$</span><span class="va">target</span>,</span>
@@ -329,23 +322,7 @@ answer cannot be obtained by calling an external service.</p>
 <span>  calls <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">tool_eval</span><span class="op">$</span><span class="va">samples</span><span class="op">$</span><span class="va">solver_metadata</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">calls</span>, collapse <span class="op">=</span> <span class="st">" | "</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  explanation <span class="op">=</span> <span class="va">tool_eval</span><span class="op">$</span><span class="va">samples</span><span class="op">$</span><span class="va">scorer_explanation</span>,</span>
 <span>  row.names <span class="op">=</span> <span class="cn">NULL</span></span>
-<span><span class="op">)</span></span>
-<span><span class="co">#&gt;   sample target</span></span>
-<span><span class="co">#&gt; 1      1 Bamako</span></span>
-<span><span class="co">#&gt; 2      2    XOF</span></span>
-<span><span class="co">#&gt; 3      3   Rome</span></span>
-<span><span class="co">#&gt;                                                                                                                        result</span></span>
-<span><span class="co">#&gt; 1                                                                                                              ANSWER: Bamako</span></span>
-<span><span class="co">#&gt; 2 &lt;tool_call&gt; {"name": "lookup_currency", "arguments": {"country": "Mali"}} &lt;/tool_call&gt; &lt;tool_result&gt; {"currency": "Mali ...</span></span>
-<span><span class="co">#&gt; 3                                                                                                                ANSWER: Rome</span></span>
-<span><span class="co">#&gt;   score answer_ok tool_ok                                     calls</span></span>
-<span><span class="co">#&gt; 1     C      TRUE    TRUE lookup_capital:Mali | lookup_capital:Mali</span></span>
-<span><span class="co">#&gt; 2     I     FALSE   FALSE                                          </span></span>
-<span><span class="co">#&gt; 3     C      TRUE    TRUE                      lookup_capital:Italy</span></span>
-<span><span class="co">#&gt;                                  explanation</span></span>
-<span><span class="co">#&gt; 1          expected tool and answer observed</span></span>
-<span><span class="co">#&gt; 2 missing expected tool call or final answer</span></span>
-<span><span class="co">#&gt; 3          expected tool and answer observed</span></span></code></pre></div>
+<span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="instruction-following-task">Instruction-following task<a class="anchor" aria-label="anchor" href="#instruction-following-task"></a>
@@ -406,8 +383,6 @@ small; add rows and epochs to make it more robust.</p>
 <span></span>
 <span><span class="va">instruction_eval</span> <span class="op">&lt;-</span> <span class="fu">run_task</span><span class="op">(</span><span class="va">instruction_task</span>, model <span class="op">=</span> <span class="va">model</span><span class="op">)</span></span>
 <span><span class="va">instruction_eval</span><span class="op">$</span><span class="va">metrics</span></span>
-<span><span class="co">#&gt; accuracy </span></span>
-<span><span class="co">#&gt; 33.33333</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>  sample <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">instruction_eval</span><span class="op">$</span><span class="va">samples</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  target <span class="op">=</span> <span class="va">instruction_eval</span><span class="op">$</span><span class="va">samples</span><span class="op">$</span><span class="va">target</span>,</span>
@@ -415,19 +390,7 @@ small; add rows and epochs to make it more robust.</p>
 <span>  score <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="va">instruction_eval</span><span class="op">$</span><span class="va">samples</span><span class="op">$</span><span class="va">score</span><span class="op">)</span>,</span>
 <span>  explanation <span class="op">=</span> <span class="va">instruction_eval</span><span class="op">$</span><span class="va">samples</span><span class="op">$</span><span class="va">scorer_explanation</span>,</span>
 <span>  row.names <span class="op">=</span> <span class="cn">NULL</span></span>
-<span><span class="op">)</span></span>
-<span><span class="co">#&gt;   sample            target</span></span>
-<span><span class="co">#&gt; 1      1      comma_colors</span></span>
-<span><span class="co">#&gt; 2      2 json_city_country</span></span>
-<span><span class="co">#&gt; 3      3      answer_ready</span></span>
-<span><span class="co">#&gt;                                                                                                                        result</span></span>
-<span><span class="co">#&gt; 1                                                                                    { "output": [ "red", "green", "blue" ] }</span></span>
-<span><span class="co">#&gt; 2                                    { "city": "Bamako", "country": "Mali" } &lt;/think&gt; { "city": "Bamako", "country": "Mali" }</span></span>
-<span><span class="co">#&gt; 3 &lt;REASONING&gt; The user's request is to "solve the following problem" and then "return exactly one line beginning with ANSW...</span></span>
-<span><span class="co">#&gt;   score          explanation</span></span>
-<span><span class="co">#&gt; 1     I format did not match</span></span>
-<span><span class="co">#&gt; 2     C       format matched</span></span>
-<span><span class="co">#&gt; 3     I format did not match</span></span></code></pre></div>
+<span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="interpreting-the-results">Interpreting the results<a class="anchor" aria-label="anchor" href="#interpreting-the-results"></a>

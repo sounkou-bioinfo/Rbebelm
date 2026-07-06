@@ -21,37 +21,17 @@ bebel_append_user(agent, "Say exactly: second turn complete.")
 turn2 <- bebel_assistant_turn(agent, on_event = NULL)
 
 bebel_agent_info(agent)[c("history_tokens", "processed_tokens", "kv_tokens")]
-#> $history_tokens
-#> [1] 82
-#>
-#> $processed_tokens
-#> [1] 80
-#>
-#> $kv_tokens
-#> [1] 80
 
 # Direct methods are available on the agent object.
 length(agent$history())
-#> [1] 82
 substr(agent$transcript(), 1, 80)
-#> [1] "<|startoftext|><|im_start|>user\nSay exactly: Paris noted.<|im_end|>\n<|im_start|>"
 
 # Helper functions provide the same operations.
 length(bebel_history(agent))
-#> [1] 82
 substr(bebel_transcript(agent), 1, 80)
-#> [1] "<|startoftext|><|im_start|>user\nSay exactly: Paris noted.<|im_end|>\n<|im_start|>"
 
 # Reset the conversation while keeping the loaded weights and generation settings.
 agent$clear()[c("history_tokens", "processed_tokens", "kv_tokens")]
-#> $history_tokens
-#> [1] 0
-#>
-#> $processed_tokens
-#> [1] 0
-#>
-#> $kv_tokens
-#> [1] 0
 ```
 
 Use
@@ -68,27 +48,19 @@ tokens. When `tools` are supplied, BebeLM renders its
 system_agent <- bebel_agent(model)
 bebel_append_system(system_agent, "You are concise.")
 bebel_transcript(system_agent)
-#> [1] "<|startoftext|><|im_start|>system\nYou are concise.<|im_end|>\n"
 
 raw_system_agent <- bebel_agent(model)
 bebel_append(raw_system_agent, "<|im_start|>system\nYou are concise.<|im_end|>\n")
 identical(bebel_transcript(system_agent), bebel_transcript(raw_system_agent))
-#> [1] TRUE
 
 raw_agent <- bebel_agent(model, greedy = TRUE, max_gen = 16, max_think = 0)
 bebel_append(raw_agent, "The capital of Mali is")
 raw_turn <- bebel_agent_generate(raw_agent, on_event = NULL)
 raw_turn[c("stop", "generated_tokens")]
-#> $stop
-#> [1] "max_new"
-#>
-#> $generated_tokens
-#> [1] 16
 
 ids <- bebel_tokenize(model, " and Italy is", add_bos = FALSE)
 bebel_append_tokens(raw_agent, ids)
 bebel_history(raw_agent)[1:8]
-#> [1] 124894    597   5205    302  46628    355  50593   6261
 ```
 
 ## Tool definitions
@@ -191,10 +163,7 @@ bebel_append_user(agent, tool_prompt)
 run <- bebel_agent_run(agent, tools = tools, context = ctx, hooks = hooks, max_steps = 2)
 
 length(run$tool_calls)
-#> [1] 1
 ctx$log
-#> [1] "request lookup_capital"     "tool lookup_capital Italy"
-#> [3] "result lookup_capital Rome"
 ```
 
 If a model uses a different tool-call format, pass a custom

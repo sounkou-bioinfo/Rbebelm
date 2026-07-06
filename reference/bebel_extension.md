@@ -3,8 +3,9 @@
 Extensions contribute tools, commands, hooks, and optional UI metadata
 to the agent loop. They are registered into
 [`bebel_agent_loop()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_loop.md)
-and are deliberately UI-independent: a future Rust TUI can consume the
-same command/metadata catalog without owning business logic.
+and are deliberately UI-independent: the standalone `tui/` Rust frontend
+can consume the same command/metadata catalog without owning business
+logic.
 
 ## Usage
 

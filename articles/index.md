@@ -10,6 +10,8 @@
   framework](https://sounkou-bioinfo.github.io/Rbebelm/articles/agent-framework.md):
 - [R-native agent
   layer](https://sounkou-bioinfo.github.io/Rbebelm/articles/r-native-agent-layer.md):
+- [ARF-inspired TUI
+  module](https://sounkou-bioinfo.github.io/Rbebelm/articles/tui-module.md):
 - [Events and
   adapters](https://sounkou-bioinfo.github.io/Rbebelm/articles/events-and-adapters.md):
 - [Backends and
