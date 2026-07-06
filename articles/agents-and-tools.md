@@ -27,8 +27,8 @@ first
     ## <BebeLM assistant turn>
     ##   stop: eos
     ##   tokens: 9 generated; 24 prompt
-    ##   prefill: 14.6 tok/s
-    ##   decode: 9.95 tok/s
+    ##   prefill: 14.3 tok/s
+    ##   decode: 10.64 tok/s
     ##   text:
     ## <STEP_2> first turn.
 
@@ -40,8 +40,8 @@ second
     ## <BebeLM assistant turn>
     ##   stop: max_new
     ##   tokens: 16 generated; 16 prompt
-    ##   prefill: 13.7 tok/s
-    ##   decode: 10.68 tok/s
+    ##   prefill: 13.8 tok/s
+    ##   decode: 11.39 tok/s
     ##   text:
     ## <STEP_3> second turn.</think>
     ## <STEP_2
