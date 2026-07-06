@@ -2,15 +2,11 @@ pandoc: 3.8.3
 pkgdown: 2.2.0
 pkgdown_sha: ~
 articles:
-  agent-framework: agent-framework.html
   agents-and-tools: agents-and-tools.html
   backend-and-webr: backend-and-webr.html
-  events-and-adapters: events-and-adapters.html
   getting-started: getting-started.html
   model-claims-benchmark: model-claims-benchmark.html
-  r-native-agent-layer: r-native-agent-layer.html
-  tui-module: tui-module.html
-last_built: 2026-07-06T16:17Z
+last_built: 2026-07-06T20:36Z
 urls:
   reference: https://sounkou-bioinfo.github.io/Rbebelm/reference
   article: https://sounkou-bioinfo.github.io/Rbebelm/articles

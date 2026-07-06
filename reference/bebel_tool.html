@@ -20,12 +20,8 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/getting-started.html">Getting started</a></li>
     <li><a class="dropdown-item" href="../articles/agents-and-tools.html">Agents and tools</a></li>
-    <li><a class="dropdown-item" href="../articles/agent-framework.html">Generic agent and frontend framework</a></li>
-    <li><a class="dropdown-item" href="../articles/r-native-agent-layer.html">R-native agent layer</a></li>
-    <li><a class="dropdown-item" href="../articles/tui-module.html">ARF-inspired TUI module</a></li>
-    <li><a class="dropdown-item" href="../articles/events-and-adapters.html">Events and adapters</a></li>
     <li><a class="dropdown-item" href="../articles/backend-and-webr.html">Backends and webR</a></li>
-    <li><a class="dropdown-item" href="../articles/model-claims-benchmark.html">Model evaluation with vitals</a></li>
+    <li><a class="dropdown-item" href="../articles/model-claims-benchmark.html">Benchmark harness</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -70,12 +66,12 @@ when it accepts those names, otherwise with progressively simpler fallbacks.</p>
 
 
 <dt id="arg-schema">schema<a class="anchor" aria-label="anchor" href="#arg-schema"></a></dt>
-<dd><p>Optional schema/metadata object for prompts or adapters.</p></dd>
+<dd><p>Optional JSON-schema-like list or JSON string.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A <code>bebelTool</code> object.</p>
+    <p>A <code>BebelToolSpec</code> object.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

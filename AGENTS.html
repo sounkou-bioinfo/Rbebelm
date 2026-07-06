@@ -20,12 +20,8 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="articles/getting-started.html">Getting started</a></li>
     <li><a class="dropdown-item" href="articles/agents-and-tools.html">Agents and tools</a></li>
-    <li><a class="dropdown-item" href="articles/agent-framework.html">Generic agent and frontend framework</a></li>
-    <li><a class="dropdown-item" href="articles/r-native-agent-layer.html">R-native agent layer</a></li>
-    <li><a class="dropdown-item" href="articles/tui-module.html">ARF-inspired TUI module</a></li>
-    <li><a class="dropdown-item" href="articles/events-and-adapters.html">Events and adapters</a></li>
     <li><a class="dropdown-item" href="articles/backend-and-webr.html">Backends and webR</a></li>
-    <li><a class="dropdown-item" href="articles/model-claims-benchmark.html">Model evaluation with vitals</a></li>
+    <li><a class="dropdown-item" href="articles/model-claims-benchmark.html">Benchmark harness</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json"></form></li>
@@ -44,74 +40,39 @@
 
 <div id="agentsmd" class="section level1">
 
-<p>This repository is both:</p>
-<ol style="list-style-type: decimal"><li>
-<strong>A generic R agent/frontend framework</strong>: backend-agnostic contracts, loop policy, event streams, tool dispatch, extension registration, skill and prompt-template providers, command catalogs for consoles/RPC/TUIs, and Pi-inspired append-only JSONL session trees.</li>
+<p>This package is a thin R/savvy surface over upstream <a href="https://github.com/maximecb/bebelm" class="external-link"><code>maximecb/bebelm</code></a>. Keep it small: native model loading, tokenization, embeddings, generation, persistent agents, R tool calls, async jobs, and backend diagnostics.</p>
+<div class="section level2">
+<h2 id="architecture-rules">Architecture Rules<a class="anchor" aria-label="anchor" href="#architecture-rules"></a></h2>
+<ul><li>The Rust backend owns BebeLM integration. R should expose typed calls and printers, not a second agent framework.</li>
 <li>
-<strong>A concrete native backend</strong>: R/savvy bindings to upstream <a href="https://github.com/maximecb/bebelm" class="external-link"><code>maximecb/bebelm</code></a> for local CPU GGUF inference, with runtime-selected Rust SIMD backends.</li>
-</ol><p>Keep those layers separate. The framework should not assume BebeLM internals; BebeLM should implement the framework provider contracts.</p>
+<code>BebelModel</code> instances load GGUF weights once. <code>BebelAgent</code> instances keep independent transcript/decode state and share the model weights through the Rust backend.</li>
+<li>Async APIs return <code>BebelAsyncJob</code> objects. Rust workers may enqueue plain generation events; R drains them from the main thread with <code><a href="reference/bebel_async_events.html">bebel_async_events()</a></code>. R tool execution also belongs on the R main thread.</li>
+<li>Tools are <code>BebelToolSpec</code> S7 objects. Keep validation in S7 properties and validators instead of adding checker helper functions.</li>
+<li>JSON handling uses imported <code>yyjsonr</code>.</li>
+<li>Preserve webR loadability. Unsupported native inference should fail at model loading with a useful error, not at package load.</li>
+<li>Be strict about SIMD dispatch. Portable/scalar artifacts must not be compiled with unguarded native CPU assumptions.</li>
+</ul></div>
 <div class="section level2">
-<h2 id="architecture-rules">Architecture rules<a class="anchor" aria-label="anchor" href="#architecture-rules"></a></h2>
+<h2 id="documentation-rules">Documentation Rules<a class="anchor" aria-label="anchor" href="#documentation-rules"></a></h2>
 <ul><li>
-<code>BebelAgentBackend</code> is the generic LLM-provider contract. It is expressed as S7/s7contract interfaces. BebeLM is one implementation, not the framework itself.</li>
-<li>
-<code><a href="reference/bebel_agent_loop.html">bebel_agent_loop()</a></code> owns lifecycle, queues, events, tool dispatch, extensions, and session persistence.</li>
-<li>Consoles, RPC handlers, and the standalone <code>tui/</code> Rust module consume the loop; they must not own or duplicate agent logic.</li>
-<li>Native fuzzy file search is based on the vendored FFF engine (<code>fff-c</code>/ <code>fff-search</code>) through <code><a href="reference/bebel_file_finder.html">bebel_file_finder()</a></code> and <code><a href="reference/bebel_file_finder.html">bebel_file_search()</a></code>. Keep it native-only and preserve webR package loadability with explicit unsupported diagnostics rather than hard wasm linkage. Be strict about SIMD: FFF and <code>neo_frizbee</code> SIMD must remain either backend-selected by Rbebelm’s existing dylib dispatcher or runtime-guarded by CPU feature checks before <code>#[target_feature]</code> kernels. Never compile portable/scalar artifacts with <code>target-cpu=native</code> or unguarded AVX/AVX512/dotprod assumptions.</li>
-<li>Do not add a Pi-like core <code>/reload</code>: S7/s7contract method registration and extension objects should compose without a reload concept. Refresh/reload commands belong only to frontends or side-effecting extension consumers such as a TUI rebuilding keybindings/widgets, command palettes, watcher state, or file-search handles.</li>
-<li>Use Pi vocabulary for interactive queues: <code>steer</code>, <code>followUp</code>, <code>steering_mode</code>, and <code>follow_up_mode</code>.</li>
-<li>Extensions are backend-agnostic capability bundles registered into the loop. An extension should implement/provide:
-<ul><li>manifest metadata,</li>
-<li>tools,</li>
-<li>commands,</li>
-<li>hooks,</li>
-<li>optional skill providers,</li>
-<li>optional prompt-template providers,</li>
-<li>optional UI metadata for frontend/TUI consumers.</li>
-</ul></li>
-<li>Skills and prompt templates are provider interfaces, not BebeLM-specific helpers.</li>
-<li>Session persistence is backend-agnostic JSONL under <code>tools::R_user_dir("Rbebelm", "data")/sessions/&lt;encoded-cwd&gt;/</code> unless overridden. Preserve tree semantics with <code>id</code>/<code>parentId</code> and append-only history.</li>
+<code>README.md</code> is generated from <code>README.Rmd</code>; never hand-edit it.</li>
+<li>README and vignettes are executable examples. They should run real BebeLM calls when <code>BEBELM_WEIGHTS_FILE</code> points to a local GGUF file.</li>
+<li>Do not add fake examples or guard whole documents into inert prose.</li>
+<li>Keep generated <code>NAMESPACE</code>, <code>man/*.Rd</code>, and <code>README.md</code> in sync with source changes.</li>
 </ul></div>
 <div class="section level2">
-<h2 id="documentation-rules">Documentation rules<a class="anchor" aria-label="anchor" href="#documentation-rules"></a></h2>
-<ul><li>
-<code>README.md</code> is generated from <code>README.Rmd</code>; never hand-edit <code>README.md</code>.</li>
-<li>Raw/model-running documentation lives in <code>vignettes-raw/</code>.</li>
-<li>Precompiled/check-safe vignette sources live in <code>vignettes/</code>.</li>
-<li>If you update a raw vignette that is meant to ship, copy/regenerate the paired file under <code>vignettes/</code>.</li>
-<li>Documentation should present the package as a generic agent/frontend framework plus a concrete BebeLM backend.</li>
-<li>Do not run GGUF model inference during package install, check, or pkgdown. Guard model-running chunks with <code>BEBELM_WEIGHTS_FILE</code>.</li>
-</ul></div>
-<div class="section level2">
-<h2 id="dependency-and-platform-rules">Dependency and platform rules<a class="anchor" aria-label="anchor" href="#dependency-and-platform-rules"></a></h2>
-<ul><li>JSON handling uses imported <code>yyjsonr</code>; do not reintroduce <code>jsonlite</code> or an ad hoc parser.</li>
-<li>Keep <code>nanonext</code>, <code>ellmer</code>, and <code>vitals</code> optional. <code>S7</code>, <code>s7contract</code>, and <code>yyjsonr</code> are hard runtime dependencies, including for webR; if webR fails, fix the wasm dependency repository/build path rather than weakening the contract layer.</li>
-<li>Do not add TerminalR, rcurses, or eventloop as hard dependencies for the core framework.</li>
-<li>The serious terminal TUI lives in the separate <code>tui/</code> Rust frontend using <code>crossterm</code>/<code>ratatui</code>. It consumes Rbebelm loop/RPC/events and must not reimplement the agent loop, tool dispatcher, session tree, or model backend.</li>
-<li>ARM baseline is NEON; dotprod is a separate runtime-selected backend.</li>
-<li>Windows targets the GNU Rust/Rtools path.</li>
-</ul></div>
-<div class="section level2">
-<h2 id="common-workflows">Common workflows<a class="anchor" aria-label="anchor" href="#common-workflows"></a></h2>
-<p>Regenerate wrappers/docs:</p>
+<h2 id="common-workflows">Common Workflows<a class="anchor" aria-label="anchor" href="#common-workflows"></a></h2>
+<p>Regenerate wrappers and docs:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">make</span> rd</span></code></pre></div>
-<p>Regenerate README from source, using the local real model only when explicitly available:</p>
+<p>Regenerate README from source:</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="va">BEBELM_WEIGHTS_FILE</span><span class="op">=</span>/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf <span class="fu">make</span> rdm</span></code></pre></div>
 <p>Install and test:</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">make</span> dev-install</span>
-<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">'tinytest::test_package("Rbebelm")'</span></span></code></pre></div>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="va">BEBELM_WEIGHTS_FILE</span><span class="op">=</span>/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf <span class="dt">\</span></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  <span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">'tinytest::test_package("Rbebelm")'</span></span></code></pre></div>
 <p>Full check:</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">make</span> check</span></code></pre></div>
-<p>Optional real-model check:</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="va">BEBELM_WEIGHTS_FILE</span><span class="op">=</span>/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf <span class="dt">\</span></span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>  <span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">'tinytest::run_test_file("inst/tinytest/test-real-model.R")'</span></span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="va">BEBELM_WEIGHTS_FILE</span><span class="op">=</span>/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf <span class="fu">make</span> check</span></code></pre></div>
 </div>
-<div class="section level2">
-<h2 id="commit-hygiene">Commit hygiene<a class="anchor" aria-label="anchor" href="#commit-hygiene"></a></h2>
-<ul><li>Keep generated <code>NAMESPACE</code>, <code>man/*.Rd</code>, and <code>README.md</code> in sync with source changes.</li>
-<li>Avoid committing generated whitespace-only changes in C dispatch files.</li>
-<li>Run at least tinytests for framework/API changes; run <code>make check</code> before pushing broad documentation/API changes.</li>
-</ul></div>
 </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

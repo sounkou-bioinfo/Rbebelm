@@ -1,176 +1,143 @@
 # Getting started
 
-`Rbebelm` is both a generic R agent/frontend framework and a concrete
-native local-model backend. Start from the entry point that matches your
-use case:
-
-1.  **Generic framework**: implement or consume the `BebelAgentBackend`,
-    extension, skill, prompt-template, command-catalog, event, and JSONL
-    session-tree interfaces without loading a model.
-2.  **Concrete BebeLM backend**: load GGUF weights and create a
-    persistent `BebelAgent` that owns transcript and decode-cache state.
-3.  **Native file search**: create a persistent FFF file finder for
-    agent tools, consoles, RPC clients, and the standalone terminal TUI.
-4.  **Terminal frontend**: use the ARF-inspired native `rbebelm-tui`
-    binary, which talks to an R-owned loop over the stream/command
-    endpoint instead of owning model or tool logic.
-
 ``` r
 
 library(Rbebelm)
+weights_file <- Sys.getenv("BEBELM_WEIGHTS_FILE", "/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf")
+stopifnot(file.exists(weights_file))
+model <- bebel_model_load(weights_file, num_threads = 2)
+```
+
+`Rbebelm` loads a local BebeLM GGUF, exposes tokenizer and embedding
+primitives, and runs bounded CPU generation from R.
+
+``` r
+
 rbebelm_backend_info()
-#> <Rbebelm backend dispatch>
-#>   mode: dynamic
-#>   requested: auto
-#>   selected: avx2
-#>   loaded: yes
-#>   installed: scalar,avx2,avx512
-#>   supported: scalar,avx2
 ```
 
-## Framework-only start
-
-You can use the framework contracts without GGUF weights. The loop
-consumes any object that implements `BebelAgentBackend`; extensions add
-tools, commands, hooks, skill providers, and prompt-template providers;
-session trees persist portable JSONL history.
+    ## <Rbebelm backend dispatch>
+    ##   mode: dynamic
+    ##   requested: auto
+    ##   selected: avx2
+    ##   loaded: yes
+    ##   installed: scalar,avx2,avx512
+    ##   supported: scalar,avx2
 
 ``` r
 
-store <- bebel_session_create(
-  cwd = tempdir(),
-  session_dir = file.path(tempdir(), "rbebelm-getting-started-sessions"),
-  name = "getting started"
+rbebelm_backend_features()
+```
+
+    ## <Rbebelm backend features>
+    ##   backend: avx2
+    ##   target: x86_64-linux
+    ##   Rust crate: rbebelm_backend 0.1.0
+    ##   native SIMD feature: yes
+    ##   compiled features:
+    ##     AVX2: yes
+    ##     AVX-512F: no
+    ##     NEON: no
+    ##     ARM dotprod: no
+    ##     wasm simd128: no
+    ##   model storage: read-only GGUF mmap; repeated loads of the same file share physical pages through the OS page cache
+
+Tokenization and embeddings are direct model operations.
+
+``` r
+
+ids <- bebel_tokenize(model, "Bamako", add_bos = FALSE)
+ids
+```
+
+    ## [1]   42  330 6261
+
+``` r
+
+bebel_detokenize(model, ids)
+```
+
+    ## [1] "Bamako"
+
+``` r
+
+emb <- bebel_embed(model, c("Mali capital", "Italy capital"))
+dim(emb)
+```
+
+    ## [1]    2 2048
+
+Generation returns text, token ids, stop reason, and timing statistics.
+
+``` r
+
+out <- bebel_generate(
+  model,
+  "The capital of France is",
+  greedy = TRUE,
+  max_gen = 8,
+  max_think = 0,
+  on_event = NULL
 )
-
-msg <- bebel_session_append_message(store, "user", "Hello from a framework-only session")
-bebel_session_leaf_id(store)
-#> <bebelSessionLeafId> 65bfdc71
-bebel_session_context(store)$messages[[1]]$role
-#> [1] "user"
+out
 ```
 
-For the full backend contract, loop queue semantics, extension catalog,
-and session-tree/forking API, see the “Generic agent and frontend
-framework” vignette.
+    ## <BebeLM generation result>
+    ##   stop: max_new
+    ##   tokens: 8 generated; 6 prompt
+    ##   prefill: 10.2 tok/s
+    ##   decode: 11.05 tok/s
+    ##   text:
+    ##  the city of Paris. city of Paris
 
-## Local model start
-
-Model weights are not bundled with the package. Set
-`BEBELM_WEIGHTS_FILE` to a local GGUF path before running the model
-examples, or pass an explicit file path to
-[`bebel_model_load()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_model_load.md).
+A persistent agent keeps transcript and decode caches across turns while
+sharing model weights with every other agent created from the same
+`BebelModel`.
 
 ``` r
 
-model <- bebel_model_load(Sys.getenv("BEBELM_WEIGHTS_FILE"), num_threads = 2)
-rbebelm_backend_features()[c("backend", "target_arch", "target_os")]
+agent <- bebel_agent(model, greedy = TRUE, max_gen = 12, max_think = 0)
+bebel_append_user(agent, "Say exactly: Paris noted.")
+bebel_assistant_turn(agent, on_event = NULL)
 ```
+
+    ## <BebeLM assistant turn>
+    ##   stop: eos
+    ##   tokens: 10 generated; 15 prompt
+    ##   prefill: 13.5 tok/s
+    ##   decode: 10.01 tok/s
+    ##   text:
+    ## <
+    ## </think>
+    ## Say  
+    ## Say Paris noted.
 
 ``` r
 
-model <- bebel_model_load("LFM2.5-8B-A1B-Q4_K_M.gguf", num_threads = 2)
+bebel_append_user(agent, "Say exactly: second turn complete.")
+bebel_assistant_turn(agent, on_event = NULL)
 ```
 
-A BebeLM agent owns the transcript and decode caches while sharing
-loaded model weights.
+    ## <BebeLM assistant turn>
+    ##   stop: eos
+    ##   tokens: 11 generated; 17 prompt
+    ##   prefill: 14.1 tok/s
+    ##   decode: 10.05 tok/s
+    ##   text:
+    ## <
+    ## </Answer>  
+    ## Say second turn complete.
 
 ``` r
 
-agent <- bebel_agent(model, greedy = TRUE, max_gen = 48, max_think = 16)
-
-bebel_append_user(agent, "What is the capital of Mali? Answer briefly.")
-turn1 <- bebel_assistant_turn(agent, on_event = NULL)
-
-bebel_append_user(agent, "What about Italy?")
-turn2 <- bebel_assistant_turn(agent, on_event = NULL)
-
-turn1$text
-turn2$text
 bebel_agent_info(agent)[c("history_tokens", "processed_tokens", "kv_tokens")]
 ```
 
-Use `bebel_clear(agent)` to reset transcript and caches without
-reloading the model.
-
-## Convenience calls
-
-For simple calls,
-[`bebel_chat()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_chat.md)
-creates a single ChatML user/assistant turn. For raw prompt completion,
-use
-[`bebel_generate()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_generate.md).
-
-``` r
-
-chat <- bebel_chat(
-  model,
-  "In one concise sentence, what does runtime backend dispatch do?",
-  greedy = TRUE,
-  max_gen = 48,
-  max_think = 16,
-  on_event = NULL
-)
-chat$text
-```
-
-## Native FFF file search
-
-The file-search layer is native-only and does not require model weights.
-It uses vendored FFF behind
-[`bebel_file_finder()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_file_finder.md)
-and
-[`bebel_file_search()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_file_finder.md).
-
-``` r
-
-root <- tempfile("rbebelm-file-search-")
-dir.create(file.path(root, "R"), recursive = TRUE)
-writeLines("demo", file.path(root, "R", "agent_loop.R"))
-
-finder <- bebel_file_finder(root, watch = FALSE)
-bebel_file_search(finder, "agent", limit = 3)$path
-#> [1] "R/agent_loop.R"
-```
-
-In webR/wasm the package still loads, but creating a file finder reports
-that native FFF search is unavailable.
-
-## ARF-inspired TUI module
-
-The terminal TUI source lives in `src/rust/src/bin/rbebelm-tui.rs` and
-is compiled during source installation. It follows ARF’s model: Rust
-owns terminal rendering, configuration, and transport client behavior; R
-owns the agent loop, tools, extensions, sessions, and model backend.
-
-``` sh
-TUI="$(Rscript -e 'cat(system.file("bin/rbebelm-tui", package = "Rbebelm"))')"
-"$TUI" config init
-"$TUI" run --weights /path/to/LFM2.5-8B-A1B-Q4_K_M.gguf
-
-# Or, like `pi`, use the bare command after configuring weights:
-BEBELM_WEIGHTS_FILE=/path/to/LFM2.5-8B-A1B-Q4_K_M.gguf "$TUI"
-```
-
-The default `run` mode starts the R host, waits for readiness, attaches
-chat, and stops the host when the UI exits. Slash commands are handled
-before model turns: `/quit` exits, `/help` and `Tab` show completions,
-`/graphics` inspects or sets plot handling, and `/rplot` draws with the
-configured R graphics device. Model-side `r_eval` and `r_plot` are
-enabled by default for local TUI hosts; use `--no-eval` at startup or
-`/no-eval` at runtime to remove them from the model tool catalog. The
-lower-level split mode still consumes `GET /stream` events plus
-`POST /command` messages, with `POST /rpc` kept as compatibility/control
-API. There is no duplicate TUI-owned agent loop and no core `/reload`; R
-registers extensions and frontends refresh local palettes/widgets when
-`catalog_changed` events arrive.
-
-## Token helpers
-
-``` r
-
-ids <- bebel_tokenize(model, "The capital of Italy is", add_bos = TRUE)
-ids
-bebel_detokenize(model, ids)
-bebel_token_ids()[c("TOKEN_THINK", "TOKEN_TOOL_CALL_START", "TOKEN_TOOL_CALL_END")]
-```
+    ## $history_tokens
+    ## [1] 55
+    ## 
+    ## $processed_tokens
+    ## [1] 53
+    ## 
+    ## $kv_tokens
+    ## [1] 53

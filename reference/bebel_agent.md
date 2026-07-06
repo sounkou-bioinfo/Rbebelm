@@ -1,8 +1,7 @@
 # Create a persistent BebeLM agent
 
 A `BebelAgent` owns an independent token transcript and decode cache
-while sharing the loaded model weights. This mirrors upstream
-`bebelm::agent::Agent`.
+while sharing the loaded model weights through Rust `Arc<Model>`.
 
 ## Usage
 

@@ -1,340 +1,91 @@
-# Model evaluation with vitals
-
-This vignette shows how to evaluate the local [Liquid AI
-LFM2.5-8B-A1B](https://www.liquid.ai/blog/lfm2-5-8b-a1b) GGUF with
-[`vitals`](https://github.com/tidyverse/vitals). The goal is to evaluate
-model behavior on small, reproducible tasks, including tool use. It is
-not a reproduction of Liquid AI’s benchmark suite.
-
-The source is in `vignettes-raw/`; the rendered file in `vignettes/` is
-precompiled with `rawvignette` so `R CMD check`, pkgdown, and package
-installs do not rerun the model.
+# Benchmark harness
 
 ``` r
 
 library(Rbebelm)
-data.frame(
-  model_file = if (has_weights) basename(weights_file) else NA_character_,
-  has_weights = has_weights,
-  has_vitals = has_vitals
-)
-#>   model_file has_weights has_vitals
-#> 1       <NA>       FALSE       TRUE
+weights_file <- Sys.getenv("BEBELM_WEIGHTS_FILE", "/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf")
+stopifnot(file.exists(weights_file))
+model <- bebel_model_load(weights_file, num_threads = 2)
 ```
 
-If `vitals` is not installed, install it before regenerating this
-vignette:
+This vignette is a package-level harness for deterministic regression
+benchmarks. It records outputs, token counts, and throughput. Domain
+benchmarks for HPO, MONDO, ORPHANET, negation, and graph grounding can
+reuse the same shape with real ontology prompts and expected labels.
 
 ``` r
 
-install.packages("vitals")
-# or: pak::pak("tidyverse/vitals")
-```
-
-## Evaluation driver
-
-`vitals::Task` expects solvers to return `result` and `solver_chat`.
-`Rbebelm` is not yet an ellmer provider, so the helper below returns a
-minimal placeholder object with class `"Chat"` for `vitals` bookkeeping
-while storing Rbebelm-specific trace data in `solver_metadata`. The task
-is solved, scored, and measured; it is not logged to the Inspect viewer
-in this vignette.
-
-``` r
-
-library(vitals)
-
-model <- bebel_model_load(weights_file, num_threads = num_threads)
-
-rbebelm_vitals_chat <- function(model_name = "Rbebelm/LFM2.5-8B-A1B-GGUF") {
-  structure(
-    list(
-      get_model = function() model_name,
-      get_system_prompt = function() "",
-      get_turns = function() list()
-    ),
-    class = "Chat"
-  )
-}
-
-score_factor <- function(ok) {
-  factor(ifelse(ok, "C", "I"), levels = c("I", "C"), ordered = TRUE)
-}
-
-vitals::vitals_log_dir_set(tempdir())
-
-excerpt <- function(x, n = 120) {
-  x <- gsub("\\s+", " ", x)
-  ifelse(nchar(x) > n, paste0(substr(x, 1, n), "..."), x)
-}
-
-or_unknown <- function(x) {
-  if (is.null(x) || length(x) == 0L || is.na(x)) "unknown" else x
-}
-
-run_task <- function(task, ...) {
-  task$solve(...)
-  task$score()
-  task$measure()
-  list(samples = task$get_samples(), metrics = task$metrics)
-}
-```
-
-## Factual QA task
-
-This task checks short deterministic factual answers. The scorer
-extracts an `ANSWER:` line and compares it to the target.
-
-``` r
-
-factual_data <- data.frame(
-  input = c(
-    "Return only 'ANSWER: Bamako'. What is the capital of Mali?",
-    "Return only 'ANSWER: Rome'. What is the capital of Italy?",
-    "Return only 'ANSWER: Tokyo'. What is the capital of Japan?"
+tasks <- data.frame(
+  id = c("capital-mali", "capital-italy", "capital-japan"),
+  prompt = c(
+    "The capital of Mali is",
+    "The capital of Italy is",
+    "The capital of Japan is"
   ),
-  target = c("Bamako", "Rome", "Tokyo")
+  expected = c("Bamako", "Rome", "Tokyo"),
+  stringsAsFactors = FALSE
 )
 
-rbebelm_qa_solver <- function(inputs, model, max_gen = 48, ...) {
-  result <- character(length(inputs))
-  metadata <- vector("list", length(inputs))
-  for (i in seq_along(inputs)) {
-    agent <- bebel_agent(model, greedy = TRUE, max_gen = max_gen, max_think = 0)
-    bebel_append_user(agent, inputs[[i]])
-    turn <- bebel_assistant_turn(agent, on_event = NULL)
-    result[[i]] <- turn$text
-    metadata[[i]] <- list(
-      chars = nchar(turn$text),
-      history_tokens = bebel_agent_info(agent)$history_tokens
-    )
-  }
+run_one <- function(prompt) {
+  out <- bebel_generate(model, prompt, greedy = TRUE, max_gen = 8, max_think = 0, on_event = NULL)
   list(
-    result = result,
-    solver_chat = lapply(inputs, function(...) rbebelm_vitals_chat()),
-    solver_metadata = metadata
+    text = trimws(out$text),
+    prompt_tokens = out$prompt_tokens,
+    generated_tokens = out$generated_tokens,
+    prefill_tps = out$prefill_tps,
+    decode_tps = out$decode_tps
   )
 }
 
-answer_line_scorer <- function(samples) {
-  extracted <- sub(".*ANSWER:\\s*([^\\n.]+).*", "\\1", samples$result, ignore.case = TRUE)
-  matched <- grepl("ANSWER:", samples$result, ignore.case = TRUE) &
-    trimws(tolower(extracted)) == trimws(tolower(samples$target))
-  list(
-    score = score_factor(matched),
-    explanation = ifelse(matched, "matched ANSWER line", "missing or incorrect ANSWER line"),
-    scorer_metadata = Map(function(answer, target) list(answer = answer, target = target), extracted, samples$target)
-  )
-}
-
-qa_task <- vitals::Task$new(
-  dataset = factual_data,
-  solver = rbebelm_qa_solver,
-  scorer = answer_line_scorer,
-  name = "rbebelm-factual-qa"
+raw <- lapply(tasks$prompt, run_one)
+bench <- cbind(
+  tasks,
+  do.call(rbind, lapply(raw, as.data.frame))
 )
-
-qa_eval <- run_task(qa_task, model = model)
-qa_eval$metrics
-data.frame(
-  sample = seq_len(nrow(qa_eval$samples)),
-  target = qa_eval$samples$target,
-  result = excerpt(qa_eval$samples$result),
-  score = as.character(qa_eval$samples$score),
-  explanation = qa_eval$samples$scorer_explanation,
-  row.names = NULL
-)
+bench$matched <- grepl(bench$expected, bench$text, ignore.case = TRUE)
 ```
 
-## Tool-use task
-
-This task evaluates whether the model emits the requested tool call and
-whether the agent loop reaches the expected final answer after tool
-execution. The tools return values from a private R context, so the
-answer cannot be obtained by calling an external service.
+    ## Warning in grepl(bench$expected, bench$text, ignore.case = TRUE): argument
+    ## 'pattern' has length > 1 and only the first element will be used
 
 ``` r
 
-tool_data <- data.frame(
-  input = c(
-    "Do not answer from memory. Emit exactly [lookup_capital(country=\"Mali\")]. After the tool result, answer exactly 'ANSWER: <tool result>'.",
-    "Do not answer from memory. Emit exactly [lookup_currency(country=\"Mali\")]. After the tool result, answer exactly 'ANSWER: <tool result>'.",
-    "Do not answer from memory. Emit exactly [lookup_capital(country=\"Italy\")]. After the tool result, answer exactly 'ANSWER: <tool result>'."
-  ),
-  target = c("Bamako", "XOF", "Rome"),
-  expected_tool = c("lookup_capital", "lookup_currency", "lookup_capital")
-)
-
-rbebelm_tool_solver <- function(inputs, model, expected_tool, max_steps = 3, ...) {
-  result <- character(length(inputs))
-  metadata <- vector("list", length(inputs))
-
-  for (i in seq_along(inputs)) {
-    context <- new.env(parent = emptyenv())
-    context$calls <- character()
-
-    lookup_capital <- bebel_tool("lookup_capital", function(args, context) {
-      country <- args$country
-      context$calls <- c(context$calls, paste0("lookup_capital:", country))
-      or_unknown(c(Mali = "Bamako", Italy = "Rome", Japan = "Tokyo")[[country]])
-    })
-    lookup_currency <- bebel_tool("lookup_currency", function(args, context) {
-      country <- args$country
-      context$calls <- c(context$calls, paste0("lookup_currency:", country))
-      or_unknown(c(Mali = "XOF", Japan = "yen", Italy = "euro")[[country]])
-    })
-
-    agent <- bebel_agent(model, greedy = TRUE, max_gen = 128, max_think = 0)
-    bebel_append_user(agent, inputs[[i]])
-    run <- tryCatch(
-      bebel_agent_run(
-        agent,
-        tools = list(lookup_capital, lookup_currency),
-        context = context,
-        max_steps = max_steps
-      ),
-      error = function(e) e
-    )
-
-    if (inherits(run, "error")) {
-      result[[i]] <- bebel_transcript(agent)
-      loop_error <- conditionMessage(run)
-    } else {
-      result[[i]] <- or_unknown(tail(run$turns, 1)[[1]]$text)
-      if (identical(result[[i]], "unknown")) result[[i]] <- bebel_transcript(agent)
-      loop_error <- NA_character_
-    }
-    metadata[[i]] <- list(
-      calls = context$calls,
-      call_count = length(context$calls),
-      expected_tool = expected_tool[[i]],
-      expected_tool_called = any(startsWith(context$calls, paste0(expected_tool[[i]], ":"))),
-      loop_error = loop_error
-    )
-  }
-
-  list(
-    result = result,
-    solver_chat = lapply(inputs, function(...) rbebelm_vitals_chat()),
-    solver_metadata = metadata
-  )
-}
-
-tool_scorer <- function(samples) {
-  metadata <- samples$solver_metadata
-  answer <- sub(".*ANSWER:\\s*([^\\n.]+).*", "\\1", samples$result, ignore.case = TRUE)
-  answer_ok <- grepl("ANSWER:", samples$result, ignore.case = TRUE) &
-    trimws(tolower(answer)) == trimws(tolower(samples$target))
-  tool_ok <- vapply(metadata, function(x) isTRUE(x$expected_tool_called), logical(1))
-  ok <- answer_ok & tool_ok
-  list(
-    score = score_factor(ok),
-    explanation = ifelse(ok, "expected tool and answer observed", "missing expected tool call or final answer"),
-    scorer_metadata = Map(
-      function(answer, answer_ok, tool_ok) list(answer = answer, answer_ok = answer_ok, tool_ok = tool_ok),
-      answer, answer_ok, tool_ok
-    )
-  )
-}
-
-tool_task <- vitals::Task$new(
-  dataset = tool_data,
-  solver = rbebelm_tool_solver,
-  scorer = tool_scorer,
-  name = "rbebelm-tool-use"
-)
-
-tool_eval <- run_task(tool_task, model = model, expected_tool = tool_data$expected_tool)
-tool_eval$metrics
-data.frame(
-  sample = seq_len(nrow(tool_eval$samples)),
-  target = tool_eval$samples$target,
-  result = excerpt(tool_eval$samples$result),
-  score = as.character(tool_eval$samples$score),
-  answer_ok = vapply(tool_eval$samples$scorer_metadata, function(x) isTRUE(x$answer_ok), logical(1)),
-  tool_ok = vapply(tool_eval$samples$scorer_metadata, function(x) isTRUE(x$tool_ok), logical(1)),
-  calls = vapply(tool_eval$samples$solver_metadata, function(x) paste(x$calls, collapse = " | "), character(1)),
-  explanation = tool_eval$samples$scorer_explanation,
-  row.names = NULL
-)
+bench
 ```
 
-## Instruction-following task
+    ##              id                  prompt expected
+    ## 1  capital-mali  The capital of Mali is   Bamako
+    ## 2 capital-italy The capital of Italy is     Rome
+    ## 3 capital-japan The capital of Japan is    Tokyo
+    ##                                text prompt_tokens generated_tokens prefill_tps
+    ## 1       the city of Bamako. city of             6                8    9.592236
+    ## 2      Rome. city of... ... ... ...             6                8   10.772721
+    ## 3 Tokyo. city. The capital of Japan             6                8   10.764399
+    ##   decode_tps matched
+    ## 1   10.93244    TRUE
+    ## 2   11.01142   FALSE
+    ## 3   11.43720   FALSE
 
-This task checks simple constrained formatting. It is intentionally
-small; add rows and epochs to make it more robust.
+Async jobs let several bounded runs share one loaded model in the same R
+process.
 
 ``` r
 
-instruction_data <- data.frame(
-  input = c(
-    "Return exactly three comma-separated lowercase colors and nothing else.",
-    "Return a JSON object with keys city and country for Bamako, and nothing else.",
-    "Return exactly one line beginning with ANSWER: followed by the word ready."
-  ),
-  target = c("comma_colors", "json_city_country", "answer_ready")
-)
+jobs <- lapply(tasks$prompt, function(prompt) {
+  bebel_generate_async(model, prompt, greedy = TRUE, max_gen = 8, max_think = 0)
+})
 
-rbebelm_instruction_solver <- function(inputs, model, ...) {
-  result <- character(length(inputs))
-  metadata <- vector("list", length(inputs))
-  for (i in seq_along(inputs)) {
-    agent <- bebel_agent(model, greedy = TRUE, max_gen = 80, max_think = 0)
-    bebel_append_user(agent, inputs[[i]])
-    turn <- bebel_assistant_turn(agent, on_event = NULL)
-    result[[i]] <- turn$text
-    metadata[[i]] <- list(chars = nchar(turn$text))
-  }
-  list(
-    result = result,
-    solver_chat = lapply(inputs, function(...) rbebelm_vitals_chat()),
-    solver_metadata = metadata
-  )
-}
-
-instruction_scorer <- function(samples) {
-  ok <- logical(nrow(samples))
-  for (i in seq_len(nrow(samples))) {
-    x <- trimws(samples$result[[i]])
-    ok[[i]] <- switch(
-      samples$target[[i]],
-      comma_colors = grepl("^[a-z]+,\\s*[a-z]+,\\s*[a-z]+$", x),
-      json_city_country = grepl('^\\s*\\{.*"city"\\s*:', x) && grepl('"country"\\s*:', x),
-      answer_ready = grepl("^ANSWER:\\s*ready\\s*$", x, ignore.case = TRUE),
-      FALSE
-    )
-  }
-  list(
-    score = score_factor(ok),
-    explanation = ifelse(ok, "format matched", "format did not match")
-  )
-}
-
-instruction_task <- vitals::Task$new(
-  dataset = instruction_data,
-  solver = rbebelm_instruction_solver,
-  scorer = instruction_scorer,
-  name = "rbebelm-instruction-following"
-)
-
-instruction_eval <- run_task(instruction_task, model = model)
-instruction_eval$metrics
+async <- lapply(jobs, bebel_async_collect, wait = TRUE)
 data.frame(
-  sample = seq_len(nrow(instruction_eval$samples)),
-  target = instruction_eval$samples$target,
-  result = excerpt(instruction_eval$samples$result),
-  score = as.character(instruction_eval$samples$score),
-  explanation = instruction_eval$samples$scorer_explanation,
-  row.names = NULL
+  id = tasks$id,
+  text = vapply(async, function(x) trimws(x$text), character(1)),
+  generated_tokens = vapply(async, function(x) x$generated_tokens, integer(1)),
+  decode_tps = vapply(async, function(x) x$decode_tps, numeric(1)),
+  stringsAsFactors = FALSE
 )
 ```
 
-## Interpreting the results
-
-These tasks evaluate observed model behavior under this GGUF, prompt
-set, backend, and decoding configuration. They do not verify the
-architecture, training token count, RL recipe, published benchmark
-numbers, or license terms. To make the evaluation stronger, add more
-rows, set `epochs > 1`, vary decoding parameters, and compare against
-other local or API-backed models with the same `vitals` task
-definitions.
+    ##              id                              text generated_tokens decode_tps
+    ## 1  capital-mali       the city of Bamako. city of                8   11.47964
+    ## 2 capital-italy      Rome. city of... ... ... ...                8   11.42768
+    ## 3 capital-japan Tokyo. city. The capital of Japan                8   11.56383

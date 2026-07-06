@@ -1,104 +1,47 @@
 # AGENTS.md
 
-This repository is both:
+This package is a thin R/savvy surface over upstream
+[`maximecb/bebelm`](https://github.com/maximecb/bebelm). Keep it small:
+native model loading, tokenization, embeddings, generation, persistent
+agents, R tool calls, async jobs, and backend diagnostics.
 
-1.  **A generic R agent/frontend framework**: backend-agnostic
-    contracts, loop policy, event streams, tool dispatch, extension
-    registration, skill and prompt-template providers, command catalogs
-    for consoles/RPC/TUIs, and Pi-inspired append-only JSONL session
-    trees.
-2.  **A concrete native backend**: R/savvy bindings to upstream
-    [`maximecb/bebelm`](https://github.com/maximecb/bebelm) for local
-    CPU GGUF inference, with runtime-selected Rust SIMD backends.
+## Architecture Rules
 
-Keep those layers separate. The framework should not assume BebeLM
-internals; BebeLM should implement the framework provider contracts.
+- The Rust backend owns BebeLM integration. R should expose typed calls
+  and printers, not a second agent framework.
+- `BebelModel` instances load GGUF weights once. `BebelAgent` instances
+  keep independent transcript/decode state and share the model weights
+  through the Rust backend.
+- Async APIs return `BebelAsyncJob` objects. Rust workers may enqueue
+  plain generation events; R drains them from the main thread with
+  [`bebel_async_events()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_async_events.md).
+  R tool execution also belongs on the R main thread.
+- Tools are `BebelToolSpec` S7 objects. Keep validation in S7 properties
+  and validators instead of adding checker helper functions.
+- JSON handling uses imported `yyjsonr`.
+- Preserve webR loadability. Unsupported native inference should fail at
+  model loading with a useful error, not at package load.
+- Be strict about SIMD dispatch. Portable/scalar artifacts must not be
+  compiled with unguarded native CPU assumptions.
 
-## Architecture rules
+## Documentation Rules
 
-- `BebelAgentBackend` is the generic LLM-provider contract. It is
-  expressed as S7/s7contract interfaces. BebeLM is one implementation,
-  not the framework itself.
-- [`bebel_agent_loop()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_loop.md)
-  owns lifecycle, queues, events, tool dispatch, extensions, and session
-  persistence.
-- Consoles, RPC handlers, and the standalone `tui/` Rust module consume
-  the loop; they must not own or duplicate agent logic.
-- Native fuzzy file search is based on the vendored FFF engine (`fff-c`/
-  `fff-search`) through
-  [`bebel_file_finder()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_file_finder.md)
-  and
-  [`bebel_file_search()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_file_finder.md).
-  Keep it native-only and preserve webR package loadability with
-  explicit unsupported diagnostics rather than hard wasm linkage. Be
-  strict about SIMD: FFF and `neo_frizbee` SIMD must remain either
-  backend-selected by Rbebelm’s existing dylib dispatcher or
-  runtime-guarded by CPU feature checks before `#[target_feature]`
-  kernels. Never compile portable/scalar artifacts with
-  `target-cpu=native` or unguarded AVX/AVX512/dotprod assumptions.
-- Do not add a Pi-like core `/reload`: S7/s7contract method registration
-  and extension objects should compose without a reload concept.
-  Refresh/reload commands belong only to frontends or side-effecting
-  extension consumers such as a TUI rebuilding keybindings/widgets,
-  command palettes, watcher state, or file-search handles.
-- Use Pi vocabulary for interactive queues: `steer`, `followUp`,
-  `steering_mode`, and `follow_up_mode`.
-- Extensions are backend-agnostic capability bundles registered into the
-  loop. An extension should implement/provide:
-  - manifest metadata,
-  - tools,
-  - commands,
-  - hooks,
-  - optional skill providers,
-  - optional prompt-template providers,
-  - optional UI metadata for frontend/TUI consumers.
-- Skills and prompt templates are provider interfaces, not
-  BebeLM-specific helpers.
-- Session persistence is backend-agnostic JSONL under
-  `tools::R_user_dir("Rbebelm", "data")/sessions/<encoded-cwd>/` unless
-  overridden. Preserve tree semantics with `id`/`parentId` and
-  append-only history.
+- `README.md` is generated from `README.Rmd`; never hand-edit it.
+- README and vignettes are executable examples. They should run real
+  BebeLM calls when `BEBELM_WEIGHTS_FILE` points to a local GGUF file.
+- Do not add fake examples or guard whole documents into inert prose.
+- Keep generated `NAMESPACE`, `man/*.Rd`, and `README.md` in sync with
+  source changes.
 
-## Documentation rules
+## Common Workflows
 
-- `README.md` is generated from `README.Rmd`; never hand-edit
-  `README.md`.
-- Raw/model-running documentation lives in `vignettes-raw/`.
-- Precompiled/check-safe vignette sources live in `vignettes/`.
-- If you update a raw vignette that is meant to ship, copy/regenerate
-  the paired file under `vignettes/`.
-- Documentation should present the package as a generic agent/frontend
-  framework plus a concrete BebeLM backend.
-- Do not run GGUF model inference during package install, check, or
-  pkgdown. Guard model-running chunks with `BEBELM_WEIGHTS_FILE`.
-
-## Dependency and platform rules
-
-- JSON handling uses imported `yyjsonr`; do not reintroduce `jsonlite`
-  or an ad hoc parser.
-- Keep `nanonext`, `ellmer`, and `vitals` optional. `S7`, `s7contract`,
-  and `yyjsonr` are hard runtime dependencies, including for webR; if
-  webR fails, fix the wasm dependency repository/build path rather than
-  weakening the contract layer.
-- Do not add TerminalR, rcurses, or eventloop as hard dependencies for
-  the core framework.
-- The serious terminal TUI lives in the separate `tui/` Rust frontend
-  using `crossterm`/`ratatui`. It consumes Rbebelm loop/RPC/events and
-  must not reimplement the agent loop, tool dispatcher, session tree, or
-  model backend.
-- ARM baseline is NEON; dotprod is a separate runtime-selected backend.
-- Windows targets the GNU Rust/Rtools path.
-
-## Common workflows
-
-Regenerate wrappers/docs:
+Regenerate wrappers and docs:
 
 ``` sh
 make rd
 ```
 
-Regenerate README from source, using the local real model only when
-explicitly available:
+Regenerate README from source:
 
 ``` sh
 BEBELM_WEIGHTS_FILE=/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf make rdm
@@ -108,27 +51,12 @@ Install and test:
 
 ``` sh
 make dev-install
-Rscript -e 'tinytest::test_package("Rbebelm")'
+BEBELM_WEIGHTS_FILE=/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf \
+  Rscript -e 'tinytest::test_package("Rbebelm")'
 ```
 
 Full check:
 
 ``` sh
-make check
+BEBELM_WEIGHTS_FILE=/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf make check
 ```
-
-Optional real-model check:
-
-``` sh
-BEBELM_WEIGHTS_FILE=/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf \
-  Rscript -e 'tinytest::run_test_file("inst/tinytest/test-real-model.R")'
-```
-
-## Commit hygiene
-
-- Keep generated `NAMESPACE`, `man/*.Rd`, and `README.md` in sync with
-  source changes.
-- Avoid committing generated whitespace-only changes in C dispatch
-  files.
-- Run at least tinytests for framework/API changes; run `make check`
-  before pushing broad documentation/API changes.

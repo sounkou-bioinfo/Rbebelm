@@ -1,54 +1,17 @@
 # Rbebelm
 
-`Rbebelm` is both a generic R agent framework and a concrete native
-local-model backend.
+`Rbebelm` is a focused R interface to
+[`maximecb/bebelm`](https://github.com/maximecb/bebelm): local CPU
+inference for Liquid AI LFM2.5-8B-A1B GGUF weights, exposed through a
+small R/Rust API.
 
-- The framework layer provides backend-agnostic `S7`/`s7contract`
-  interfaces for LLM providers, extensions, skills, prompt templates,
-  loop events, frontend/TUI command catalogs, and Pi-inspired
-  append-only JSONL session trees.
-- The concrete backend wraps upstream
-  [`maximecb/bebelm`](https://github.com/maximecb/bebelm), a pure-Rust
-  CPU-only implementation of [Liquid AI
-  LFM2.5-8B-A1B](https://www.liquid.ai/blog/lfm2-5-8b-a1b) inference.
-  The R package uses [`savvy`](https://github.com/yutannihilation/savvy)
-  for the R/Rust boundary and a runtime backend layout for portable SIMD
-  dispatch.
-- The native search layer vendors FFF and exposes persistent fuzzy file
-  indexes for agents, consoles, RPC clients, and the standalone `tui/`
-  frontend via
-  [`bebel_file_finder()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_file_finder.md)
-  and
-  [`bebel_file_search()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_file_finder.md).
+The package provides model loading, tokenizer access, pooled embeddings,
+bounded generation, persistent agents, BebeLM tool-call parsing, R tool
+dispatch, stream events, and Rust-thread async jobs. It does not ship
+weights. Set `BEBELM_WEIGHTS_FILE` to a local GGUF path or use the path
+directly.
 
-The intended architecture is loop-first: the agent loop owns lifecycle,
-queues, tools, extensions, events, and sessions; consoles, RPC servers,
-and the standalone `tui/` module consume that loop over catalogs,
-events, and transport endpoints instead of owning agent business logic.
-BebeLM is the bundled native provider, not a requirement of the
-framework contracts.
-
-## Getting started: choose an entry point
-
-- **Use a local model from R**: install the package, point
-  `BEBELM_WEIGHTS_FILE` at a GGUF file, and create a `BebelAgent` with
-  [`bebel_agent()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent.md).
-- **Use the generic framework without a model**: start with [Generic
-  agent and frontend/TUI
-  framework](#generic-agent-and-frontendtui-framework) and the
-  `BebelAgentBackend` contract.
-- **Use agent file search**: create a persistent native FFF finder with
-  [`bebel_file_finder()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_file_finder.md)
-  and query it with
-  [`bebel_file_search()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_file_finder.md).
-- **Use a terminal frontend**: source installs compile the native
-  `rbebelm-tui` binary into the package `bin/` directory; run
-  `rbebelm-tui run --weights /path/to/model.gguf`, or set
-  `BEBELM_WEIGHTS_FILE` and run bare `rbebelm-tui`.
-
-## Installation
-
-Install from R-universe:
+## Install
 
 ``` r
 
@@ -58,737 +21,357 @@ install.packages(
 )
 ```
 
-R-universe can also publish Linux binaries for this universe. To prefer
-those binaries on Linux, use the universe binary repository pattern:
+Source installs require Cargo/rustc and GNU make. Native builds compile
+scalar and SIMD backend libraries where supported; the runtime
+dispatcher selects the best installed backend for the current CPU.
 
-``` r
-
-options(repos = c(
-  Rbebelm = sprintf(
-    "https://sounkou-bioinfo.r-universe.dev/bin/linux/noble-%s/%s/",
-    R.version$arch,
-    substr(getRversion(), 1, 3)
-  ),
-  CRAN = sprintf(
-    "https://cran.r-universe.dev/bin/linux/noble-%s/%s/",
-    R.version$arch,
-    substr(getRversion(), 1, 3)
-  )
-))
-install.packages("Rbebelm")
-```
-
-Source installs require Cargo/rustc and GNU make. On Linux, macOS, and
-Windows, `Rbebelm` builds separate Rust backend libraries when possible:
-scalar, AVX2, and AVX-512 on x86_64; scalar and NEON on arm64. The
-dispatcher selects the best installed backend supported by the current
-CPU/runtime before loading model code. Scalar x86_64 artifacts are
-compiled with an explicit baseline target rather than inheriting
-`target-cpu=native`; optimized model and FFF/`neo_frizbee` SIMD paths
-are used only through backend selection or runtime feature checks.
-
-The model weights are not bundled with the R package. Download the GGUF
-weights from the upstream model source documented by
-[`bebelm`](https://github.com/maximecb/bebelm), then pass the local path
-to
-[`bebel_model_load()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_model_load.md).
-
-## Local model quick start
-
-Set `BEBELM_WEIGHTS_FILE` to the local GGUF path, or replace `weights`
-with an explicit file path. This path exercises the concrete native
-BebeLM backend. The README examples are evaluated when a local model
-file is available during rendering.
+## Load a model
 
 ``` r
 
 library(Rbebelm)
 
-weights <- Sys.getenv("BEBELM_WEIGHTS_FILE", "LFM2.5-8B-A1B-Q4_K_M.gguf")
-model <- bebel_model_load(weights, num_threads = 2)
+model <- bebel_model_load(weights_file, num_threads = 2)
+model
+#> <BebelModel>
+#>   path: /root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf
+#>   backend: avx2
+rbebelm_backend_features()
+#> <Rbebelm backend features>
+#>   backend: avx2
+#>   target: x86_64-linux
+#>   Rust crate: rbebelm_backend 0.1.0
+#>   native SIMD feature: yes
+#>   compiled features:
+#>     AVX2: yes
+#>     AVX-512F: no
+#>     NEON: no
+#>     ARM dotprod: no
+#>     wasm simd128: no
+#>   model storage: read-only GGUF mmap; repeated loads of the same file share physical pages through the OS page cache
+```
 
-# Agent-first API: one loaded model can back several conversations.
-agent <- bebel_agent(model, greedy = TRUE, max_gen = 48, max_think = 16)
+The GGUF is memory-mapped read-only by upstream BebeLM. Multiple agents
+created from one `BebelModel` share the same in-process `Arc<Model>`.
+Separate processes that load the same GGUF can share physical pages
+through the operating-system page cache.
 
-bebel_append_user(agent, "What is the capital of Mali? Answer briefly.")
+Threading is set when the model is loaded. `num_threads` initializes the
+process-global Rayon pool once; generation calls use that pool. Async
+calls add one Rust worker per job, so total concurrency is controlled by
+the model-load thread count and by how many jobs the caller launches.
+
+## Tokenizer and embeddings
+
+``` r
+
+ids <- bebel_tokenize(model, "Bamako", add_bos = FALSE)
+ids
+#> [1]   42  330 6261
+bebel_detokenize(model, ids)
+#> [1] "Bamako"
+
+emb <- bebel_embed(model, c(
+  mali = "Bamako is the capital of Mali",
+  italy = "Rome is the capital of Italy",
+  france = "Paris is the capital of France"
+))
+dim(emb)
+#> [1]    3 2048
+round(emb[1:2, 1:6], 3)
+#>        [,1]   [,2]   [,3]   [,4]  [,5]  [,6]
+#> mali  0.005  0.000 -0.018 -0.007 0.012 0.013
+#> italy 0.006 -0.004 -0.018 -0.008 0.015 0.014
+```
+
+## Generation
+
+``` r
+
+events <- character()
+answer <- bebel_generate(
+  model,
+  "The capital of France is",
+  greedy = TRUE,
+  max_gen = 8,
+  max_think = 0,
+  on_event = function(event) events <<- c(events, event$type)
+)
+
+answer
+#> <BebeLM generation result>
+#>   stop: max_new
+#>   tokens: 8 generated; 6 prompt
+#>   prefill: 14.8 tok/s
+#>   decode: 14.74 tok/s
+#>   text:
+#>  the city of Paris. city of Paris
+unique(events)
+#> [1] "start"      "text_start" "text_delta" "text_end"   "done"
+```
+
+`on_event` is explicit. Pass `NULL` for quiet runs, a function for all
+events, or a named list accepted by
+[`bebel_event_handler()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_event_handler.md).
+
+``` r
+
+chat <- bebel_chat(
+  model,
+  "Answer in five words: what does mmap help with?",
+  greedy = TRUE,
+  max_gen = 24,
+  max_think = 0,
+  on_event = NULL
+)
+chat
+#> <BebeLM chat result>
+#>   stop: eos
+#>   tokens: 20 generated; 21 prompt
+#>   prefill: 17.5 tok/s
+#>   decode: 13.42 tok/s
+#>   text:
+#> <|tool_call_start|>[constraints(word_count=5, question="what does mmap help with?")]<|tool_call_end|>
+```
+
+## Agents
+
+Agents keep transcript tokens, decode caches, and sampling settings. The
+loaded weights are shared.
+
+``` r
+
+agent <- bebel_agent(model, greedy = TRUE, max_gen = 16, max_think = 0)
+bebel_append_user(agent, "Say exactly: Paris noted.")
 turn1 <- bebel_assistant_turn(agent, on_event = NULL)
 
-bebel_append_user(agent, "What about Italy?")
+bebel_append_user(agent, "Say exactly: second turn complete.")
 turn2 <- bebel_assistant_turn(agent, on_event = NULL)
 
 turn1
+#> <BebeLM assistant turn>
+#>   stop: eos
+#>   tokens: 10 generated; 15 prompt
+#>   prefill: 17.3 tok/s
+#>   decode: 13.55 tok/s
+#>   text:
+#> <
+#> </think>
+#> Say
+#> Say Paris noted.
 turn2
+#> <BebeLM assistant turn>
+#>   stop: eos
+#>   tokens: 11 generated; 17 prompt
+#>   prefill: 17.5 tok/s
+#>   decode: 13.89 tok/s
+#>   text:
+#> <
+#> </Answer>
+#> Say second turn complete.
 bebel_agent_info(agent)[c("history_tokens", "processed_tokens", "kv_tokens")]
+#> $history_tokens
+#> [1] 55
+#>
+#> $processed_tokens
+#> [1] 53
+#>
+#> $kv_tokens
+#> [1] 53
+substr(bebel_transcript(agent), 1, 160)
+#> [1] "<|startoftext|><|im_start|>user\nSay exactly: Paris noted.<|im_end|>\n<|im_start|>assistant\n<\n</think>\nSay  \nSay Paris noted.<|im_end|>\n<|im_start|>user\nSay exact"
 ```
 
-A `BebelAgent` owns the token transcript and decode caches while sharing
-the loaded model weights. Later turns only prefill newly appended
-tokens. The direct methods `agent$history()`, `agent$transcript()`, and
-`agent$clear()` expose the same operations as `bebel_history(agent)`,
-`bebel_transcript(agent)`, and `bebel_clear(agent)`.
+The direct methods expose the same state:
 
 ``` r
 
 length(agent$history())
-substr(agent$transcript(), 1, 80)
+#> [1] 55
 identical(agent$history(), bebel_history(agent))
-
-reset_info <- agent$clear()
-reset_info[c("history_tokens", "processed_tokens", "kv_tokens")]
-```
-
-For an interactive terminal loop, call `bebel_live_console(agent)` or
-`bebel_live_console(model)` in an R session.
-
-``` r
-
-chat <- bebel_agent(model, max_gen = 256, max_think = 64)
-bebel_live_console(chat)
-#> ╔══════════════════════════════════════════════════════╗
-#> ║  Entering BebeLM live console.                     ║
-#> ║  Type /quit or /exit to return to R.               ║
-#> ╚══════════════════════════════════════════════════════╝
-#> >>> What is BebeLM?
-#> <think>
-#> The user asks for a brief explanation of BebeLM.
-#> </think>
-#> BebeLM is a small, CPU-focused local language model runtime written in Rust.
+#> [1] TRUE
+agent$clear()[c("history_tokens", "processed_tokens", "kv_tokens")]
+#> $history_tokens
+#> [1] 0
 #>
-#> >>> Why use the R agent API?
-#> The R agent keeps the transcript and decode caches alive across turns while
-#> sharing the loaded GGUF weights.
+#> $processed_tokens
+#> [1] 0
 #>
-#> >>> /quit
+#> $kv_tokens
+#> [1] 0
 ```
 
-You can also create the console directly from a model:
+## Tools
+
+Tool declarations are typed S7 objects. Schemas are rendered into the
+system turn that BebeLM expects, and parser support is delegated to
+upstream BebeLM for the bracketed Pythonic format.
 
 ``` r
 
-bebel_live_console(model, max_gen = 256, max_think = 64)
-```
-
-Convenience helpers are still available for simple calls.
-[`bebel_chat()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_chat.md)
-wraps a single ChatML user/assistant turn:
-
-``` r
-
-# on_event defaults to bebel_console_event(): thinking and text print live.
-result <- bebel_chat(
-  model,
-  "In one concise sentence, what does runtime SIMD dispatch do?",
-  greedy = TRUE,
-  max_gen = 48,
-  max_think = 16,
-  on_event = bebel_console_event(),
-  check_interrupt = TRUE
+lookup_capital <- bebel_tool(
+  "lookup_capital",
+  function(args, context, call) {
+    context$calls <- c(context$calls, paste(call$name, args$country))
+    c(Mali = "Bamako", Italy = "Rome", France = "Paris")[[args$country]]
+  },
+  description = "Return a capital city.",
+  schema = list(
+    properties = list(country = list(type = "string")),
+    required = list("country")
+  )
 )
 
-result
-```
-
-For plain text completion, use
-[`bebel_generate()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_generate.md):
-
-``` r
-
-raw_result <- bebel_generate(
-  model,
-  "Runtime SIMD dispatch is useful because",
-  greedy = TRUE,
-  max_gen = 24,
-  max_think = 16,
-  on_event = bebel_console_event(),
-  check_interrupt = TRUE
-)
-raw_result
-```
-
-Use
-[`bebel_append_system()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_append_system.md)
-for an upstream-rendered ChatML system turn. With no tools, the
-low-level
-[`bebel_append()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_append.md)
-form below is equivalent apart from being more explicit about the
-tokens. When `tools` are supplied, BebeLM renders its
-`List of tools: [...]` system preamble.
-
-``` r
-
-system_agent <- bebel_agent(model)
-bebel_append_system(system_agent, "You are concise.")
-bebel_transcript(system_agent)
-
-raw_system_agent <- bebel_agent(model)
-bebel_append(raw_system_agent, "<|im_start|>system\nYou are concise.<|im_end|>\n")
-identical(bebel_transcript(system_agent), bebel_transcript(raw_system_agent))
-```
-
-Agents can also be driven at the lower level with raw text or token ids.
-
-``` r
-
-raw_agent <- bebel_agent(model, greedy = TRUE, max_gen = 16, max_think = 0)
-bebel_append(raw_agent, "The capital of Mali is")
-raw_turn <- bebel_agent_generate(raw_agent, on_event = NULL)
-
-ids <- bebel_tokenize(model, " and its airport code is", add_bos = FALSE)
-bebel_append_tokens(raw_agent, ids)
-bebel_history(raw_agent)[1:8]
-bebel_token_ids()[c("TOKEN_THINK", "TOKEN_TOOL_CALL_START", "TOKEN_TOOL_CALL_END")]
-raw_turn$text
-```
-
-Tools can be orchestrated with an Agent run loop. The `context` object
-is private to R tools and hooks; it is not sent to the model. A tool is
-dispatched only when the model emits a BebeLM tool-call block, so
-prompts should describe the available tools and the expected call
-format. The prompt below asks directly for the tool-call form so the
-example exercises the dispatch path.
-
-``` r
+lookup_capital
+#> <BebelToolSpec> lookup_capital
+#>   Return a capital city.
+bebel_tool_schema_json(lookup_capital)
+#> [1] "{\"name\":\"lookup_capital\",\"description\":\"Return a capital city.\",\"parameters\":{\"properties\":{\"country\":{\"type\":\"string\"}},\"required\":[\"country\"],\"type\":\"object\"}}"
 
 ctx <- new.env(parent = emptyenv())
-ctx$thread_id <- "thread-001"
-ctx$log <- character()
-
-tools <- list(
-  lookup_capital = bebel_tool(
-    "lookup_capital",
-    function(args, context, call) {
-      context$log <- c(context$log, paste("tool", call$name, args$country))
-      c(Mali = "Bamako", Italy = "Rome")[[args$country]]
-    },
-    description = "Return a capital city for a country."
-  )
-)
-
-hooks <- list(
-  tool_request = function(call, context, ...) {
-    context$log <- c(context$log, paste("request", call$name))
-  },
-  tool_result = function(call, result, context, ...) {
-    context$log <- c(context$log, paste("result", call$name, result))
-  }
-)
-
-tool_prompt <- paste(
-  "Return exactly this tool call and no other text:",
-  "lookup_capital({\"country\":\"Italy\"})"
-)
-
-agent <- bebel_agent(model, greedy = TRUE, max_gen = 64, max_think = 0)
-bebel_append_user(agent, tool_prompt)
-run <- bebel_agent_run(agent, tools = tools, context = ctx, hooks = hooks, max_steps = 2)
-run
-ctx$log
+ctx$calls <- character()
+call <- bebel_parse_tool_call('[lookup_capital(country="Mali")]')
+Rbebelm:::invoke_bebel_tool(lookup_capital, call, ctx)
+#> [1] "Bamako"
+ctx$calls
+#> [1] "lookup_capital Mali"
 ```
 
-## Generic agent and frontend/TUI framework
+## Async jobs
 
-This is the model-free framework entry point. The BebeLM bindings are
-one implementation of a more generic R agent/frontend framework. The
-loop itself is backend-agnostic: it talks to objects that implement the
-`BebelAgentBackend` S7/s7contract interface. BebeLM implements that
-contract today; other local or remote providers can implement the same
-generics later.
-
-The core backend contract is intentionally small:
-
-- `bebel_backend_append_user(agent, message)`
-- `bebel_backend_append_system(agent, message, tools = NULL)`
-- `bebel_backend_append_tool_result(agent, content)`
-- `bebel_backend_assistant_turn(agent, on_event, check_interrupt, stop_on_tool_call)`
-- `bebel_backend_info(agent)`, `bebel_backend_transcript(agent)`, and
-  `bebel_backend_clear(agent)`
-
-[`bebel_agent_loop()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_loop.md)
-owns policy, queues, event emission, tool dispatch, and session
-persistence. A console, RPC server, or the standalone `tui/` module
-should consume the loop; it should not own agent logic. The queue
-semantics mirror Pi’s vocabulary:
-[`bebel_loop_steer()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_steer.md),
-[`bebel_loop_follow_up()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_follow_up.md),
-`steering_mode`, and `follow_up_mode`.
+Async jobs use an aio-style surface: submit work, drain queued events
+when the R loop is ready, poll the handle, then collect the completed
+`Turn` on the R thread. Several jobs can share one loaded model; the
+weights stay shared and model execution is serialized. Agent async jobs
+currently run on a cloned agent snapshot: the original agent is not
+mutated.
 
 ``` r
 
-library(Rbebelm)
-
-store <- bebel_session_create(
-  cwd = tempdir(),
-  session_dir = file.path(tempdir(), "rbebelm-readme-sessions"),
-  name = "README demo"
-)
-
-user_id <- bebel_session_append_message(store, "user", "Hello from R")
-bebel_session_append_message(
-  store,
-  "assistant",
-  list(list(type = "text", text = "Hello.")),
-  provider = "demo",
-  model = "demo-model",
-  stopReason = "stop"
-)
-#> [1] "c79780da"
-
-bebel_session_leaf_id(store)
-#> <bebelSessionLeafId> c79780da
-bebel_session_context(store)$messages
-#> [[1]]
-#> [[1]]$role
-#> [1] "user"
-#> 
-#> [[1]]$content
-#> [1] "Hello from R"
-#> 
-#> 
-#> [[2]]
-#> [[2]]$role
-#> [1] "assistant"
-#> 
-#> [[2]]$content
-#> [[2]]$content[[1]]
-#> [[2]]$content[[1]]$type
-#> [1] "text"
-#> 
-#> [[2]]$content[[1]]$text
-#> [1] "Hello."
-#> 
-#> 
-#> 
-#> [[2]]$provider
-#> [1] "demo"
-#> 
-#> [[2]]$model
-#> [1] "demo-model"
-#> 
-#> [[2]]$stopReason
-#> [1] "stop"
-```
-
-Session files are append-only JSONL trees inspired by Pi’s session
-format. Each entry has an `id` and `parentId`, so `/tree`, `/fork`, and
-`/clone` interfaces can be built without rewriting history. By default,
-persisted sessions live under
-`tools::R_user_dir("Rbebelm", "data")/sessions/<encoded-cwd>/`; set
-`RBEBELM_SESSION_DIR` or pass `session_dir` to override that location.
-
-Extensions are also generic capability bundles. An object implementing
-`BebelAgentExtension` contributes a manifest plus optional tools,
-commands, hooks, skill providers, prompt-template providers, and UI
-metadata. The loop can receive extensions at construction time or later
-through explicit R mutation with
-[`bebel_loop_register_extension()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_register_extension.md)
-/
-[`bebel_loop_unregister_extension()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_unregister_extension.md);
-no core `/reload` command is needed. Frontends render catalogs and
-listen for `catalog_changed` events.
-
-``` r
-
-skills <- bebel_skill_provider(list(
-  concise = "Prefer concise, direct answers."
-))
-
-prompts <- bebel_prompt_template_provider(list(
-  system = "You are {{role}} working in {{place}}."
-))
-
-ext <- bebel_extension(
-  "readme-demo",
-  skill_providers = list(default = skills),
-  prompt_template_providers = list(default = prompts),
-  commands = list(info = bebel_loop_command("info", function(args, loop, context) {
-    bebel_loop_state(loop)
-  }))
-)
-
-bebel_extension_manifest(ext)
-#> $name
-#> [1] "readme-demo"
-#> 
-#> $tools
-#> NULL
-#> 
-#> $commands
-#> $commands$info
-#> $commands$info$name
-#> [1] "info"
-#> 
-#> $commands$info$description
-#> [1] "info"
-#> 
-#> $commands$info$usage
-#> [1] "/info"
-#> 
-#> 
-#> 
-#> $hooks
-#> NULL
-#> 
-#> $skill_providers
-#> [1] "default"
-#> 
-#> $prompt_template_providers
-#> [1] "default"
-#> 
-#> $keybindings
-#> list()
-#> 
-#> $widgets
-#> list()
-#> 
-#> $metadata
-#> list()
-
-# Runtime registration is explicit R state mutation:
-# bebel_loop_register_extension(loop, ext)
-# bebel_loop_unregister_extension(loop, "readme-demo")
-
-bebel_system_prompt(
-  prompts,
-  "system",
-  data = list(role = "an R agent", place = "Bamako"),
-  skill_provider = skills,
-  skills = "concise"
-)
-#> [1] "You are an R agent working in Bamako.\n\n# Loaded skills\n\n## Skill: concise\n\nPrefer concise, direct answers."
-```
-
-See the “Generic agent and frontend framework” vignette for a fake
-backend example and the full session-tree/forking API.
-
-## Native FFF fuzzy file search
-
-Rbebelm uses the FFF engine behind `fff-c` as its native fuzzy file
-search primitive. A persistent `BebelFileFinder` indexes a project once;
-consoles, RPC clients, default file tools, and the standalone `tui/`
-frontend can reuse it for low-latency file picking.
-
-``` r
-
-search_root <- tempfile("rbebelm-fff-readme-")
-dir.create(file.path(search_root, "src"), recursive = TRUE)
-writeLines("demo", file.path(search_root, "src", "bamako_agent.R"))
-writeLines("notes", file.path(search_root, "README.md"))
-
-finder <- bebel_file_finder(search_root, watch = FALSE)
-bebel_file_search(finder, "agent", limit = 5)
-#> <bebelFileSearchResult> 1 rows / 1 matched
-#>                path
-#>  src/bamako_agent.R
-#>                                                        absolute_path
-#>  /tmp/RtmpjGFOR0/rbebelm-fff-readme-cffce1d27dbc9/src/bamako_agent.R
-#>       file_name git_status size            modified score base_score
-#>  bamako_agent.R      clean    5 2026-06-09 23:39:37    74         64
-#>      match_type exact_match is_binary
-#>  fuzzy_filename       FALSE     FALSE
-```
-
-The native FFF dependency is not loaded in webR/wasm; the package still
-loads there, and file-search creation reports that native FFF is
-unavailable. SIMD is handled with the same care as the BebeLM backend:
-Rbebelm builds scalar and optimized native dylibs separately, and
-FFF/`neo_frizbee` SIMD kernels are only entered through runtime
-CPU-feature checks or the already-selected optimized backend.
-
-## ARF-inspired terminal TUI module
-
-The serious terminal frontend is a native Rust binary compiled as part
-of the R package source build and installed under
-`system.file("bin", package = "Rbebelm")`. It follows ARF’s separation
-of concerns: the Rust binary owns terminal state, key handling, TOML
-configuration, and transport client behavior; R owns model loading,
-generic agent-loop state, tool execution, sessions, JSON, and the loop
-endpoint. The endpoint exposes `GET /stream` NDJSON events,
-`POST /command` typed commands, and `POST /rpc` JSON-RPC compatibility.
-It can be local HTTP, remote HTTP, or HTTPS/TLS via `nanonext`. The
-ergonomic default is a single command: `run` starts an R-owned
-`bebelAgentLoop`, waits for readiness, attaches `chat`, and stops the R
-host when the TUI exits. `headless`, `stream`, `command`, and `chat`
-remain available for split-terminal or remote workflows.
-
-``` r
-
-tui <- system.file("bin/rbebelm-tui", package = "Rbebelm")
-system2(tui, "config init")
-```
-
-``` sh
-TUI="$(Rscript -e 'cat(system.file("bin/rbebelm-tui", package = "Rbebelm"))')"
-
-# One terminal: start R host + attach chat + tear down host on exit.
-"$TUI" run --weights /path/to/LFM2.5-8B-A1B-Q4_K_M.gguf
-
-# Or configure the model once and use the bare command.
-BEBELM_WEIGHTS_FILE=/path/to/LFM2.5-8B-A1B-Q4_K_M.gguf "$TUI"
-```
-
-Pi-like slash commands are handled before model turns. `/quit`, `/exit`,
-and `/q` quit the terminal locally. Default R-agent hosts also register
-`/help`, `/commands`, `/tools`, `/state`, `/transcript`, `/clear`,
-`/r <code>`, and `/allow-eval`, `/no-eval`, `/graphics [device]`,
-`/r <code>`, and `/rplot [plot-code]`; press `Tab` after `/` for
-completion. Direct `/rplot` works as a user command. Model-side
-`r_eval`/`r_plot` are enabled by default for local TUI hosts; use
-`--no-eval` at startup or `/no-eval` at runtime to remove them from the
-model tool catalog. Use `/graphics auto|native|png|jgd|devout-ascii` to
-inspect or change how R plots are handled.
-
-Graphics is a first-class R capability. Rbebelm now has a
-graphics-device policy for `r_plot` and `/rplot`: `auto`, `native`,
-`png`, optional `jgd`, and optional `devout-ascii` (inspired by Mike
-FC/coolbutuseless’ `devout`, which bridges R’s graphics device callbacks
-to ordinary R functions). In an interactive R console, `auto` prefers
-native R graphics; in headless/TUI contexts it uses PNG unless a jgd
-socket is available. PNG artifacts are shown as paths plus portable
-braille thumbnails in the TUI. Full-color inline pixel preview still
-requires a terminal image backend such as Kitty graphics, iTerm2 inline
-images, or sixel; a jgd-compatible JSONL graphics stream is the right
-longer-term vector/event renderer boundary, not a TUI-owned R graphics
-device.
-
-For split-terminal, remote, automation, or editor integrations, use the
-lower level endpoint clients:
-
-``` sh
-"$TUI" headless --weights /path/to/LFM2.5-8B-A1B-Q4_K_M.gguf --json
-"$TUI" stream --url http://127.0.0.1:8080
-"$TUI" command --url http://127.0.0.1:8080 --type catalog --params '{}'
-"$TUI" command --url http://127.0.0.1:8080 --type turn \
-  --params '{"prompt":"Say hi","max_steps":2}'
-
-# Compatibility/control API only:
-"$TUI" rpc --url http://127.0.0.1:8080 --method session/info
-```
-
-This replaces in-package TUI placeholders: there is no separate
-TUI-owned agent loop, no duplicate tool dispatcher, and no core
-`/reload`. Extensions are loaded or registered by R
-([`bebel_loop_register_extension()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_register_extension.md));
-frontends refresh their local keybindings, widgets, palettes, and file
-watchers when catalogs change.
-
-## R-native agent layer
-
-[`bebel_r_agent()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_r_agent.md)
-adds a small Corteza-inspired layer on top of the core model bindings.
-One session object owns a BebeLM agent, a tool catalog, a private
-context environment, and can be driven either from an R console or from
-a small JSON-RPC SDK surface.
-
-``` r
-
-r_agent <- bebel_r_agent(
+job_a <- bebel_generate_async(
   model,
-  allow_eval = TRUE,
+  "The capital of Italy is",
   greedy = TRUE,
-  max_gen = 96,
-  max_think = 16
+  max_gen = 8,
+  max_think = 0
 )
-bebel_agent_tool_catalog(r_agent$tools)
+
+job_b_agent <- bebel_agent(model, greedy = TRUE, max_gen = 8, max_think = 0)
+bebel_append(job_b_agent, "The capital of Mali is")
+job_b <- bebel_agent_generate_async(job_b_agent)
+
+bebel_async_poll(job_a)
+#> [1] "pending"
+async_a <- bebel_async_collect(job_a, wait = TRUE)
+event_types_a <- vapply(bebel_async_events(job_a), `[[`, character(1), "type")
+async_b <- bebel_async_collect(job_b, wait = TRUE)
+
+event_types_a
+#>  [1] "start"      "text_start" "text_delta" "text_delta" "text_delta"
+#>  [6] "text_delta" "text_delta" "text_delta" "text_delta" "text_delta"
+#> [11] "text_end"   "done"
+async_a
+#> <BebeLM generation result>
+#>   stop: max_new
+#>   tokens: 8 generated; 6 prompt
+#>   prefill: 14.7 tok/s
+#>   decode: 15.69 tok/s
+#>   text:
+#>  Rome. city of... ... ... ...
+async_b
+#> <BebeLM generation result>
+#>   stop: max_new
+#>   tokens: 8 generated; 6 prompt
+#>   prefill: 14.5 tok/s
+#>   decode: 15.29 tok/s
+#>   text:
+#>  the city of Bamako. city of
+bebel_agent_info(job_b_agent)[c("history_tokens", "processed_tokens")]
+#> $history_tokens
+#> [1] 6
+#>
+#> $processed_tokens
+#> [1] 0
 ```
 
-Interactive console. The `/r` command is a direct R escape hatch into
-the same environment used by the agent’s R tools; for example
-`/r x <- mtcars` creates an object that `r_objects()` can later see.
-Visible `/r` output is capped so large objects do not flood the chat
-prompt; assign objects or use summaries such as `/r str(x)` for
-inspection. For plots, use `/graphics` to inspect or set the plot device
-and `/rplot`, e.g. `/rplot plot(mpg ~ cyl, mtcars)`. Interactive R
-consoles can use native graphics; headless/TUI sessions default to PNG
-artifacts; `devout-ascii` is available when the optional `devout`
-package is installed. The `r_eval` and `r_plot` tools are advertised to
-the model by default; set `allow_eval = FALSE` or use `/no-eval` in the
-TUI to remove them from the model tool catalog. Direct `/r` and `/rplot`
-remain user commands.
+## Small benchmark table
+
+This is not a model-quality benchmark. It is a reproducible
+package-level regression benchmark that records prompt size, generation
+size, and throughput for a few deterministic tasks.
 
 ``` r
 
-bebel_r_agent_console(r_agent)
-```
+prompts <- c(
+  "The capital of Mali is",
+  "The capital of Italy is",
+  "The capital of Japan is"
+)
 
-For a one-call launcher from R, use
-[`bebel_r_agent_start()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_r_agent_start.md).
-It keeps the loaded BebeLM model object local to the launcher while
-still sharing `.GlobalEnv` with `/r` and the agent’s R tools. The
-console prints a compact stats line after each user turn.
-
-``` r
-
-bebel_r_agent_start(Sys.getenv("BEBELM_WEIGHTS_FILE", "LFM2.5-8B-A1B-Q4_K_M.gguf"))
-```
-
-The package also installs a small script in `inst/bin`:
-
-``` r
-
-agent_bin <- system.file("bin/rbebelm-agent", package = "Rbebelm")
-system2(agent_bin, "--help")
-```
-
-From a shell, after installation:
-
-``` sh
-"$(Rscript -e 'cat(system.file("bin/rbebelm-agent", package = "Rbebelm"))')" \
-  --weights /path/to/LFM2.5-8B-A1B-Q4_K_M.gguf
-```
-
-Optional RPC server, using optional `nanonext`; JSON parsing and
-serialization use imported `yyjsonr`:
-
-``` r
-
-server <- bebel_r_agent_rpc_server(r_agent, url = "http://127.0.0.1:8080")
-server$start()
-# ... handle requests ...
-server$close()
-```
-
-The RPC endpoint accepts `POST /rpc` JSON-RPC calls such as
-`tools/list`, `session/info`, `session/transcript`, `session/clear`, and
-`turn`.
-
-The same event stream can be consumed programmatically. For example,
-collect only answer-text deltas while suppressing console output:
-
-``` r
-
-deltas <- character()
-invisible(bebel_generate(
-  model,
-  "A text delta callback can",
-  greedy = TRUE,
-  max_gen = 12,
-  max_think = 16,
-  on_event = bebel_event_handler(
-    text_delta = function(event) deltas <<- c(deltas, event$delta)
+bench <- lapply(prompts, function(prompt) {
+  out <- bebel_generate(model, prompt, greedy = TRUE, max_gen = 8, max_think = 0, on_event = NULL)
+  data.frame(
+    prompt = prompt,
+    text = trimws(out$text),
+    prompt_tokens = out$prompt_tokens,
+    generated_tokens = out$generated_tokens,
+    prefill_tps = out$prefill_tps,
+    decode_tps = out$decode_tps,
+    stringsAsFactors = FALSE
   )
-))
-paste0(deltas, collapse = "")
+})
+
+do.call(rbind, bench)
+#>                    prompt                              text prompt_tokens
+#> 1  The capital of Mali is       the city of Bamako. city of             6
+#> 2 The capital of Italy is      Rome. city of... ... ... ...             6
+#> 3 The capital of Japan is Tokyo. city. The capital of Japan             6
+#>   generated_tokens prefill_tps decode_tps
+#> 1                8    14.28969   15.28434
+#> 2                8    14.05595   14.81557
+#> 3                8    14.30677   15.02516
 ```
-
-You can also pass a named list of event-specific handlers directly:
-
-``` r
-
-counts <- c(text_delta = 0L, thinking_delta = 0L, done = 0L)
-invisible(bebel_generate(
-  model,
-  "An event handler list can",
-  greedy = TRUE,
-  max_gen = 4,
-  max_think = 16,
-  on_event = list(
-    text_delta = function(event) counts["text_delta"] <<- counts[["text_delta"]] + 1L,
-    thinking_delta = function(event) counts["thinking_delta"] <<- counts[["thinking_delta"]] + 1L,
-    done = function(event) counts["done"] <<- counts[["done"]] + 1L
-  )
-))
-counts
-```
-
-## Interrupts and streaming
-
-Generation checks `R_CheckUserInterrupt()` during prompt prefill and
-before every decoded token, wrapped through savvy’s unwind protection so
-Ctrl-C does not longjmp through Rust frames. Streaming is event-based
-and uses a finite event protocol;
-[`bebel_event_types()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_event_types.md)
-reports the event enum for this build. The current enum is returned by
-[`bebel_event_types()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_event_types.md)
-and includes stream lifecycle, thinking blocks, answer text blocks,
-tool-list blocks, tool-call blocks, and `done`. Delta events contain
-`delta`, `id`, and `index`; control start/end events include the
-delimiter token `id` and `marker`; end events contain accumulated
-`content`. Console printing is just the default event handler. Use
-`on_event = NULL` for silent batch generation.
-
-## webR / wasm
-
-`Rbebelm` builds the real Rust/savvy backend for webR as a static
-`wasm_simd128` backend. The wasm build uses a patched local copy of
-upstream BebeLM that avoids native-only `mmap` and Rayon imports on
-Emscripten: GGUF files are read from the webR filesystem into memory and
-matmul runs serially. If you mount or download a GGUF into the webR
-virtual filesystem,
-[`bebel_model_load()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_model_load.md)
-will attempt to load it. Very large models can still exhaust
-browser/webR memory.
-
-## Runtime backend dispatch
-
-`Rbebelm` installs one small R shared library plus separate Rust backend
-libraries. The R shared library owns registration and dispatch; model
-code lives in the selected backend library. The dispatcher checks CPU/OS
-support before loading SIMD backends, so a portable binary can avoid
-executing unsupported instructions.
-
-Backend selection happens once per R process. If you need to benchmark
-or debug a specific backend, call
-[`rbebelm_set_backend()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/rbebelm_set_backend.md)
-before the first native Rbebelm call in a fresh `Rscript` process:
-
-``` r
-
-rbebelm_set_backend("auto")
-```
-
-Inspect the current CPU/runtime and selected backend:
-
-``` r
-
-rbebelm_cpuid_info()
-rbebelm_backend_features()
-rbebelm_backend_info()
-```
-
-## Development
-
-Common development commands from the repository root. The
-`make vignettes` target uses `rawvignette`; install it with
-`remotes::install_github("matthewkling/rawvignette")` when editing
-`vignettes-raw/`.
-
-``` sh
-make rd           # regenerate savvy wrappers, dispatch init, NAMESPACE, and man/*.Rd
-make rdm          # regenerate README.md from evaluated README.Rmd
-make dev-install  # install the package locally from source
-make test         # run tinytest tests
-make check        # build and run R CMD check --no-manual
-make tui-check    # install, run Rust PTY check, and verify TUI PNG graphics preview
-make vignettes    # precompile vignettes-raw/ into vignettes/ with rawvignette
-make site         # build the pkgdown site
-make clean        # remove generated build artifacts
-
-cd tui && cargo check  # check the standalone ARF-inspired terminal frontend
-```
-
-`make tui-check` is the real frontend/device check. It uses a Rust PTY
-runner plus optional R packages `nanonext` and `later`. The target
-starts a fake Rbebelm loop with the normal `GET /stream` +
-`POST /command` protocol, launches the installed `rbebelm-tui` in a
-pseudo-terminal, submits `/rplot`, and checks that the TUI renders an
-`image/png` artifact plus a braille thumbnail. This gate covers behavior
-that `R CMD check` and `cargo check` cannot observe because they do not
-run an interactive terminal.
 
 # Package index
 
-## Model loading and generation
+## Model loading and tokenizer
 
 - [`bebel_model_load()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_model_load.md)
   : Load a BebeLM GGUF model
+- [`bebel_tokenize()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_tokenize.md)
+  : Tokenize text with a BebeLM model tokenizer
+- [`bebel_detokenize()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_detokenize.md)
+  : Decode BebeLM token ids
+- [`bebel_token_ids()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_token_ids.md)
+  : Return BebeLM tokenizer special token ids.
+- [`BebelModel`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelModel.md)
+  : Loaded BebeLM GGUF model.
+- [`BebelModelRef()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelModelRef.md)
+  : BebeLM model reference
+- [`BebelModelLoadOptions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelModelLoadOptions.md)
+  : Model loading options
+- [`BebelScalarText()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelScalarText.md)
+  : Scalar non-empty text
+
+## Embeddings
+
 - [`bebel_embed()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_embed.md)
   : Embed text with pooled BebeLM hidden states
+- [`BebelEmbeddingOptions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelEmbeddingOptions.md)
+  : Embedding options
+
+## Generation and agents
+
 - [`bebel_generate()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_generate.md)
   : Generate a raw continuation from a prompt
 - [`bebel_chat()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_chat.md)
   : Generate a single ChatML assistant reply
 - [`bebel_agent()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent.md)
   : Create a persistent BebeLM agent
+- [`bebel_agent_configure()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_configure.md)
+  : Configure a BebeLM agent
+- [`bebel_agent_info()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_info.md)
+  : Inspect a BebeLM agent
 - [`bebel_append()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_append.md)
   : Append raw text to a BebeLM agent transcript
 - [`bebel_append_system()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_append_system.md)
@@ -805,8 +388,51 @@ run an interactive terminal.
   : Generate and close an assistant ChatML turn from a BebeLM agent
 - [`bebel_assistant_turn_tool_stop()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_assistant_turn_tool_stop.md)
   : Open an assistant turn and stop when a tool call closes
-- [`bebel_agent_run()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_run.md)
-  : Run a BebeLM agent with R tool dispatch
+- [`bebel_clear()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_clear.md)
+  : Clear a BebeLM agent transcript and caches
+- [`bebel_history()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_history.md)
+  : Return a BebeLM agent token transcript
+- [`bebel_transcript()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_transcript.md)
+  : Decode a BebeLM agent transcript
+- [`BebelAgent`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelAgent.md)
+  : Persistent BebeLM conversation agent with transcript and decode
+  caches.
+- [`BebelAgentRef()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelAgentRef.md)
+  : BebeLM agent reference
+- [`BebelGenerationOptions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelGenerationOptions.md)
+  : Generation options
+- [`BebelAgentOptions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelAgentOptions.md)
+  : Agent construction options
+- [`BebelAgentConfigureOptions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelAgentConfigureOptions.md)
+  : Agent configuration update
+
+## Async jobs
+
+- [`bebel_generate_async()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_generate_async.md)
+  : Start a background raw generation job
+- [`bebel_chat_async()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_chat_async.md)
+  : Start a background ChatML assistant reply job
+- [`bebel_agent_generate_async()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_generate_async.md)
+  : Start a background raw agent generation job
+- [`bebel_assistant_turn_async()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_assistant_turn_async.md)
+  : Start a background assistant-turn job
+- [`bebel_assistant_turn_tool_stop_async()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_assistant_turn_tool_stop_async.md)
+  : Start a background assistant-turn job that stops on tool-call close
+- [`bebel_async_poll()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_async_poll.md)
+  : Poll a BebeLM async job
+- [`bebel_async_events()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_async_events.md)
+  : Drain queued BebeLM async job events
+- [`bebel_async_collect()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_async_collect.md)
+  : Collect a BebeLM async job result
+- [`BebelAsyncJob`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelAsyncJob.md)
+  : Background BebeLM generation job.
+- [`BebelAsyncJobRef()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelAsyncJobRef.md)
+  : BebeLM async job reference
+- [`BebelAsyncEventDrainOptions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelAsyncEventDrainOptions.md)
+  : Async event drain options
+
+## Tools and events
+
 - [`bebel_tool()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_tool.md)
   : Define a BebeLM R tool
 - [`bebel_tool_schema_json()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_tool_schema_json.md)
@@ -815,206 +441,18 @@ run an interactive terminal.
   : Parse a single BebeLM tool call block
 - [`bebel_parse_tool_calls()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_parse_tool_calls.md)
   : Parse BebeLM tool calls
-- [`bebel_agent_configure()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_configure.md)
-  : Configure a BebeLM agent
-- [`bebel_agent_info()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_info.md)
-  : Inspect a BebeLM agent
-- [`bebel_clear()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_clear.md)
-  : Clear a BebeLM agent transcript and caches
-- [`bebel_history()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_history.md)
-  : Return a BebeLM agent token transcript
-- [`bebel_transcript()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_transcript.md)
-  : Decode a BebeLM agent transcript
+- [`bebel_agent_run()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_run.md)
+  : Run a BebeLM agent with R tool dispatch
 - [`bebel_event_types()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_event_types.md)
   : Return BebeLM stream event types.
 - [`bebel_event_handler()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_event_handler.md)
   : Build a BebeLM generation event handler
-- [`bebel_console_event()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_console_event.md)
-  : Console event handler for generated text and thinking
-- [`bebel_tokenize()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_tokenize.md)
-  : Tokenize text with a BebeLM model tokenizer
-- [`bebel_detokenize()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_detokenize.md)
-  : Decode BebeLM token ids
-- [`bebel_token_ids()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_token_ids.md)
-  : Return BebeLM tokenizer special token ids.
-- [`bebel_live_console()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_live_console.md)
-  : Live terminal console for BebeLM chats
-- [`BebelModel`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelModel.md)
-  : Loaded BebeLM GGUF model.
-- [`BebelAgent`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelAgent.md)
-  : Persistent BebeLM conversation agent with transcript and decode
-  caches.
-
-## Generic agent and frontend framework
-
-- [`rbebelm_contracts`](https://sounkou-bioinfo.github.io/Rbebelm/reference/rbebelm_contracts.md)
-  : Rbebelm agent framework contracts
-- [`BebelAgentBackend`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelAgentBackend.md)
-  : BebeLM agent backend interface
-- [`BebelAgentExtension`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelAgentExtension.md)
-  : BebeLM agent extension interface
-- [`BebelSkillProvider`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelSkillProvider.md)
-  : BebeLM skill provider interface
-- [`BebelPromptTemplateProvider`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelPromptTemplateProvider.md)
-  : BebeLM prompt-template provider interface
-- [`bebel_backend_append_user()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_backend_append_user.md)
-  : Append a user message to an agent backend
-- [`bebel_backend_append_system()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_backend_append_system.md)
-  : Append a system message to an agent backend
-- [`bebel_backend_append_tool_result()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_backend_append_tool_result.md)
-  : Append a tool result to an agent backend
-- [`bebel_backend_assistant_turn()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_backend_assistant_turn.md)
-  : Run one assistant turn on an agent backend
-- [`bebel_backend_info()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_backend_info.md)
-  : Return agent backend information
-- [`bebel_backend_transcript()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_backend_transcript.md)
-  : Return agent backend transcript text
-- [`bebel_backend_clear()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_backend_clear.md)
-  : Clear an agent backend
-- [`bebel_agent_loop()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_loop.md)
-  : Create a stateful BebeLM agent loop
-- [`bebel_r_agent_loop()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_r_agent_loop.md)
-  : Create an agent loop from an R-native agent session
-- [`bebel_loop_policy()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_policy.md)
-  : Create an Agent-loop policy
-- [`bebel_loop_run()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_run.md)
-  : Run an agent loop
-- [`bebel_loop_step()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_step.md)
-  : Run one agent-loop assistant/tool step
-- [`bebel_loop_prompt()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_prompt.md)
-  : Prompt an agent loop
-- [`bebel_loop_steer()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_steer.md)
-  : Queue a steering message
-- [`bebel_loop_follow_up()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_follow_up.md)
-  : Queue a follow-up message
-- [`bebel_loop_state()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_state.md)
-  : Inspect agent-loop state
-- [`bebel_loop_events()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_events.md)
-  : Return agent-loop events
-- [`bebel_loop_extensions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_extensions.md)
-  : Return a loop's extension manifests
-- [`bebel_loop_catalog()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_catalog.md)
-  : Return a loop's frontend catalog
-- [`bebel_loop_register_extension()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_register_extension.md)
-  : Register extensions on a running loop
-- [`bebel_loop_unregister_extension()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_unregister_extension.md)
-  : Unregister an extension from a running loop
-- [`bebel_loop_command()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_command.md)
-  : Define an agent-loop command
-- [`bebel_loop_execute_command()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_execute_command.md)
-  : Execute a loop command
-- [`bebel_loop_cancel()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_cancel.md)
-  : Cancel an agent loop
-- [`bebel_loop_clear_queue()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_clear_queue.md)
-  : Clear queued steering and follow-up messages
-- [`bebel_loop_command_catalog()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_command_catalog.md)
-  : Return a loop's command catalog
-- [`bebel_loop_rpc_server()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_loop_rpc_server.md)
-  : Serve a generic Rbebelm agent loop over HTTP(S)
-- [`bebel_extension()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_extension.md)
-  : Define an agent-loop extension
-- [`bebel_extension_manifest()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_extension_manifest.md)
-  : Return an extension manifest
-- [`bebel_extension_tools()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_extension_tools.md)
-  : Return tools contributed by an extension
-- [`bebel_extension_commands()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_extension_commands.md)
-  : Return commands contributed by an extension
-- [`bebel_extension_hooks()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_extension_hooks.md)
-  : Return hooks contributed by an extension
-- [`bebel_extension_skill_providers()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_extension_skill_providers.md)
-  : Return skill providers contributed by an extension
-- [`bebel_extension_prompt_template_providers()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_extension_prompt_template_providers.md)
-  : Return prompt-template providers contributed by an extension
-- [`bebel_skill_provider()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_skill_provider.md)
-  : Create a skill provider
-- [`bebel_skill()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_skill.md)
-  : Define a framework skill
-- [`bebel_skill_list()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_skill_list.md)
-  : List available skills
-- [`bebel_skill_load()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_skill_load.md)
-  : Load a skill by name
-- [`bebel_prompt_template_provider()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_prompt_template_provider.md)
-  : Create a prompt-template provider
-- [`bebel_prompt_template()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_prompt_template.md)
-  : Define a prompt template
-- [`bebel_prompt_template_list()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_prompt_template_list.md)
-  : List prompt templates
-- [`bebel_prompt_template_render()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_prompt_template_render.md)
-  : Render a prompt template
-- [`bebel_system_prompt()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_system_prompt.md)
-  : Compose a system prompt from a prompt template and optional skills
-- [`bebel_append_system_prompt()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_append_system_prompt.md)
-  : Render and append a system prompt to an agent backend
-
-## Session trees and context
-
-- [`bebel_session_create()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_create.md)
-  : Create an agent session JSONL store
-- [`bebel_session_open()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_open.md)
-  : Open an agent session JSONL file
-- [`bebel_session_dir()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_dir.md)
-  : Agent session storage directory
-- [`bebel_session_header()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_header.md)
-  [`bebel_session_entries()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_header.md)
-  [`bebel_session_leaf_id()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_header.md)
-  [`bebel_session_file()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_header.md)
-  [`bebel_session_get_entry()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_header.md)
-  : Inspect agent session metadata
-- [`bebel_session_list()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_list.md)
-  : List agent session files
-- [`bebel_session_append_message()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_append_message.md)
-  : Append a message entry to an agent session
-- [`bebel_session_append_session_info()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_append_session_info.md)
-  [`bebel_session_append_custom()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_append_session_info.md)
-  [`bebel_session_append_custom_message()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_append_session_info.md)
-  : Append session metadata and extension entries
-- [`bebel_session_append_model_change()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_append_model_change.md)
-  [`bebel_session_append_thinking_level_change()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_append_model_change.md)
-  [`bebel_session_append_compaction()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_append_model_change.md)
-  [`bebel_session_append_branch_summary()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_append_model_change.md)
-  : Append model/thinking/compaction/branch metadata
-- [`bebel_session_append_label()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_append_label.md)
-  : Append or clear a label on a session entry
-- [`bebel_session_branch()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_branch.md)
-  : Return the branch from root to a session entry
-- [`bebel_session_checkout()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_checkout.md)
-  : Move the current session leaf
-- [`bebel_session_fork()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_fork.md)
-  [`bebel_session_clone_branch()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_fork.md)
-  : Fork an agent session file into a new session file
-- [`bebel_session_context()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_context.md)
-  : Build model context from the active session branch
-- [`bebel_session_tree()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_session_tree.md)
-  : Return an agent session tree
-
-## Native fuzzy file search
-
-- [`bebel_file_finder()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_file_finder.md)
-  [`bebel_file_search()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_file_finder.md)
-  : Create a native fuzzy file finder
-- [`BebelFileFinder`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelFileFinder.md)
-  : Persistent native FFF fuzzy file finder.
-
-## R-native agent layer
-
-- [`bebel_r_agent()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_r_agent.md)
-  : Create an R-native Rbebelm agent session
-- [`bebel_r_agent_turn()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_r_agent_turn.md)
-  : Run one user turn through an Rbebelm R agent
-- [`bebel_r_agent_console()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_r_agent_console.md)
-  : Start an interactive Rbebelm console agent
-- [`bebel_r_agent_start()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_r_agent_start.md)
-  : Launch an R-native Rbebelm console from weights
-- [`bebel_r_agent_rpc_server()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_r_agent_rpc_server.md)
-  : Serve an Rbebelm R agent over JSON-RPC
-- [`bebel_r_agent_clear()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_r_agent_clear.md)
-  : Clear an Rbebelm R agent session
-- [`bebel_default_r_tools()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_default_r_tools.md)
-  : Built-in R session tools for the Rbebelm agent layer
-- [`bebel_agent_tool()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_tool.md)
-  : Create an Rbebelm agent tool specification
-- [`bebel_agent_tool_catalog()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_tool_catalog.md)
-  : Describe an Rbebelm agent tool catalog
+- [`BebelToolSpec()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelToolSpec.md)
+  : R tool exposed to BebeLM
+- [`BebelToolRef()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelToolRef.md)
+  : BebeLM tool reference
+- [`BebelAgentRunOptions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelAgentRunOptions.md)
+  : Agent run options
 
 ## Backend dispatch and diagnostics
 
@@ -1040,15 +478,7 @@ run an interactive terminal.
   started](https://sounkou-bioinfo.github.io/Rbebelm/articles/getting-started.md):
 - [Agents and
   tools](https://sounkou-bioinfo.github.io/Rbebelm/articles/agents-and-tools.md):
-- [Generic agent and frontend
-  framework](https://sounkou-bioinfo.github.io/Rbebelm/articles/agent-framework.md):
-- [R-native agent
-  layer](https://sounkou-bioinfo.github.io/Rbebelm/articles/r-native-agent-layer.md):
-- [ARF-inspired TUI
-  module](https://sounkou-bioinfo.github.io/Rbebelm/articles/tui-module.md):
-- [Events and
-  adapters](https://sounkou-bioinfo.github.io/Rbebelm/articles/events-and-adapters.md):
 - [Backends and
   webR](https://sounkou-bioinfo.github.io/Rbebelm/articles/backend-and-webr.md):
-- [Model evaluation with
-  vitals](https://sounkou-bioinfo.github.io/Rbebelm/articles/model-claims-benchmark.md):
+- [Benchmark
+  harness](https://sounkou-bioinfo.github.io/Rbebelm/articles/model-claims-benchmark.md):

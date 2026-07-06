@@ -53,7 +53,8 @@ bebel_agent_run(
 
 - on_event:
 
-  Optional event callback or handler list for model events.
+  Optional event handler function or named handler list for model
+  events.
 
 - check_interrupt:
 

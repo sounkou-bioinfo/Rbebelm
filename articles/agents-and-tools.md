@@ -1,171 +1,164 @@
 # Agents and tools
 
-`Rbebelm` is organized around persistent agents. A `BebelAgent` keeps
-token history, generation settings, and decode caches across turns.
-Tools are layered on top of agents: the model emits a BebeLM tool-call
-block, R parses the call, runs the matching R function, appends the tool
-result, and continues generation.
-
-## Agent state
-
 ``` r
 
 library(Rbebelm)
-model <- bebel_model_load(Sys.getenv("BEBELM_WEIGHTS_FILE"), num_threads = 2)
-agent <- bebel_agent(model, greedy = TRUE, max_gen = 48, max_think = 16)
+weights_file <- Sys.getenv("BEBELM_WEIGHTS_FILE", "/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf")
+stopifnot(file.exists(weights_file))
+model <- bebel_model_load(weights_file, num_threads = 2)
+```
 
-bebel_append_user(agent, "Say exactly: Paris noted.")
-turn1 <- bebel_assistant_turn(agent, on_event = NULL)
+`BebelAgent` is the stateful unit: it owns transcript tokens and caches,
+while the loaded weights remain shared.
 
-bebel_append_user(agent, "Say exactly: second turn complete.")
-turn2 <- bebel_assistant_turn(agent, on_event = NULL)
+``` r
+
+agent <- bebel_agent(model, greedy = TRUE, max_gen = 16, max_think = 0)
+bebel_append_system(agent, "You are concise.")
+bebel_append_user(agent, "Say exactly: first turn.")
+first <- bebel_assistant_turn(agent, on_event = NULL)
+
+bebel_append_user(agent, "Say exactly: second turn.")
+second <- bebel_assistant_turn(agent, on_event = NULL)
+
+first
+```
+
+    ## <BebeLM assistant turn>
+    ##   stop: eos
+    ##   tokens: 9 generated; 24 prompt
+    ##   prefill: 14.6 tok/s
+    ##   decode: 9.95 tok/s
+    ##   text:
+    ## <STEP_2> first turn.
+
+``` r
+
+second
+```
+
+    ## <BebeLM assistant turn>
+    ##   stop: max_new
+    ##   tokens: 16 generated; 16 prompt
+    ##   prefill: 13.7 tok/s
+    ##   decode: 10.68 tok/s
+    ##   text:
+    ## <STEP_3> second turn.</think>
+    ## <STEP_2
+
+``` r
 
 bebel_agent_info(agent)[c("history_tokens", "processed_tokens", "kv_tokens")]
-
-# Direct methods are available on the agent object.
-length(agent$history())
-substr(agent$transcript(), 1, 80)
-
-# Helper functions provide the same operations.
-length(bebel_history(agent))
-substr(bebel_transcript(agent), 1, 80)
-
-# Reset the conversation while keeping the loaded weights and generation settings.
-agent$clear()[c("history_tokens", "processed_tokens", "kv_tokens")]
 ```
 
-Use
-[`bebel_append_system()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_append_system.md)
-for an upstream-rendered ChatML system turn. With no tools, the
-low-level
-[`bebel_append()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_append.md)
-form below is equivalent apart from being more explicit about the
-tokens. When `tools` are supplied, BebeLM renders its
-`List of tools: [...]` system preamble.
+    ## $history_tokens
+    ## [1] 67
+    ## 
+    ## $processed_tokens
+    ## [1] 64
+    ## 
+    ## $kv_tokens
+    ## [1] 64
 
 ``` r
 
-system_agent <- bebel_agent(model)
-bebel_append_system(system_agent, "You are concise.")
-bebel_transcript(system_agent)
-
-raw_system_agent <- bebel_agent(model)
-bebel_append(raw_system_agent, "<|im_start|>system\nYou are concise.<|im_end|>\n")
-identical(bebel_transcript(system_agent), bebel_transcript(raw_system_agent))
-
-raw_agent <- bebel_agent(model, greedy = TRUE, max_gen = 16, max_think = 0)
-bebel_append(raw_agent, "The capital of Mali is")
-raw_turn <- bebel_agent_generate(raw_agent, on_event = NULL)
-raw_turn[c("stop", "generated_tokens")]
-
-ids <- bebel_tokenize(model, " and Italy is", add_bos = FALSE)
-bebel_append_tokens(raw_agent, ids)
-bebel_history(raw_agent)[1:8]
+substr(bebel_transcript(agent), 1, 160)
 ```
 
-## Tool definitions
+    ## [1] "<|startoftext|><|im_start|>system\nYou are concise.<|im_end|>\n<|im_start|>user\nSay exactly: first turn.<|im_end|>\n<|im_start|>assistant\n<STEP_2> first turn.<|im_"
 
-A tool is an R function plus metadata. The `context` environment is
-private to R and is not appended to the model transcript.
+Tools are S7 objects with a name, an R function, optional description,
+and optional schema. Tool-call parsing is delegated to upstream BebeLM
+for the bracketed call format.
 
 ``` r
 
-library(Rbebelm)
-ctx <- new.env(parent = emptyenv())
-ctx$thread_id <- "thread-001"
-ctx$log <- character()
-
-tools <- list(
-  lookup_capital = bebel_tool(
-    "lookup_capital",
-    function(args, context, call) {
-      context$log <- c(context$log, paste("tool", call$name, args$country))
-      c(Mali = "Bamako", Italy = "Rome")[[args$country]]
-    },
-    description = "Return a capital city for a country."
+lookup_capital <- bebel_tool(
+  "lookup_capital",
+  function(args, context, call) {
+    context$calls <- c(context$calls, paste(call$name, args$country))
+    c(Mali = "Bamako", Italy = "Rome")[[args$country]]
+  },
+  description = "Return a capital city.",
+  schema = list(
+    properties = list(country = list(type = "string")),
+    required = list("country")
   )
 )
 
-tools$lookup_capital
-#> <bebelTool> lookup_capital
-#>   Return a capital city for a country.
+lookup_capital
 ```
 
-The default parser delegates BebeLM’s bracketed Pythonic tool-call form
-to upstream, including multiple calls. JSON object calls and legacy
-`name({...})` compatibility are parsed with imported `yyjsonr`.
+    ## <BebelToolSpec> lookup_capital
+    ##   Return a capital city.
 
 ``` r
 
-bebel_parse_tool_call('[lookup_capital(country="Italy")]')
-#> $name
-#> [1] "lookup_capital"
-#>
-#> $arguments
-#> $arguments$country
-#> [1] "Italy"
-#>
-#>
-#> $raw
-#> [1] "lookup_capital(country=\"Italy\")"
-bebel_parse_tool_calls('[lookup_capital(country="Mali"), lookup_capital(country="Italy")]')
-#> [[1]]
-#> [[1]]$name
-#> [1] "lookup_capital"
-#>
-#> [[1]]$arguments
-#> [[1]]$arguments$country
-#> [1] "Mali"
-#>
-#>
-#> [[1]]$raw
-#> [1] "lookup_capital(country=\"Mali\")"
-#>
-#>
-#> [[2]]
-#> [[2]]$name
-#> [1] "lookup_capital"
-#>
-#> [[2]]$arguments
-#> [[2]]$arguments$country
-#> [1] "Italy"
-#>
-#>
-#> [[2]]$raw
-#> [1] "lookup_capital(country=\"Italy\")"
+bebel_tool_schema_json(lookup_capital)
 ```
 
-## Run a tool loop
+    ## [1] "{\"name\":\"lookup_capital\",\"description\":\"Return a capital city.\",\"parameters\":{\"properties\":{\"country\":{\"type\":\"string\"}},\"required\":[\"country\"],\"type\":\"object\"}}"
+
+``` r
+
+ctx <- new.env(parent = emptyenv())
+ctx$calls <- character()
+call <- bebel_parse_tool_call('[lookup_capital(country="Italy")]')
+Rbebelm:::invoke_bebel_tool(lookup_capital, call, ctx)
+```
+
+    ## [1] "Rome"
+
+``` r
+
+ctx$calls
+```
+
+    ## [1] "lookup_capital Italy"
 
 [`bebel_agent_run()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_run.md)
-dispatches tools only when generation emits a BebeLM `tool_call_end`
-event. The prompt below asks directly for the tool-call form so the
-example exercises the dispatch path.
+wires event collection, parsing, R tool invocation, and tool result
+appending. It runs tools only when the generated turn contains a
+tool-call block.
 
 ``` r
 
 hooks <- list(
   tool_request = function(call, context, ...) {
-    context$log <- c(context$log, paste("request", call$name))
+    context$calls <- c(context$calls, paste("request", call$name))
   },
   tool_result = function(call, result, context, ...) {
-    context$log <- c(context$log, paste("result", call$name, result))
+    context$calls <- c(context$calls, paste("result", result))
   }
 )
 
-tool_prompt <- paste(
-  "Return exactly this tool call and no other text:",
-  "lookup_capital({\"country\":\"Italy\"})"
+runner <- bebel_agent(model, greedy = TRUE, max_gen = 48, max_think = 0)
+bebel_append_user(runner, "Answer with exactly this tool call: [lookup_capital(country=\"Mali\")]")
+run <- bebel_agent_run(
+  runner,
+  tools = list(lookup_capital),
+  context = ctx,
+  hooks = hooks,
+  max_steps = 2,
+  on_event = NULL
 )
 
-agent <- bebel_agent(model, greedy = TRUE, max_gen = 64, max_think = 0)
-bebel_append_user(agent, tool_prompt)
-run <- bebel_agent_run(agent, tools = tools, context = ctx, hooks = hooks, max_steps = 2)
-
-length(run$tool_calls)
-ctx$log
+length(run$turns)
 ```
 
-If a model uses a different tool-call format, pass a custom
-`parse_tool_call` function to
-[`bebel_agent_run()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_run.md).
+    ## [1] 2
+
+``` r
+
+length(run$tool_calls)
+```
+
+    ## [1] 1
+
+``` r
+
+ctx$calls
+```
+
+    ## [1] "lookup_capital Italy"   "request lookup_capital" "lookup_capital Mali"   
+    ## [4] "result Bamako"

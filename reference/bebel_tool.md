@@ -26,8 +26,8 @@ bebel_tool(name, fun, description = NULL, schema = NULL)
 
 - schema:
 
-  Optional schema/metadata object for prompts or adapters.
+  Optional JSON-schema-like list or JSON string.
 
 ## Value
 
-A `bebelTool` object.
+A `BebelToolSpec` object.

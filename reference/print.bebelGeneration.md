@@ -14,9 +14,10 @@ print(x, ...)
 - x:
 
   A result returned by
-  [`bebel_generate()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_generate.md)
+  [`bebel_generate()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_generate.md),
+  [`bebel_chat()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_chat.md),
   or
-  [`bebel_chat()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_chat.md).
+  [`bebel_async_collect()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_async_collect.md).
 
 - ...:
 

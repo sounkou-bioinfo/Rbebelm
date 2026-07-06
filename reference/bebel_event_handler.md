@@ -1,7 +1,8 @@
 # Build a BebeLM generation event handler
 
-`bebel_event_handler()` creates a single `on_event` callback from
-handlers for individual event types. Current event types are returned by
+`bebel_event_handler()` creates a single `on_event` handler function
+from handlers for individual event types. Current event types are
+returned by
 [`bebel_event_types()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_event_types.md).
 
 ## Usage

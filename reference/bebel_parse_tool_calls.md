@@ -1,8 +1,8 @@
 # Parse BebeLM tool calls
 
-Delegates Pythonic BebeLM tool-call parsing (`[name(arg='value')]`,
-including multiple calls) to upstream BebeLM. JSON call objects and
-legacy `name({...})` calls are parsed with imported package `yyjsonr`.
+Delegates Pythonic BebeLM tool-call parsing (`[name(arg='value')]`) to
+upstream BebeLM. JSON call objects and legacy `name({...})` calls are
+parsed with imported package `yyjsonr`.
 
 ## Usage
 
