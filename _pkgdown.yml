@@ -11,6 +11,7 @@ reference:
   - title: Model loading and generation
     contents:
       - bebel_model_load
+      - bebel_embed
       - bebel_generate
       - bebel_chat
       - bebel_agent
@@ -66,11 +67,15 @@ reference:
       - bebel_loop_state
       - bebel_loop_events
       - bebel_loop_extensions
+      - bebel_loop_catalog
+      - bebel_loop_register_extension
+      - bebel_loop_unregister_extension
       - bebel_loop_command
       - bebel_loop_execute_command
       - bebel_loop_cancel
       - bebel_loop_clear_queue
       - bebel_loop_command_catalog
+      - bebel_loop_rpc_server
       - bebel_extension
       - bebel_extension_manifest
       - bebel_extension_tools
