@@ -1,6 +1,5 @@
 TARGET_DIR = $(if $(RBEBELM_CARGO_TARGET_DIR),$(RBEBELM_CARGO_TARGET_DIR),$(CURDIR)/../../rbebelm-rust-target)
 BACKEND_DIR = rbebelm-backends
-TOOL_DIR = rbebelm-tools
 RUST_STAMP = rbebelm-build.stamp
 PKG_LIBS =
 OBJECTS = init.o rbebelm_backend.o
@@ -40,7 +39,7 @@ $(RUST_STAMP):
 	RUSTFLAGS_BASE="$${RBEBELM_UNSAFE_RUSTFLAGS:-}"; \
 	X86_64_BASELINE_RUSTFLAGS="-C target-cpu=x86-64 -C target-feature=-avx,-avx2,-avx512f,-avx512bw,-avx512cd,-avx512dq,-avx512vl,-fma,-bmi1,-bmi2,-sse3,-ssse3,-sse4.1,-sse4.2,-popcnt,-lzcnt"; \
 	BUILD_BACKENDS="scalar,avx2,avx512"; \
-	mkdir -p "$(BACKEND_DIR)" "$(TOOL_DIR)" "$(TARGET_DIR)"; \
+	mkdir -p "$(BACKEND_DIR)" "$(TARGET_DIR)"; \
 	LIBGCC_MOCK_DIR="$(TARGET_DIR)/libgcc_mock"; \
 	mkdir -p "$$LIBGCC_MOCK_DIR"; \
 	if command -v x86_64-w64-mingw32.static.posix-ar.exe >/dev/null 2>&1; then \
@@ -77,13 +76,7 @@ $(RUST_STAMP):
 		IFS=','; \
 	done; \
 	IFS="$$old_ifs"; \
-	tui_target_dir="$(TARGET_DIR)/tui"; \
-	echo "=== Building Rbebelm Rust tool: rbebelm-tui for $$RUST_TARGET ==="; \
-	env "$$RUSTFLAGS_ENV=$$RUSTFLAGS_BASE $$X86_64_BASELINE_RUSTFLAGS $$DYLIB_RUSTFLAGS" $(CARGO) build $$CARGO_FLAGS --no-default-features --features tui-bin $$CARGO_TARGET_FLAG --bin rbebelm-tui --release --manifest-path=./rust/Cargo.toml --target-dir="$$tui_target_dir"; \
-	tui_bin="$$tui_target_dir/$$RUST_TARGET/release/rbebelm-tui$$BIN_EXT"; \
-	if [ ! -f "$$tui_bin" ]; then echo "ERROR: rbebelm-tui binary not found at $$tui_bin" >&2; exit 1; fi; \
-	cp "$$tui_bin" "$(TOOL_DIR)/rbebelm-tui$$BIN_EXT"; \
 	touch "$(RUST_STAMP)"
 
 clean:
-	rm -Rf $(SHLIB) $(OBJECTS) $(RUST_STAMP) $(BACKEND_DIR) $(TOOL_DIR) $(TARGET_DIR) .cargo vendor
+	rm -Rf $(SHLIB) $(OBJECTS) $(RUST_STAMP) $(BACKEND_DIR) $(TARGET_DIR) .cargo vendor

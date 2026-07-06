@@ -49,7 +49,7 @@ tool <- bebel_tool("echo", function(args, context, call) {
   context$log <- c(context$log, call$name)
   args
 })
-expect_true(inherits(tool, "bebelTool"))
+expect_true(S7::S7_inherits(tool, BebelToolSpec))
 out <- Rbebelm:::invoke_bebel_tool(tool, list(name = "echo", arguments = list(x = 1)), ctx)
 expect_equal(out$x, 1)
 expect_equal(ctx$log, "echo")
@@ -57,3 +57,15 @@ expect_equal(ctx$log, "echo")
 seen <- character()
 Rbebelm:::call_bebel_hook(list(tool_request = function(call, ...) seen <<- call$name), "tool_request", call = list(name = "echo"))
 expect_equal(seen, "echo")
+
+expect_error(BebelScalarText(value = ""))
+expect_error(BebelGenerationOptions(
+  greedy = TRUE,
+  check_interrupt = TRUE,
+  max_gen = -1,
+  max_context = NULL,
+  max_think = NULL,
+  temperature = NULL,
+  top_k = NULL,
+  repeat_penalty = NULL
+))

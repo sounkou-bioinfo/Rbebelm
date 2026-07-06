@@ -1,8 +1,12 @@
+`%||%` <- function(x, y) {
+  if (is.null(x)) y else x
+}
+
 #' Select the Rbebelm native backend
 #'
 #' Must be called before loading a model or querying backend features.
 #'
-#' @param backend One of `"auto"`, `"scalar"`, `"avx2"`, `"avx512"`, or `"neon"`.
+#' @param backend One of `"auto"`, `"scalar"`, `"avx2"`, `"avx512"`, `"neon"`, or `"wasm_simd128"`.
 #' @return The requested backend name.
 #' @export
 rbebelm_set_backend <- function(backend = "auto") {
@@ -73,11 +77,8 @@ print.rbebelmBackendFeatures <- function(x, ...) {
   cat("    NEON: ", format_bebel_yes_no(x$compiled_neon), "\n", sep = "")
   cat("    ARM dotprod: ", format_bebel_yes_no(x$compiled_dotprod), "\n", sep = "")
   cat("    wasm simd128: ", format_bebel_yes_no(x$compiled_wasm_simd128), "\n", sep = "")
+  cat("  model storage: ", x$model_storage, "\n", sep = "")
   invisible(x)
-}
-
-bebel_numeric_or_null <- function(x) {
-  if (is.null(x)) NULL else as.numeric(x)
 }
 
 #' Load a BebeLM GGUF model
@@ -87,7 +88,14 @@ bebel_numeric_or_null <- function(x) {
 #' @return A `BebelModel` object.
 #' @export
 bebel_model_load <- function(path, num_threads = NULL) {
-  BebelModel$load(path, num_threads = bebel_numeric_or_null(num_threads))
+  options <- BebelModelLoadOptions(
+    path = path,
+    num_threads = if (is.null(num_threads)) NULL else as.numeric(num_threads)
+  )
+  BebelModel$load(
+    S7::prop(options, "path"),
+    num_threads = S7::prop(options, "num_threads")
+  )
 }
 
 #' Tokenize text with a BebeLM model tokenizer
@@ -98,10 +106,10 @@ bebel_model_load <- function(path, num_threads = NULL) {
 #' @return Integer token ids.
 #' @export
 bebel_tokenize <- function(model, text, add_bos = TRUE) {
-  if (!inherits(model, "BebelModel")) {
-    stop("model must be a BebelModel", call. = FALSE)
-  }
-  model$encode(text, add_bos = add_bos)
+  model <- S7::prop(BebelModelRef(value = list(model)), "value")[[1L]]
+  text <- S7::prop(BebelScalarText(value = text), "value")
+  options <- BebelEmbeddingOptions(add_bos = isTRUE(add_bos), normalize = TRUE, pooling = "mean")
+  model$encode(text, add_bos = S7::prop(options, "add_bos"))
 }
 
 #' Decode BebeLM token ids
@@ -111,9 +119,7 @@ bebel_tokenize <- function(model, text, add_bos = TRUE) {
 #' @return Decoded text.
 #' @export
 bebel_detokenize <- function(model, ids) {
-  if (!inherits(model, "BebelModel")) {
-    stop("model must be a BebelModel", call. = FALSE)
-  }
+  model <- S7::prop(BebelModelRef(value = list(model)), "value")[[1L]]
   model$decode(as.integer(ids))
 }
 
@@ -127,15 +133,22 @@ bebel_detokenize <- function(model, ids) {
 #' @return A numeric matrix with one row per input text.
 #' @export
 bebel_embed <- function(model, text, add_bos = TRUE, normalize = TRUE, pooling = c("mean", "last")) {
-  if (!inherits(model, "BebelModel")) {
-    stop("model must be a BebelModel", call. = FALSE)
-  }
+  model <- S7::prop(BebelModelRef(value = list(model)), "value")[[1L]]
   if (!is.character(text) || anyNA(text)) {
-    stop("text must be a character vector without NA", call. = FALSE)
+    stop("`text` must be a character vector without NA.", call. = FALSE)
   }
-  pooling <- match.arg(pooling)
+  options <- BebelEmbeddingOptions(
+    add_bos = isTRUE(add_bos),
+    normalize = isTRUE(normalize),
+    pooling = match.arg(pooling)
+  )
   rows <- lapply(text, function(one) {
-    model$embed(one, add_bos = add_bos, normalize = normalize, pooling = pooling)
+    model$embed(
+      one,
+      add_bos = S7::prop(options, "add_bos"),
+      normalize = S7::prop(options, "normalize"),
+      pooling = S7::prop(options, "pooling")
+    )
   })
   if (!length(rows)) {
     return(matrix(numeric(), nrow = 0L, ncol = 0L))
@@ -148,7 +161,7 @@ bebel_embed <- function(model, text, add_bos = TRUE, normalize = TRUE, pooling =
 #' Create a persistent BebeLM agent
 #'
 #' A `BebelAgent` owns an independent token transcript and decode cache while
-#' sharing the loaded model weights. This mirrors upstream `bebelm::agent::Agent`.
+#' sharing the loaded model weights through Rust `Arc<Model>`.
 #'
 #' @inheritParams bebel_generate
 #' @return A `BebelAgent` object.
@@ -163,26 +176,26 @@ bebel_agent <- function(
   top_k = NULL,
   repeat_penalty = NULL
 ) {
-  if (!inherits(model, "BebelModel")) {
-    stop("model must be a BebelModel", call. = FALSE)
-  }
+  model <- S7::prop(BebelModelRef(value = list(model)), "value")[[1L]]
+  options <- BebelAgentOptions(
+    greedy = isTRUE(greedy),
+    max_gen = if (is.null(max_gen)) NULL else as.numeric(max_gen),
+    max_context = if (is.null(max_context)) NULL else as.numeric(max_context),
+    max_think = if (is.null(max_think)) NULL else as.numeric(max_think),
+    temperature = if (is.null(temperature)) NULL else as.numeric(temperature),
+    top_k = if (is.null(top_k)) NULL else as.numeric(top_k),
+    repeat_penalty = if (is.null(repeat_penalty)) NULL else as.numeric(repeat_penalty)
+  )
   BebelAgent$new(
     model = model,
-    greedy = greedy,
-    max_gen = bebel_numeric_or_null(max_gen),
-    max_context = bebel_numeric_or_null(max_context),
-    max_think = bebel_numeric_or_null(max_think),
-    temperature = bebel_numeric_or_null(temperature),
-    top_k = bebel_numeric_or_null(top_k),
-    repeat_penalty = bebel_numeric_or_null(repeat_penalty)
+    greedy = S7::prop(options, "greedy"),
+    max_gen = S7::prop(options, "max_gen"),
+    max_context = S7::prop(options, "max_context"),
+    max_think = S7::prop(options, "max_think"),
+    temperature = S7::prop(options, "temperature"),
+    top_k = S7::prop(options, "top_k"),
+    repeat_penalty = S7::prop(options, "repeat_penalty")
   )
-}
-
-check_bebel_agent <- function(agent) {
-  if (!inherits(agent, "BebelAgent")) {
-    stop("agent must be a BebelAgent", call. = FALSE)
-  }
-  invisible(agent)
 }
 
 #' Inspect a BebeLM agent
@@ -191,7 +204,7 @@ check_bebel_agent <- function(agent) {
 #' @return Named list of state and configuration.
 #' @export
 bebel_agent_info <- function(agent) {
-  check_bebel_agent(agent)
+  agent <- S7::prop(BebelAgentRef(value = list(agent)), "value")[[1L]]
   agent$info()
 }
 
@@ -211,15 +224,24 @@ bebel_agent_configure <- function(
   top_k = NULL,
   repeat_penalty = NULL
 ) {
-  check_bebel_agent(agent)
+  agent <- S7::prop(BebelAgentRef(value = list(agent)), "value")[[1L]]
+  options <- BebelAgentConfigureOptions(
+    greedy = if (is.null(greedy)) NULL else isTRUE(greedy),
+    max_gen = if (is.null(max_gen)) NULL else as.numeric(max_gen),
+    max_context = if (is.null(max_context)) NULL else as.numeric(max_context),
+    max_think = if (is.null(max_think)) NULL else as.numeric(max_think),
+    temperature = if (is.null(temperature)) NULL else as.numeric(temperature),
+    top_k = if (is.null(top_k)) NULL else as.numeric(top_k),
+    repeat_penalty = if (is.null(repeat_penalty)) NULL else as.numeric(repeat_penalty)
+  )
   agent$configure(
-    greedy = greedy,
-    max_gen = bebel_numeric_or_null(max_gen),
-    max_context = bebel_numeric_or_null(max_context),
-    max_think = bebel_numeric_or_null(max_think),
-    temperature = bebel_numeric_or_null(temperature),
-    top_k = bebel_numeric_or_null(top_k),
-    repeat_penalty = bebel_numeric_or_null(repeat_penalty)
+    greedy = S7::prop(options, "greedy"),
+    max_gen = S7::prop(options, "max_gen"),
+    max_context = S7::prop(options, "max_context"),
+    max_think = S7::prop(options, "max_think"),
+    temperature = S7::prop(options, "temperature"),
+    top_k = S7::prop(options, "top_k"),
+    repeat_penalty = S7::prop(options, "repeat_penalty")
   )
 }
 
@@ -230,7 +252,8 @@ bebel_agent_configure <- function(
 #' @return Invisibly returns `agent`.
 #' @export
 bebel_append <- function(agent, text) {
-  check_bebel_agent(agent)
+  agent <- S7::prop(BebelAgentRef(value = list(agent)), "value")[[1L]]
+  text <- S7::prop(BebelScalarText(value = text), "value")
   agent$append(text)
   invisible(agent)
 }
@@ -247,7 +270,8 @@ bebel_append <- function(agent, text) {
 #' @return Invisibly returns `agent`.
 #' @export
 bebel_append_system <- function(agent, message, tools = NULL) {
-  check_bebel_agent(agent)
+  agent <- S7::prop(BebelAgentRef(value = list(agent)), "value")[[1L]]
+  message <- S7::prop(BebelScalarText(value = message), "value")
   tools <- normalize_bebel_tools(tools)
   if (length(tools)) {
     schemas <- vapply(tools, bebel_tool_schema_json, character(1))
@@ -265,7 +289,8 @@ bebel_append_system <- function(agent, message, tools = NULL) {
 #' @return Invisibly returns `agent`.
 #' @export
 bebel_append_user <- function(agent, message) {
-  check_bebel_agent(agent)
+  agent <- S7::prop(BebelAgentRef(value = list(agent)), "value")[[1L]]
+  message <- S7::prop(BebelScalarText(value = message), "value")
   agent$append_user(message)
   invisible(agent)
 }
@@ -277,8 +302,20 @@ bebel_append_user <- function(agent, message) {
 #' @return Invisibly returns `agent`.
 #' @export
 bebel_append_tokens <- function(agent, ids) {
-  check_bebel_agent(agent)
+  agent <- S7::prop(BebelAgentRef(value = list(agent)), "value")[[1L]]
   agent$append_tokens(as.integer(ids))
+  invisible(agent)
+}
+
+#' Append a ChatML tool result turn to a BebeLM agent transcript
+#'
+#' @param agent A `BebelAgent` object.
+#' @param content Tool result content to append.
+#' @return Invisibly returns `agent`.
+#' @export
+bebel_append_tool_result <- function(agent, content) {
+  agent <- S7::prop(BebelAgentRef(value = list(agent)), "value")[[1L]]
+  agent$append_tool_result(as.character(content)[1])
   invisible(agent)
 }
 
@@ -288,24 +325,25 @@ bebel_append_tokens <- function(agent, ids) {
 #' @inheritParams bebel_generate
 #' @return A classed generation result.
 #' @export
-bebel_agent_generate <- function(agent, on_event = bebel_console_event(), check_interrupt = TRUE) {
-  check_bebel_agent(agent)
+bebel_agent_generate <- function(agent, on_event = NULL, check_interrupt = TRUE) {
+  agent <- S7::prop(BebelAgentRef(value = list(agent)), "value")[[1L]]
   on_event <- normalize_bebel_on_event(on_event)
-  out <- agent$generate(check_interrupt = check_interrupt, on_event = on_event)
+  options <- BebelAgentRunOptions(max_steps = 1, check_interrupt = isTRUE(check_interrupt))
+  out <- agent$generate(check_interrupt = S7::prop(options, "check_interrupt"), on_event = on_event)
   class(out) <- c("bebelAgentGenerateResult", "bebelGeneration", class(out))
   out
 }
 
 #' Generate and close an assistant ChatML turn from a BebeLM agent
 #'
-#' @param agent A `BebelAgent` object.
-#' @inheritParams bebel_generate
+#' @inheritParams bebel_agent_generate
 #' @return A classed generation result.
 #' @export
-bebel_assistant_turn <- function(agent, on_event = bebel_console_event(), check_interrupt = TRUE) {
-  check_bebel_agent(agent)
+bebel_assistant_turn <- function(agent, on_event = NULL, check_interrupt = TRUE) {
+  agent <- S7::prop(BebelAgentRef(value = list(agent)), "value")[[1L]]
   on_event <- normalize_bebel_on_event(on_event)
-  out <- agent$assistant_turn(check_interrupt = check_interrupt, on_event = on_event)
+  options <- BebelAgentRunOptions(max_steps = 1, check_interrupt = isTRUE(check_interrupt))
+  out <- agent$assistant_turn(check_interrupt = S7::prop(options, "check_interrupt"), on_event = on_event)
   class(out) <- c("bebelAssistantTurnResult", "bebelGeneration", class(out))
   out
 }
@@ -314,16 +352,16 @@ bebel_assistant_turn <- function(agent, on_event = bebel_console_event(), check_
 #'
 #' This low-level variant mirrors upstream BebeLM's tool driver stop semantics:
 #' generation stops with `stop == "tool_call"` after `<|tool_call_end|>` so the
-#' caller can execute the requested tool(s) and append one tool-result turn.
-#' Most users should prefer [bebel_agent_run()].
+#' caller can execute the requested tool and append one tool-result turn.
 #'
 #' @inheritParams bebel_assistant_turn
 #' @return A `bebelAssistantTurnResult` list.
 #' @export
-bebel_assistant_turn_tool_stop <- function(agent, on_event = bebel_console_event(), check_interrupt = TRUE) {
-  check_bebel_agent(agent)
+bebel_assistant_turn_tool_stop <- function(agent, on_event = NULL, check_interrupt = TRUE) {
+  agent <- S7::prop(BebelAgentRef(value = list(agent)), "value")[[1L]]
   on_event <- normalize_bebel_on_event(on_event)
-  out <- agent$assistant_turn_tool_stop(check_interrupt = check_interrupt, on_event = on_event)
+  options <- BebelAgentRunOptions(max_steps = 1, check_interrupt = isTRUE(check_interrupt))
+  out <- agent$assistant_turn_tool_stop(check_interrupt = S7::prop(options, "check_interrupt"), on_event = on_event)
   class(out) <- c("bebelAssistantTurnResult", "bebelGeneration", class(out))
   out
 }
@@ -331,53 +369,34 @@ bebel_assistant_turn_tool_stop <- function(agent, on_event = bebel_console_event
 #' Clear a BebeLM agent transcript and caches
 #'
 #' Clears the conversation state while keeping the loaded model weights and the
-#' agent's generation configuration. This is the helper form of `agent$clear()`.
+#' agent's generation configuration.
 #'
 #' @param agent A `BebelAgent` object.
 #' @return Updated agent info.
 #' @export
 bebel_clear <- function(agent) {
-  check_bebel_agent(agent)
+  agent <- S7::prop(BebelAgentRef(value = list(agent)), "value")[[1L]]
   agent$clear()
 }
 
 #' Return a BebeLM agent token transcript
 #'
-#' Returns the full token transcript currently held by the agent. This is the
-#' helper form of `agent$history()`.
-#'
 #' @param agent A `BebelAgent` object.
 #' @return Integer token ids.
 #' @export
 bebel_history <- function(agent) {
-  check_bebel_agent(agent)
+  agent <- S7::prop(BebelAgentRef(value = list(agent)), "value")[[1L]]
   agent$history()
 }
 
 #' Decode a BebeLM agent transcript
 #'
-#' Decodes the agent's full token transcript. This is the helper form of
-#' `agent$transcript()`.
-#'
 #' @param agent A `BebelAgent` object.
 #' @return Transcript text.
 #' @export
 bebel_transcript <- function(agent) {
-  check_bebel_agent(agent)
+  agent <- S7::prop(BebelAgentRef(value = list(agent)), "value")[[1L]]
   agent$transcript()
-}
-
-
-#' Append a ChatML tool result turn to a BebeLM agent transcript
-#'
-#' @param agent A `BebelAgent` object.
-#' @param content Tool result content to append.
-#' @return Invisibly returns `agent`.
-#' @export
-bebel_append_tool_result <- function(agent, content) {
-  check_bebel_agent(agent)
-  agent$append_tool_result(as.character(content)[1])
-  invisible(agent)
 }
 
 #' Define a BebeLM R tool
@@ -386,44 +405,41 @@ bebel_append_tool_result <- function(agent, content) {
 #' @param fun Function to run. It is called as `fun(args = ..., context = ..., call = ...)`
 #'   when it accepts those names, otherwise with progressively simpler fallbacks.
 #' @param description Optional human-readable description.
-#' @param schema Optional schema/metadata object for prompts or adapters.
-#' @return A `bebelTool` object.
+#' @param schema Optional JSON-schema-like list or JSON string.
+#' @return A `BebelToolSpec` object.
 #' @export
 bebel_tool <- function(name, fun, description = NULL, schema = NULL) {
-  if (!is.character(name) || length(name) != 1L || !nzchar(name)) {
-    stop("tool name must be a single non-empty string", call. = FALSE)
-  }
-  if (!is.function(fun)) {
-    stop("tool fun must be a function", call. = FALSE)
-  }
-  structure(
-    list(name = name, fun = fun, description = description, schema = schema),
-    class = "bebelTool"
-  )
+  BebelToolSpec(name = name, fun = fun, description = description, schema = schema)
 }
 
 #' @export
-print.bebelTool <- function(x, ...) {
-  cat("<bebelTool> ", x$name, "\n", sep = "")
-  if (!is.null(x$description)) cat("  ", x$description, "\n", sep = "")
+print.BebelToolSpec <- function(x, ...) {
+  cat("<BebelToolSpec> ", S7::prop(x, "name"), "\n", sep = "")
+  description <- S7::prop(x, "description")
+  if (!is.null(description)) cat("  ", description, "\n", sep = "")
   invisible(x)
 }
 
+#' @export
+`print.Rbebelm::BebelToolSpec` <- print.BebelToolSpec
+
 normalize_bebel_tools <- function(tools) {
   if (is.null(tools)) return(list())
-  if (inherits(tools, "bebelTool")) tools <- list(tools)
-  if (!is.list(tools)) stop("tools must be a list of bebelTool objects or functions", call. = FALSE)
+  if (S7::S7_inherits(tools, BebelToolSpec)) tools <- list(tools)
+  if (!is.list(tools)) stop("`tools` must be a list of BebelToolSpec objects or functions.", call. = FALSE)
+
   out <- list()
+  nms <- names(tools)
   for (i in seq_along(tools)) {
     tool <- tools[[i]]
-    if (inherits(tool, "bebelTool")) {
-      name <- tool$name
+    if (S7::S7_inherits(tool, BebelToolSpec)) {
+      name <- S7::prop(tool, "name")
     } else if (is.function(tool)) {
-      name <- names(tools)[i]
-      if (is.null(name) || !nzchar(name)) stop("function tools must be named", call. = FALSE)
+      name <- if (is.null(nms)) "" else nms[[i]]
+      if (is.null(name) || !nzchar(name)) stop("function tools must be named.", call. = FALSE)
       tool <- bebel_tool(name, tool)
     } else {
-      stop("tools must contain bebelTool objects or functions", call. = FALSE)
+      stop("`tools` must contain BebelToolSpec objects or functions.", call. = FALSE)
     }
     out[[name]] <- tool
   }
@@ -456,7 +472,7 @@ bebel_json_string_array <- function(x) {
 
 normalize_bebel_tool_schema_json <- function(schema) {
   if (is.null(schema)) schema <- list()
-  if (!is.list(schema)) stop("tool schema must be a list or JSON string", call. = FALSE)
+  if (!is.list(schema)) stop("tool schema must be a list or JSON string.", call. = FALSE)
   if (is.null(schema$type)) schema$type <- "object"
   if (is.null(schema$properties)) schema$properties <- stats::setNames(list(), character())
   if (is.null(schema$required)) schema$required <- list()
@@ -467,23 +483,24 @@ normalize_bebel_tool_schema_json <- function(schema) {
 #' Render a BebeLM tool schema
 #'
 #' Converts an R [bebel_tool()] declaration into BebeLM's JSON tool schema string
-#' for the system `List of tools: [...]` preamble using `yyjsonr`. This is
-#' normally called by [bebel_append_system()] when `tools` are supplied.
+#' for the system `List of tools: [...]` preamble.
 #'
-#' @param tool A `bebelTool` object created by [bebel_tool()].
+#' @param tool A `BebelToolSpec` object created by [bebel_tool()].
 #' @return A character scalar containing the rendered tool schema.
 #' @export
 bebel_tool_schema_json <- function(tool) {
-  schema <- tool$schema
+  tool <- S7::prop(BebelToolRef(value = list(tool)), "value")[[1L]]
+  schema <- S7::prop(tool, "schema")
   if (is.character(schema) && length(schema) == 1L && nzchar(schema)) return(schema)
 
+  name <- S7::prop(tool, "name")
+  description <- S7::prop(tool, "description") %||% name
   bebel_json_write(list(
-    name = as.character(tool$name),
-    description = as.character(tool$description %||% tool$name),
+    name = as.character(name),
+    description = as.character(description),
     parameters = normalize_bebel_tool_schema_json(schema)
   ))
 }
-
 
 coerce_bebel_tool_value <- function(value) {
   if (!is.character(value) || length(value) != 1L) return(value)
@@ -509,15 +526,15 @@ parse_json_tool_call <- function(x, raw) {
   if (is.character(args) && length(args) == 1L && grepl("^\\s*\\{", args)) {
     args <- tryCatch(bebel_json_read(args), error = function(e) args)
   }
-  if (is.null(name) || !nzchar(name)) stop("JSON tool call has no name/tool/function.name", call. = FALSE)
+  if (is.null(name) || !nzchar(name)) stop("JSON tool call has no name/tool/function.name.", call. = FALSE)
   list(name = name, arguments = args, raw = raw)
 }
 
 #' Parse BebeLM tool calls
 #'
-#' Delegates Pythonic BebeLM tool-call parsing (`[name(arg='value')]`, including
-#' multiple calls) to upstream BebeLM. JSON call objects and legacy `name({...})`
-#' calls are parsed with imported package `yyjsonr`.
+#' Delegates Pythonic BebeLM tool-call parsing (`[name(arg='value')]`) to
+#' upstream BebeLM. JSON call objects and legacy `name({...})` calls are parsed
+#' with imported package `yyjsonr`.
 #'
 #' @param content Accumulated content between BebeLM tool-call delimiters.
 #' @return A list of calls, each with `name`, `arguments`, and `raw`.
@@ -525,7 +542,7 @@ parse_json_tool_call <- function(x, raw) {
 bebel_parse_tool_calls <- function(content) {
   raw <- paste(content, collapse = "")
   x <- trimws(raw)
-  if (!nzchar(x)) stop("empty tool call", call. = FALSE)
+  if (!nzchar(x)) stop("empty tool call.", call. = FALSE)
 
   if (grepl("^\\s*\\{", x)) return(list(parse_json_tool_call(x, raw)))
 
@@ -537,14 +554,11 @@ bebel_parse_tool_calls <- function(content) {
 
   calls <- rbebelm_parse_tool_calls(x)
   calls <- lapply(calls, normalize_upstream_tool_call)
-  if (!length(calls)) stop("cannot parse tool call; provide a custom parse_tool_call function", call. = FALSE)
+  if (!length(calls)) stop("cannot parse tool call; provide a custom parse_tool_call function.", call. = FALSE)
   calls
 }
 
 #' Parse a single BebeLM tool call block
-#'
-#' This compatibility wrapper returns the first call from [bebel_parse_tool_calls()].
-#' Prefer [bebel_parse_tool_calls()] when multiple calls may be present.
 #'
 #' @inheritParams bebel_parse_tool_calls
 #' @return A list with `name`, `arguments`, and `raw`.
@@ -564,19 +578,20 @@ format_bebel_tool_result <- function(call, result, error = NULL) {
 normalize_parsed_bebel_calls <- function(parsed) {
   if (is.list(parsed) && !is.null(parsed$name)) return(list(parsed))
   if (is.list(parsed) && all(vapply(parsed, function(x) is.list(x) && !is.null(x$name), logical(1)))) return(parsed)
-  stop("parse_tool_call must return a call or a list of calls", call. = FALSE)
+  stop("parse_tool_call must return a call or a list of calls.", call. = FALSE)
 }
 
 call_bebel_hook <- function(hooks, name, ...) {
   hook <- hooks[[name]]
   if (is.null(hook)) return(invisible(NULL))
-  if (!is.function(hook)) stop("hook '", name, "' must be a function", call. = FALSE)
+  if (!is.function(hook)) stop("hook '", name, "' must be a function.", call. = FALSE)
   hook(...)
   invisible(NULL)
 }
 
 invoke_bebel_tool <- function(tool, call, context) {
-  fun <- tool$fun
+  tool <- S7::prop(BebelToolRef(value = list(tool)), "value")[[1L]]
+  fun <- S7::prop(tool, "fun")
   nms <- names(formals(fun))
   if ("args" %in% nms || "context" %in% nms || "call" %in% nms) {
     args <- list()
@@ -618,10 +633,13 @@ bebel_agent_run <- function(
   on_event = NULL,
   check_interrupt = TRUE
 ) {
-  check_bebel_agent(agent)
+  agent <- S7::prop(BebelAgentRef(value = list(agent)), "value")[[1L]]
   tools <- normalize_bebel_tools(tools)
-  if (!is.list(hooks)) stop("hooks must be a named list", call. = FALSE)
-  if (!is.function(parse_tool_call)) stop("parse_tool_call must be a function", call. = FALSE)
+  options <- BebelAgentRunOptions(max_steps = as.numeric(max_steps), check_interrupt = isTRUE(check_interrupt))
+  max_steps <- S7::prop(options, "max_steps")
+  check_interrupt <- S7::prop(options, "check_interrupt")
+  if (!is.list(hooks)) stop("`hooks` must be a named list.", call. = FALSE)
+  if (!is.function(parse_tool_call)) stop("`parse_tool_call` must be a function.", call. = FALSE)
 
   turns <- list()
   calls <- list()
@@ -763,7 +781,7 @@ bebel_event_handler <- function(
   )
   bad <- !vapply(handlers, function(x) is.null(x) || is.function(x), logical(1))
   if (any(bad)) {
-    stop("event handlers must be functions or NULL", call. = FALSE)
+    stop("event handlers must be functions or NULL.", call. = FALSE)
   }
   function(event) {
     type <- event$type %||% ""
@@ -778,55 +796,6 @@ bebel_event_handler <- function(
   }
 }
 
-#' Console event handler for generated text and thinking
-#'
-#' Returns an event handler suitable for `on_event`. Thinking blocks are printed
-#' with `<think>` markers, text deltas are printed as they arrive, and done events
-#' add a trailing newline.
-#'
-#' @return A function accepting one generation event list.
-#' @export
-bebel_console_event <- function() {
-  bebel_event_handler(
-    thinking_start = function(event) {
-      cat("<think>")
-      utils::flush.console()
-    },
-    thinking_delta = function(event) {
-      cat(event$delta)
-      utils::flush.console()
-    },
-    thinking_end = function(event) {
-      cat("</think>")
-      utils::flush.console()
-    },
-    text_delta = function(event) {
-      cat(event$delta)
-      utils::flush.console()
-    },
-    tool_call_start = function(event) {
-      cat("<|tool_call_start|>")
-      utils::flush.console()
-    },
-    tool_call_delta = function(event) {
-      cat(event$delta)
-      utils::flush.console()
-    },
-    tool_call_end = function(event) {
-      cat("<|tool_call_end|>")
-      utils::flush.console()
-    },
-    done = function(event) {
-      cat("\n")
-      utils::flush.console()
-    }
-  )
-}
-
-`%||%` <- function(x, y) {
-  if (is.null(x)) y else x
-}
-
 normalize_bebel_on_event <- function(on_event) {
   if (is.null(on_event) || is.function(on_event)) {
     return(on_event)
@@ -834,7 +803,7 @@ normalize_bebel_on_event <- function(on_event) {
   if (is.list(on_event)) {
     names <- names(on_event)
     if (is.null(names) || any(!nzchar(names))) {
-      stop("on_event handler lists must be named", call. = FALSE)
+      stop("on_event handler lists must be named.", call. = FALSE)
     }
     allowed <- c(bebel_event_types(), "default")
     unknown <- setdiff(names, allowed)
@@ -843,7 +812,7 @@ normalize_bebel_on_event <- function(on_event) {
     }
     return(do.call(bebel_event_handler, on_event))
   }
-  stop("on_event must be a function, a named list of handlers, or NULL", call. = FALSE)
+  stop("on_event must be a function, a named list of handlers, or NULL.", call. = FALSE)
 }
 
 #' Generate a raw continuation from a prompt
@@ -854,7 +823,6 @@ normalize_bebel_on_event <- function(on_event) {
 #' @param on_event Event callback, named list of event-specific handlers, or
 #'   `NULL`. Event types are `bebel_event_types()`. Delta events contain `delta`,
 #'   `id`, and `index`; final events contain accumulated `content` or `text`.
-#'   Use `bebel_console_event()` for live console output.
 #' @param check_interrupt Check for Ctrl-C during prefill and before every decoded token.
 #' @param max_gen,max_context,max_think Optional generation limits.
 #' @param temperature,top_k,repeat_penalty Optional sampling settings.
@@ -864,7 +832,7 @@ bebel_generate <- function(
   model,
   prompt,
   greedy = FALSE,
-  on_event = bebel_console_event(),
+  on_event = NULL,
   check_interrupt = TRUE,
   max_gen = NULL,
   max_context = NULL,
@@ -873,21 +841,30 @@ bebel_generate <- function(
   top_k = NULL,
   repeat_penalty = NULL
 ) {
-  if (!inherits(model, "BebelModel")) {
-    stop("model must be a BebelModel", call. = FALSE)
-  }
+  model <- S7::prop(BebelModelRef(value = list(model)), "value")[[1L]]
+  prompt <- S7::prop(BebelScalarText(value = prompt), "value")
+  options <- BebelGenerationOptions(
+    greedy = isTRUE(greedy),
+    check_interrupt = isTRUE(check_interrupt),
+    max_gen = if (is.null(max_gen)) NULL else as.numeric(max_gen),
+    max_context = if (is.null(max_context)) NULL else as.numeric(max_context),
+    max_think = if (is.null(max_think)) NULL else as.numeric(max_think),
+    temperature = if (is.null(temperature)) NULL else as.numeric(temperature),
+    top_k = if (is.null(top_k)) NULL else as.numeric(top_k),
+    repeat_penalty = if (is.null(repeat_penalty)) NULL else as.numeric(repeat_penalty)
+  )
   on_event <- normalize_bebel_on_event(on_event)
   out <- model$generate(
     prompt = prompt,
-    greedy = greedy,
-    check_interrupt = check_interrupt,
+    greedy = S7::prop(options, "greedy"),
+    check_interrupt = S7::prop(options, "check_interrupt"),
     on_event = on_event,
-    max_gen = bebel_numeric_or_null(max_gen),
-    max_context = bebel_numeric_or_null(max_context),
-    max_think = bebel_numeric_or_null(max_think),
-    temperature = bebel_numeric_or_null(temperature),
-    top_k = bebel_numeric_or_null(top_k),
-    repeat_penalty = bebel_numeric_or_null(repeat_penalty)
+    max_gen = S7::prop(options, "max_gen"),
+    max_context = S7::prop(options, "max_context"),
+    max_think = S7::prop(options, "max_think"),
+    temperature = S7::prop(options, "temperature"),
+    top_k = S7::prop(options, "top_k"),
+    repeat_penalty = S7::prop(options, "repeat_penalty")
   )
   class(out) <- c("bebelGenerateResult", "bebelGeneration", class(out))
   out
@@ -897,12 +874,13 @@ bebel_generate <- function(
 #'
 #' @inheritParams bebel_generate
 #' @param message User message.
+#' @return A classed generation result.
 #' @export
 bebel_chat <- function(
   model,
   message,
   greedy = FALSE,
-  on_event = bebel_console_event(),
+  on_event = NULL,
   check_interrupt = TRUE,
   max_gen = NULL,
   max_context = NULL,
@@ -911,47 +889,46 @@ bebel_chat <- function(
   top_k = NULL,
   repeat_penalty = NULL
 ) {
-  if (!inherits(model, "BebelModel")) {
-    stop("model must be a BebelModel", call. = FALSE)
-  }
+  model <- S7::prop(BebelModelRef(value = list(model)), "value")[[1L]]
+  message <- S7::prop(BebelScalarText(value = message), "value")
+  options <- BebelGenerationOptions(
+    greedy = isTRUE(greedy),
+    check_interrupt = isTRUE(check_interrupt),
+    max_gen = if (is.null(max_gen)) NULL else as.numeric(max_gen),
+    max_context = if (is.null(max_context)) NULL else as.numeric(max_context),
+    max_think = if (is.null(max_think)) NULL else as.numeric(max_think),
+    temperature = if (is.null(temperature)) NULL else as.numeric(temperature),
+    top_k = if (is.null(top_k)) NULL else as.numeric(top_k),
+    repeat_penalty = if (is.null(repeat_penalty)) NULL else as.numeric(repeat_penalty)
+  )
   on_event <- normalize_bebel_on_event(on_event)
   out <- model$chat(
     message = message,
-    greedy = greedy,
-    check_interrupt = check_interrupt,
+    greedy = S7::prop(options, "greedy"),
+    check_interrupt = S7::prop(options, "check_interrupt"),
     on_event = on_event,
-    max_gen = bebel_numeric_or_null(max_gen),
-    max_context = bebel_numeric_or_null(max_context),
-    max_think = bebel_numeric_or_null(max_think),
-    temperature = bebel_numeric_or_null(temperature),
-    top_k = bebel_numeric_or_null(top_k),
-    repeat_penalty = bebel_numeric_or_null(repeat_penalty)
+    max_gen = S7::prop(options, "max_gen"),
+    max_context = S7::prop(options, "max_context"),
+    max_think = S7::prop(options, "max_think"),
+    temperature = S7::prop(options, "temperature"),
+    top_k = S7::prop(options, "top_k"),
+    repeat_penalty = S7::prop(options, "repeat_penalty")
   )
   class(out) <- c("bebelChatResult", "bebelGeneration", class(out))
   out
 }
 
-
-#' Live terminal console for BebeLM chats
+#' Start a background raw generation job
 #'
-#' Start an interactive terminal chat loop. If `x` is a `BebelModel`, a new
-#' `BebelAgent` is created. If `x` is a `BebelAgent`, its existing transcript and
-#' caches are reused. Type `/quit` or `/exit` to leave the loop.
+#' Async jobs run on Rust threads and reuse the loaded model weights. They do
+#' not call R callbacks while running. Collect with `bebel_async_result()`.
 #'
-#' @param x A `BebelModel` or `BebelAgent`.
-#' @param prompt Prompt displayed before reading each user message.
-#' @param exit_commands Character vector of commands that exit the console.
-#' @param on_event Event handler used for assistant output.
-#' @param check_interrupt Check for Ctrl-C during generation.
-#' @inheritParams bebel_agent
-#' @return Invisibly returns the `BebelAgent` used by the console.
+#' @inheritParams bebel_generate
+#' @return A `BebelAsyncJob`.
 #' @export
-bebel_live_console <- function(
-  x,
-  prompt = ">>> ",
-  exit_commands = c("/quit", "/exit"),
-  on_event = bebel_console_event(),
-  check_interrupt = TRUE,
+bebel_generate_async <- function(
+  model,
+  prompt,
   greedy = FALSE,
   max_gen = NULL,
   max_context = NULL,
@@ -960,34 +937,165 @@ bebel_live_console <- function(
   top_k = NULL,
   repeat_penalty = NULL
 ) {
-  if (inherits(x, "BebelModel")) {
-    x <- bebel_agent(
-      x,
-      greedy = greedy,
-      max_gen = max_gen,
-      max_context = max_context,
-      max_think = max_think,
-      temperature = temperature,
-      top_k = top_k,
-      repeat_penalty = repeat_penalty
-    )
+  model <- S7::prop(BebelModelRef(value = list(model)), "value")[[1L]]
+  prompt <- S7::prop(BebelScalarText(value = prompt), "value")
+  options <- BebelGenerationOptions(
+    greedy = isTRUE(greedy),
+    check_interrupt = FALSE,
+    max_gen = if (is.null(max_gen)) NULL else as.numeric(max_gen),
+    max_context = if (is.null(max_context)) NULL else as.numeric(max_context),
+    max_think = if (is.null(max_think)) NULL else as.numeric(max_think),
+    temperature = if (is.null(temperature)) NULL else as.numeric(temperature),
+    top_k = if (is.null(top_k)) NULL else as.numeric(top_k),
+    repeat_penalty = if (is.null(repeat_penalty)) NULL else as.numeric(repeat_penalty)
+  )
+  job <- model$generate_async(
+    prompt = prompt,
+    greedy = S7::prop(options, "greedy"),
+    max_gen = S7::prop(options, "max_gen"),
+    max_context = S7::prop(options, "max_context"),
+    max_think = S7::prop(options, "max_think"),
+    temperature = S7::prop(options, "temperature"),
+    top_k = S7::prop(options, "top_k"),
+    repeat_penalty = S7::prop(options, "repeat_penalty")
+  )
+  class(job) <- c("bebelGenerateJob", "bebelAsyncJob", class(job))
+  job
+}
+
+#' Start a background ChatML assistant reply job
+#'
+#' @inheritParams bebel_chat
+#' @return A `BebelAsyncJob`.
+#' @export
+bebel_chat_async <- function(
+  model,
+  message,
+  greedy = FALSE,
+  max_gen = NULL,
+  max_context = NULL,
+  max_think = NULL,
+  temperature = NULL,
+  top_k = NULL,
+  repeat_penalty = NULL
+) {
+  model <- S7::prop(BebelModelRef(value = list(model)), "value")[[1L]]
+  message <- S7::prop(BebelScalarText(value = message), "value")
+  options <- BebelGenerationOptions(
+    greedy = isTRUE(greedy),
+    check_interrupt = FALSE,
+    max_gen = if (is.null(max_gen)) NULL else as.numeric(max_gen),
+    max_context = if (is.null(max_context)) NULL else as.numeric(max_context),
+    max_think = if (is.null(max_think)) NULL else as.numeric(max_think),
+    temperature = if (is.null(temperature)) NULL else as.numeric(temperature),
+    top_k = if (is.null(top_k)) NULL else as.numeric(top_k),
+    repeat_penalty = if (is.null(repeat_penalty)) NULL else as.numeric(repeat_penalty)
+  )
+  job <- model$chat_async(
+    message = message,
+    greedy = S7::prop(options, "greedy"),
+    max_gen = S7::prop(options, "max_gen"),
+    max_context = S7::prop(options, "max_context"),
+    max_think = S7::prop(options, "max_think"),
+    temperature = S7::prop(options, "temperature"),
+    top_k = S7::prop(options, "top_k"),
+    repeat_penalty = S7::prop(options, "repeat_penalty")
+  )
+  class(job) <- c("bebelChatJob", "bebelAsyncJob", class(job))
+  job
+}
+
+#' Start a background raw agent generation job
+#'
+#' The job runs on a cloned agent snapshot. The original agent's transcript and
+#' decode cache are not mutated, while the model weights are shared.
+#'
+#' @param agent A `BebelAgent` object.
+#' @return A `BebelAsyncJob`.
+#' @export
+bebel_agent_generate_async <- function(agent) {
+  agent <- S7::prop(BebelAgentRef(value = list(agent)), "value")[[1L]]
+  job <- agent$generate_async()
+  class(job) <- c("bebelAgentGenerateJob", "bebelAsyncJob", class(job))
+  job
+}
+
+#' Start a background assistant-turn job
+#'
+#' @inheritParams bebel_agent_generate_async
+#' @return A `BebelAsyncJob`.
+#' @export
+bebel_assistant_turn_async <- function(agent) {
+  agent <- S7::prop(BebelAgentRef(value = list(agent)), "value")[[1L]]
+  job <- agent$assistant_turn_async()
+  class(job) <- c("bebelAssistantTurnJob", "bebelAsyncJob", class(job))
+  job
+}
+
+#' Start a background assistant-turn job that stops on tool-call close
+#'
+#' @inheritParams bebel_agent_generate_async
+#' @return A `BebelAsyncJob`.
+#' @export
+bebel_assistant_turn_tool_stop_async <- function(agent) {
+  agent <- S7::prop(BebelAgentRef(value = list(agent)), "value")[[1L]]
+  job <- agent$assistant_turn_tool_stop_async()
+  class(job) <- c("bebelAssistantTurnJob", "bebelAsyncJob", class(job))
+  job
+}
+
+#' Test whether a BebeLM async job has finished
+#'
+#' @param job A `BebelAsyncJob`.
+#' @return `TRUE` when the result can be collected without waiting.
+#' @export
+bebel_async_ready <- function(job) {
+  job <- S7::prop(BebelAsyncJobRef(value = list(job)), "value")[[1L]]
+  isTRUE(job$ready())
+}
+
+#' Collect a BebeLM async job result
+#'
+#' @param job A `BebelAsyncJob`.
+#' @param wait If `FALSE`, return `NULL` when the job is still running.
+#' @return A classed generation result, or `NULL`.
+#' @export
+bebel_async_result <- function(job, wait = TRUE) {
+  job_class <- class(job)
+  job <- S7::prop(BebelAsyncJobRef(value = list(job)), "value")[[1L]]
+  out <- job$result(wait = isTRUE(wait))
+  if (is.null(out)) return(NULL)
+  result_class <- if (inherits(job_class, "bebelChatJob")) {
+    "bebelChatResult"
+  } else if (inherits(job_class, "bebelAgentGenerateJob")) {
+    "bebelAgentGenerateResult"
+  } else if (inherits(job_class, "bebelAssistantTurnJob")) {
+    "bebelAssistantTurnResult"
+  } else if (inherits(job_class, "bebelGenerateJob")) {
+    "bebelGenerateResult"
   } else {
-    check_bebel_agent(x)
+    "bebelAsyncResult"
   }
-  if (!interactive()) {
-    warning("bebel_live_console() is intended for interactive R sessions", call. = FALSE)
+  class(out) <- c(result_class, "bebelAsyncResult", "bebelGeneration", class(out))
+  out
+}
+
+#' @export
+print.BebelAsyncJob <- function(x, ...) {
+  cat("<BebelAsyncJob>\n")
+  kind <- if (inherits(x, "bebelChatJob")) {
+    "chat"
+  } else if (inherits(x, "bebelAgentGenerateJob")) {
+    "agent_generate"
+  } else if (inherits(x, "bebelAssistantTurnJob")) {
+    "assistant_turn"
+  } else if (inherits(x, "bebelGenerateJob")) {
+    "generate"
+  } else {
+    "unknown"
   }
-  cat("\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557\n")
-  cat("\u2551  Entering BebeLM live console.                     \u2551\n")
-  cat("\u2551  Type /quit or /exit to return to R.               \u2551\n")
-  cat("\u255a\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255d\n")
-  repeat {
-    message <- readline(prompt)
-    if (!nzchar(message)) next
-    if (message %in% exit_commands) break
-    bebel_append_user(x, message)
-    bebel_assistant_turn(x, on_event = on_event, check_interrupt = check_interrupt)
-  }
+  cat("  kind: ", kind, "\n", sep = "")
+  cat("  ready: ", format_bebel_yes_no(bebel_async_ready(x)), "\n", sep = "")
   invisible(x)
 }
 
@@ -1013,7 +1121,8 @@ print.BebelAgent <- function(x, ...) {
 
 #' Print a BebeLM generation result
 #'
-#' @param x A result returned by [bebel_generate()] or [bebel_chat()].
+#' @param x A result returned by [bebel_generate()], [bebel_chat()], or
+#'   `bebel_async_result()`.
 #' @param ... Unused.
 #' @return Invisibly returns `x`.
 #' @export

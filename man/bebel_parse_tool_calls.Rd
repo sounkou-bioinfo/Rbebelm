@@ -13,7 +13,7 @@ bebel_parse_tool_calls(content)
 A list of calls, each with \code{name}, \code{arguments}, and \code{raw}.
 }
 \description{
-Delegates Pythonic BebeLM tool-call parsing (\verb{[name(arg='value')]}, including
-multiple calls) to upstream BebeLM. JSON call objects and legacy \code{name({...})}
-calls are parsed with imported package \code{yyjsonr}.
+Delegates Pythonic BebeLM tool-call parsing (\verb{[name(arg='value')]}) to
+upstream BebeLM. JSON call objects and legacy \code{name({...})} calls are parsed
+with imported package \code{yyjsonr}.
 }

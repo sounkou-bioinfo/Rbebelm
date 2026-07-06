@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use bebelm::agent::Turn;
 use bebelm::cache::Cache;
 use bebelm::model::Model;
 use bebelm::sampler::Sampler;
@@ -100,9 +101,7 @@ impl BebelAgent {
     /// Append raw text to the transcript. BOS is added automatically for the first append.
     /// @export
     fn append(&mut self, text: &str) -> savvy::Result<savvy::Sexp> {
-        let add_bos = self.history.is_empty();
-        let ids = self.model.tokenizer().encode(text, add_bos);
-        self.history.extend(ids);
+        self.append_text(text);
         self.info()
     }
 
@@ -145,19 +144,13 @@ impl BebelAgent {
     /// Generate a raw continuation from the current transcript.
     /// @export
     fn generate(&mut self, check_interrupt: bool, on_event: Option<FunctionSexp>) -> savvy::Result<savvy::Sexp> {
-        let turn = run_state(
-            self.model.as_ref(),
-            &mut self.cache,
-            &mut self.history,
-            &mut self.sampler,
-            check_interrupt,
-            &on_event,
-            self.max_gen,
-            self.max_context,
-            self.max_think,
-            false,
-        )?;
-        turn_to_list(turn)
+        turn_to_list(self.generate_turn(check_interrupt, on_event)?)
+    }
+
+    /// Start a raw continuation job on a cloned agent snapshot.
+    /// @export
+    fn generate_async(&self) -> savvy::Result<crate::async_job::BebelAsyncJob> {
+        Ok(crate::async_job::spawn_agent_generate(Clone::clone(self)))
     }
 
     /// Prefill appended-but-unprocessed prompt tokens into the decode caches.
@@ -186,13 +179,25 @@ impl BebelAgent {
     /// Open an assistant ChatML turn, generate it, then close the assistant turn.
     /// @export
     fn assistant_turn(&mut self, check_interrupt: bool, on_event: Option<FunctionSexp>) -> savvy::Result<savvy::Sexp> {
-        self.assistant_turn_impl(check_interrupt, on_event, false)
+        turn_to_list(self.assistant_turn_impl(check_interrupt, on_event, false)?)
+    }
+
+    /// Start an assistant ChatML turn job on a cloned agent snapshot.
+    /// @export
+    fn assistant_turn_async(&self) -> savvy::Result<crate::async_job::BebelAsyncJob> {
+        Ok(crate::async_job::spawn_agent_assistant_turn(Clone::clone(self), false))
     }
 
     /// Open an assistant turn and stop when the model closes a tool call.
     /// @export
     fn assistant_turn_tool_stop(&mut self, check_interrupt: bool, on_event: Option<FunctionSexp>) -> savvy::Result<savvy::Sexp> {
-        self.assistant_turn_impl(check_interrupt, on_event, true)
+        turn_to_list(self.assistant_turn_impl(check_interrupt, on_event, true)?)
+    }
+
+    /// Start an assistant-turn job that stops on a tool-call delimiter.
+    /// @export
+    fn assistant_turn_tool_stop_async(&self) -> savvy::Result<crate::async_job::BebelAsyncJob> {
+        Ok(crate::async_job::spawn_agent_assistant_turn(Clone::clone(self), true))
     }
 
     /// Clear transcript and caches, keeping weights and generation configuration.
@@ -218,8 +223,29 @@ impl BebelAgent {
 }
 
 impl BebelAgent {
-    fn assistant_turn_impl(&mut self, check_interrupt: bool, on_event: Option<FunctionSexp>, stop_on_tool_call: bool) -> savvy::Result<savvy::Sexp> {
-        self.append(ASSISTANT_OPEN)?;
+    fn append_text(&mut self, text: &str) {
+        let add_bos = self.history.is_empty();
+        let ids = self.model.tokenizer().encode(text, add_bos);
+        self.history.extend(ids);
+    }
+
+    pub(crate) fn generate_turn(&mut self, check_interrupt: bool, on_event: Option<FunctionSexp>) -> savvy::Result<Turn> {
+        run_state(
+            self.model.as_ref(),
+            &mut self.cache,
+            &mut self.history,
+            &mut self.sampler,
+            check_interrupt,
+            &on_event,
+            self.max_gen,
+            self.max_context,
+            self.max_think,
+            false,
+        )
+    }
+
+    pub(crate) fn assistant_turn_impl(&mut self, check_interrupt: bool, on_event: Option<FunctionSexp>, stop_on_tool_call: bool) -> savvy::Result<Turn> {
+        self.append_text(ASSISTANT_OPEN);
         let turn = run_state(
             self.model.as_ref(),
             &mut self.cache,
@@ -235,6 +261,6 @@ impl BebelAgent {
         self.history.push(TOKEN_IM_END);
         let newline = self.model.tokenizer().encode("\n", false);
         self.history.extend(newline);
-        turn_to_list(turn)
+        Ok(turn)
     }
 }

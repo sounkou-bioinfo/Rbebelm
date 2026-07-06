@@ -13,6 +13,5 @@ bebel_parse_tool_call(content)
 A list with \code{name}, \code{arguments}, and \code{raw}.
 }
 \description{
-This compatibility wrapper returns the first call from \code{\link[=bebel_parse_tool_calls]{bebel_parse_tool_calls()}}.
-Prefer \code{\link[=bebel_parse_tool_calls]{bebel_parse_tool_calls()}} when multiple calls may be present.
+Parse a single BebeLM tool call block
 }

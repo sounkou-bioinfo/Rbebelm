@@ -3,7 +3,6 @@
 ^target(/|$)
 ^src/rust/target(/|$)
 ^src/rbebelm-backends(/|$)
-^src/rbebelm-tools(/|$)
 ^src/backends(/|$)
 ^src/vendor(/|$)
 ^.*\.tar\.gz$
@@ -13,11 +12,8 @@
 ^AGENTS\.md$
 ^docs$
 ^\.github$
-^vignettes-raw$
-^tui(/|$)
 
 ^src/rust/\.cargo(/|$)
-^src/rust/vendor/fff/.*/tests(/|$)
 ^src/Makevars$
 ^src/Makevars\.win$
 ^src/rbebelm-build\.stamp$

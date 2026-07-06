@@ -8,7 +8,7 @@ bebel_chat(
   model,
   message,
   greedy = FALSE,
-  on_event = bebel_console_event(),
+  on_event = NULL,
   check_interrupt = TRUE,
   max_gen = NULL,
   max_context = NULL,
@@ -27,14 +27,16 @@ bebel_chat(
 
 \item{on_event}{Event callback, named list of event-specific handlers, or
 \code{NULL}. Event types are \code{bebel_event_types()}. Delta events contain \code{delta},
-\code{id}, and \code{index}; final events contain accumulated \code{content} or \code{text}.
-Use \code{bebel_console_event()} for live console output.}
+\code{id}, and \code{index}; final events contain accumulated \code{content} or \code{text}.}
 
 \item{check_interrupt}{Check for Ctrl-C during prefill and before every decoded token.}
 
 \item{max_gen, max_context, max_think}{Optional generation limits.}
 
 \item{temperature, top_k, repeat_penalty}{Optional sampling settings.}
+}
+\value{
+A classed generation result.
 }
 \description{
 Generate a single ChatML assistant reply

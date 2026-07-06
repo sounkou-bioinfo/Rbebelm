@@ -8,13 +8,26 @@ navbar:
     right: [search, github]
 
 reference:
-  - title: Model loading and generation
+  - title: Model loading and tokenizer
     contents:
       - bebel_model_load
+      - bebel_tokenize
+      - bebel_detokenize
+      - bebel_token_ids
+      - BebelModel
+      - BebelModelRef
+      - BebelModelLoadOptions
+  - title: Embeddings
+    contents:
       - bebel_embed
+      - BebelEmbeddingOptions
+  - title: Generation and agents
+    contents:
       - bebel_generate
       - bebel_chat
       - bebel_agent
+      - bebel_agent_configure
+      - bebel_agent_info
       - bebel_append
       - bebel_append_system
       - bebel_append_user
@@ -23,108 +36,37 @@ reference:
       - bebel_agent_generate
       - bebel_assistant_turn
       - bebel_assistant_turn_tool_stop
-      - bebel_agent_run
+      - bebel_clear
+      - bebel_history
+      - bebel_transcript
+      - BebelAgent
+      - BebelAgentRef
+      - BebelGenerationOptions
+      - BebelAgentOptions
+      - BebelAgentConfigureOptions
+  - title: Async jobs
+    contents:
+      - bebel_generate_async
+      - bebel_chat_async
+      - bebel_agent_generate_async
+      - bebel_assistant_turn_async
+      - bebel_assistant_turn_tool_stop_async
+      - bebel_async_ready
+      - bebel_async_result
+      - BebelAsyncJob
+      - BebelAsyncJobRef
+  - title: Tools and events
+    contents:
       - bebel_tool
       - bebel_tool_schema_json
       - bebel_parse_tool_call
       - bebel_parse_tool_calls
-      - bebel_agent_configure
-      - bebel_agent_info
-      - bebel_clear
-      - bebel_history
-      - bebel_transcript
+      - bebel_agent_run
       - bebel_event_types
       - bebel_event_handler
-      - bebel_console_event
-      - bebel_tokenize
-      - bebel_detokenize
-      - bebel_token_ids
-      - bebel_live_console
-      - BebelModel
-      - BebelAgent
-  - title: Generic agent and frontend framework
-    contents:
-      - rbebelm_contracts
-      - BebelAgentBackend
-      - BebelAgentExtension
-      - BebelSkillProvider
-      - BebelPromptTemplateProvider
-      - bebel_backend_append_user
-      - bebel_backend_append_system
-      - bebel_backend_append_tool_result
-      - bebel_backend_assistant_turn
-      - bebel_backend_info
-      - bebel_backend_transcript
-      - bebel_backend_clear
-      - bebel_agent_loop
-      - bebel_r_agent_loop
-      - bebel_loop_policy
-      - bebel_loop_run
-      - bebel_loop_step
-      - bebel_loop_prompt
-      - bebel_loop_steer
-      - bebel_loop_follow_up
-      - bebel_loop_state
-      - bebel_loop_events
-      - bebel_loop_extensions
-      - bebel_loop_catalog
-      - bebel_loop_register_extension
-      - bebel_loop_unregister_extension
-      - bebel_loop_command
-      - bebel_loop_execute_command
-      - bebel_loop_cancel
-      - bebel_loop_clear_queue
-      - bebel_loop_command_catalog
-      - bebel_loop_rpc_server
-      - bebel_extension
-      - bebel_extension_manifest
-      - bebel_extension_tools
-      - bebel_extension_commands
-      - bebel_extension_hooks
-      - bebel_extension_skill_providers
-      - bebel_extension_prompt_template_providers
-      - bebel_skill_provider
-      - bebel_skill
-      - bebel_skill_list
-      - bebel_skill_load
-      - bebel_prompt_template_provider
-      - bebel_prompt_template
-      - bebel_prompt_template_list
-      - bebel_prompt_template_render
-      - bebel_system_prompt
-      - bebel_append_system_prompt
-  - title: Session trees and context
-    contents:
-      - bebel_session_create
-      - bebel_session_open
-      - bebel_session_dir
-      - bebel_session_header
-      - bebel_session_list
-      - bebel_session_append_message
-      - bebel_session_append_session_info
-      - bebel_session_append_model_change
-      - bebel_session_append_label
-      - bebel_session_branch
-      - bebel_session_checkout
-      - bebel_session_fork
-      - bebel_session_context
-      - bebel_session_tree
-  - title: Native fuzzy file search
-    contents:
-      - bebel_file_finder
-      - bebel_file_search
-      - BebelFileFinder
-  - title: R-native agent layer
-    contents:
-      - bebel_r_agent
-      - bebel_r_agent_turn
-      - bebel_r_agent_console
-      - bebel_r_agent_start
-      - bebel_r_agent_rpc_server
-      - bebel_r_agent_clear
-      - bebel_default_r_tools
-      - bebel_agent_tool
-      - bebel_agent_tool_catalog
+      - BebelToolSpec
+      - BebelToolRef
+      - BebelAgentRunOptions
   - title: Backend dispatch and diagnostics
     contents:
       - rbebelm_set_backend
@@ -141,9 +83,5 @@ articles:
     contents:
       - getting-started
       - agents-and-tools
-      - agent-framework
-      - r-native-agent-layer
-      - tui-module
-      - events-and-adapters
       - backend-and-webr
       - model-claims-benchmark

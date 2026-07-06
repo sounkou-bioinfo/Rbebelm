@@ -7,7 +7,8 @@
 \method{print}{bebelGeneration}(x, ...)
 }
 \arguments{
-\item{x}{A result returned by \code{\link[=bebel_generate]{bebel_generate()}} or \code{\link[=bebel_chat]{bebel_chat()}}.}
+\item{x}{A result returned by \code{\link[=bebel_generate]{bebel_generate()}}, \code{\link[=bebel_chat]{bebel_chat()}}, or
+\code{bebel_async_result()}.}
 
 \item{...}{Unused.}
 }

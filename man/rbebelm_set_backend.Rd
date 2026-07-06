@@ -7,7 +7,7 @@
 rbebelm_set_backend(backend = "auto")
 }
 \arguments{
-\item{backend}{One of \code{"auto"}, \code{"scalar"}, \code{"avx2"}, \code{"avx512"}, or \code{"neon"}.}
+\item{backend}{One of \code{"auto"}, \code{"scalar"}, \code{"avx2"}, \code{"avx512"}, \code{"neon"}, or \code{"wasm_simd128"}.}
 }
 \value{
 The requested backend name.

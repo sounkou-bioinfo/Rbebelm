@@ -111,9 +111,21 @@ NULL
   }
 }
 
+`BebelAgent_assistant_turn_async` <- function(self) {
+  function() {
+    .savvy_wrap_BebelAsyncJob(.Call(savvy_BebelAgent_assistant_turn_async__impl, `self`))
+  }
+}
+
 `BebelAgent_assistant_turn_tool_stop` <- function(self) {
   function(`check_interrupt`, `on_event` = NULL) {
     .Call(savvy_BebelAgent_assistant_turn_tool_stop__impl, `self`, `check_interrupt`, `on_event`)
+  }
+}
+
+`BebelAgent_assistant_turn_tool_stop_async` <- function(self) {
+  function() {
+    .savvy_wrap_BebelAsyncJob(.Call(savvy_BebelAgent_assistant_turn_tool_stop_async__impl, `self`))
   }
 }
 
@@ -138,6 +150,12 @@ NULL
 `BebelAgent_generate` <- function(self) {
   function(`check_interrupt`, `on_event` = NULL) {
     .Call(savvy_BebelAgent_generate__impl, `self`, `check_interrupt`, `on_event`)
+  }
+}
+
+`BebelAgent_generate_async` <- function(self) {
+  function() {
+    .savvy_wrap_BebelAsyncJob(.Call(savvy_BebelAgent_generate_async__impl, `self`))
   }
 }
 
@@ -175,11 +193,14 @@ NULL
   e$`append_tool_result` <- `BebelAgent_append_tool_result`(ptr)
   e$`append_user` <- `BebelAgent_append_user`(ptr)
   e$`assistant_turn` <- `BebelAgent_assistant_turn`(ptr)
+  e$`assistant_turn_async` <- `BebelAgent_assistant_turn_async`(ptr)
   e$`assistant_turn_tool_stop` <- `BebelAgent_assistant_turn_tool_stop`(ptr)
+  e$`assistant_turn_tool_stop_async` <- `BebelAgent_assistant_turn_tool_stop_async`(ptr)
   e$`clear` <- `BebelAgent_clear`(ptr)
   e$`clone` <- `BebelAgent_clone`(ptr)
   e$`configure` <- `BebelAgent_configure`(ptr)
   e$`generate` <- `BebelAgent_generate`(ptr)
+  e$`generate_async` <- `BebelAgent_generate_async`(ptr)
   e$`history` <- `BebelAgent_history`(ptr)
   e$`info` <- `BebelAgent_info`(ptr)
   e$`prefill` <- `BebelAgent_prefill`(ptr)
@@ -209,54 +230,44 @@ class(`BebelAgent`) <- c("Rbebelm::BebelAgent__bundle", "savvy_Rbebelm__sealed")
   cat('Rbebelm::BebelAgent\n')
 }
 
-### wrapper functions for BebelFileFinder
+### wrapper functions for BebelAsyncJob
 
-`BebelFileFinder_info` <- function(self) {
+`BebelAsyncJob_ready` <- function(self) {
   function() {
-    .Call(savvy_BebelFileFinder_info__impl, `self`)
+    .Call(savvy_BebelAsyncJob_ready__impl, `self`)
   }
 }
 
-`BebelFileFinder_search` <- function(self) {
-  function(`query`, `current_file`, `max_threads` = NULL, `offset` = NULL, `limit` = NULL, `combo_boost_score_multiplier` = NULL, `min_combo_count` = NULL, `wait_timeout_ms` = NULL) {
-    .Call(savvy_BebelFileFinder_search__impl, `self`, `query`, `current_file`, `max_threads`, `offset`, `limit`, `combo_boost_score_multiplier`, `min_combo_count`, `wait_timeout_ms`)
+`BebelAsyncJob_result` <- function(self) {
+  function(`wait`) {
+    .Call(savvy_BebelAsyncJob_result__impl, `self`, `wait`)
   }
 }
 
-`BebelFileFinder_wait` <- function(self) {
-  function(`timeout_ms` = NULL) {
-    .Call(savvy_BebelFileFinder_wait__impl, `self`, `timeout_ms`)
-  }
-}
-
-`.savvy_wrap_BebelFileFinder` <- function(ptr) {
+`.savvy_wrap_BebelAsyncJob` <- function(ptr) {
   e <- new.env(parent = emptyenv())
   e$.ptr <- ptr
-  e$`info` <- `BebelFileFinder_info`(ptr)
-  e$`search` <- `BebelFileFinder_search`(ptr)
-  e$`wait` <- `BebelFileFinder_wait`(ptr)
+  e$`ready` <- `BebelAsyncJob_ready`(ptr)
+  e$`result` <- `BebelAsyncJob_result`(ptr)
 
-  class(e) <- c("Rbebelm::BebelFileFinder", "BebelFileFinder", "savvy_Rbebelm__sealed")
+  class(e) <- c("Rbebelm::BebelAsyncJob", "BebelAsyncJob", "savvy_Rbebelm__sealed")
   e
 }
 
 
-#' Persistent native FFF fuzzy file finder.
+#' Background BebeLM generation job.
 #' @export
-`BebelFileFinder` <- new.env(parent = emptyenv())
+`BebelAsyncJob` <- new.env(parent = emptyenv())
 
-### associated functions for BebelFileFinder
-
-`BebelFileFinder`$`new` <- function(`base_path`, `frecency_db_path`, `history_db_path`, `enable_mmap_cache`, `enable_content_indexing`, `watch`, `ai_mode`, `wait_timeout_ms` = NULL) {
-  .savvy_wrap_BebelFileFinder(.Call(savvy_BebelFileFinder_new__impl, `base_path`, `frecency_db_path`, `history_db_path`, `enable_mmap_cache`, `enable_content_indexing`, `watch`, `ai_mode`, `wait_timeout_ms`))
-}
+### associated functions for BebelAsyncJob
 
 
-class(`BebelFileFinder`) <- c("Rbebelm::BebelFileFinder__bundle", "savvy_Rbebelm__sealed")
+
+class(`BebelAsyncJob`) <- c("Rbebelm::BebelAsyncJob__bundle", "savvy_Rbebelm__sealed")
 
 #' @export
-`print.Rbebelm::BebelFileFinder__bundle` <- function(x, ...) {
-  cat('Rbebelm::BebelFileFinder\n')
+`print.Rbebelm::BebelAsyncJob__bundle` <- function(x, ...) {
+  cat('Rbebelm::BebelAsyncJob\n')
 }
 
 ### wrapper functions for BebelModel
@@ -264,6 +275,12 @@ class(`BebelFileFinder`) <- c("Rbebelm::BebelFileFinder__bundle", "savvy_Rbebelm
 `BebelModel_chat` <- function(self) {
   function(`message`, `greedy`, `check_interrupt`, `on_event` = NULL, `max_gen` = NULL, `max_context` = NULL, `max_think` = NULL, `temperature` = NULL, `top_k` = NULL, `repeat_penalty` = NULL) {
     .Call(savvy_BebelModel_chat__impl, `self`, `message`, `greedy`, `check_interrupt`, `on_event`, `max_gen`, `max_context`, `max_think`, `temperature`, `top_k`, `repeat_penalty`)
+  }
+}
+
+`BebelModel_chat_async` <- function(self) {
+  function(`message`, `greedy`, `max_gen` = NULL, `max_context` = NULL, `max_think` = NULL, `temperature` = NULL, `top_k` = NULL, `repeat_penalty` = NULL) {
+    .savvy_wrap_BebelAsyncJob(.Call(savvy_BebelModel_chat_async__impl, `self`, `message`, `greedy`, `max_gen`, `max_context`, `max_think`, `temperature`, `top_k`, `repeat_penalty`))
   }
 }
 
@@ -291,6 +308,12 @@ class(`BebelFileFinder`) <- c("Rbebelm::BebelFileFinder__bundle", "savvy_Rbebelm
   }
 }
 
+`BebelModel_generate_async` <- function(self) {
+  function(`prompt`, `greedy`, `max_gen` = NULL, `max_context` = NULL, `max_think` = NULL, `temperature` = NULL, `top_k` = NULL, `repeat_penalty` = NULL) {
+    .savvy_wrap_BebelAsyncJob(.Call(savvy_BebelModel_generate_async__impl, `self`, `prompt`, `greedy`, `max_gen`, `max_context`, `max_think`, `temperature`, `top_k`, `repeat_penalty`))
+  }
+}
+
 `BebelModel_info` <- function(self) {
   function() {
     .Call(savvy_BebelModel_info__impl, `self`)
@@ -301,10 +324,12 @@ class(`BebelFileFinder`) <- c("Rbebelm::BebelFileFinder__bundle", "savvy_Rbebelm
   e <- new.env(parent = emptyenv())
   e$.ptr <- ptr
   e$`chat` <- `BebelModel_chat`(ptr)
+  e$`chat_async` <- `BebelModel_chat_async`(ptr)
   e$`decode` <- `BebelModel_decode`(ptr)
   e$`embed` <- `BebelModel_embed`(ptr)
   e$`encode` <- `BebelModel_encode`(ptr)
   e$`generate` <- `BebelModel_generate`(ptr)
+  e$`generate_async` <- `BebelModel_generate_async`(ptr)
   e$`info` <- `BebelModel_info`(ptr)
 
   class(e) <- c("Rbebelm::BebelModel", "BebelModel", "savvy_Rbebelm__sealed")

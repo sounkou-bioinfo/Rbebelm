@@ -13,6 +13,7 @@ use crate::util::{err, ids_from_integer, ids_to_sexp, init_rayon, str_scalar};
 /// Loaded BebeLM GGUF model.
 /// @export
 #[savvy]
+#[derive(Clone)]
 pub struct BebelModel {
     pub(crate) inner: Arc<Model>,
     pub(crate) path: String,
@@ -121,6 +122,32 @@ impl BebelModel {
         turn_to_list(turn)
     }
 
+    /// Start a raw continuation job on a background Rust thread.
+    /// @export
+    fn generate_async(
+        &self,
+        prompt: &str,
+        greedy: bool,
+        max_gen: Option<f64>,
+        max_context: Option<f64>,
+        max_think: Option<f64>,
+        temperature: Option<f64>,
+        top_k: Option<f64>,
+        repeat_penalty: Option<f64>,
+    ) -> savvy::Result<crate::async_job::BebelAsyncJob> {
+        crate::async_job::spawn_model_generate(
+            Arc::clone(&self.inner),
+            prompt.to_string(),
+            greedy,
+            max_gen,
+            max_context,
+            max_think,
+            temperature,
+            top_k,
+            repeat_penalty,
+        )
+    }
+
     /// Generate an assistant reply after one ChatML user turn.
     /// @export
     fn chat(
@@ -141,5 +168,31 @@ impl BebelModel {
         history.extend(self.inner.tokenizer().encode(ASSISTANT_OPEN, false));
         let turn = run_generation(self.inner.as_ref(), history, &mut opts)?;
         turn_to_list(turn)
+    }
+
+    /// Start a single ChatML assistant reply job on a background Rust thread.
+    /// @export
+    fn chat_async(
+        &self,
+        message: &str,
+        greedy: bool,
+        max_gen: Option<f64>,
+        max_context: Option<f64>,
+        max_think: Option<f64>,
+        temperature: Option<f64>,
+        top_k: Option<f64>,
+        repeat_penalty: Option<f64>,
+    ) -> savvy::Result<crate::async_job::BebelAsyncJob> {
+        crate::async_job::spawn_model_chat(
+            Arc::clone(&self.inner),
+            message.to_string(),
+            greedy,
+            max_gen,
+            max_context,
+            max_think,
+            temperature,
+            top_k,
+            repeat_penalty,
+        )
     }
 }

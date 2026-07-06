@@ -29,5 +29,5 @@ A \code{BebelAgent} object.
 }
 \description{
 A \code{BebelAgent} owns an independent token transcript and decode cache while
-sharing the loaded model weights. This mirrors upstream \verb{bebelm::agent::Agent}.
+sharing the loaded model weights through Rust \verb{Arc<Model>}.
 }

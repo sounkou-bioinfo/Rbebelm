@@ -14,5 +14,5 @@ Updated agent info.
 }
 \description{
 Clears the conversation state while keeping the loaded model weights and the
-agent's generation configuration. This is the helper form of \code{agent$clear()}.
+agent's generation configuration.
 }

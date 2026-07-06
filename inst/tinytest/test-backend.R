@@ -13,4 +13,5 @@ expect_true(grepl("Rbebelm CPU features", paste(capture.output(print(cpu)), coll
 features <- rbebelm_backend_features()
 expect_true(inherits(features, "rbebelmBackendFeatures"))
 expect_true(is.list(features))
+expect_true("model_storage" %in% names(features))
 expect_true(grepl("Rbebelm backend features", paste(capture.output(print(features)), collapse = "\n")))

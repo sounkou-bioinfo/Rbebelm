@@ -99,8 +99,18 @@ SEXP savvy_BebelAgent_assistant_turn__impl(SEXP self__, SEXP c_arg__check_interr
     return handle_result(res);
 }
 
+SEXP savvy_BebelAgent_assistant_turn_async__impl(SEXP self__) {
+    SEXP res = Rbebelm_BebelAgent_assistant_turn_async_ffi(self__);
+    return handle_result(res);
+}
+
 SEXP savvy_BebelAgent_assistant_turn_tool_stop__impl(SEXP self__, SEXP c_arg__check_interrupt, SEXP c_arg__on_event) {
     SEXP res = Rbebelm_BebelAgent_assistant_turn_tool_stop_ffi(self__, c_arg__check_interrupt, c_arg__on_event);
+    return handle_result(res);
+}
+
+SEXP savvy_BebelAgent_assistant_turn_tool_stop_async__impl(SEXP self__) {
+    SEXP res = Rbebelm_BebelAgent_assistant_turn_tool_stop_async_ffi(self__);
     return handle_result(res);
 }
 
@@ -121,6 +131,11 @@ SEXP savvy_BebelAgent_configure__impl(SEXP self__, SEXP c_arg__greedy, SEXP c_ar
 
 SEXP savvy_BebelAgent_generate__impl(SEXP self__, SEXP c_arg__check_interrupt, SEXP c_arg__on_event) {
     SEXP res = Rbebelm_BebelAgent_generate_ffi(self__, c_arg__check_interrupt, c_arg__on_event);
+    return handle_result(res);
+}
+
+SEXP savvy_BebelAgent_generate_async__impl(SEXP self__) {
+    SEXP res = Rbebelm_BebelAgent_generate_async_ffi(self__);
     return handle_result(res);
 }
 
@@ -149,28 +164,23 @@ SEXP savvy_BebelAgent_transcript__impl(SEXP self__) {
     return handle_result(res);
 }
 
-SEXP savvy_BebelFileFinder_info__impl(SEXP self__) {
-    SEXP res = Rbebelm_BebelFileFinder_info_ffi(self__);
+SEXP savvy_BebelAsyncJob_ready__impl(SEXP self__) {
+    SEXP res = Rbebelm_BebelAsyncJob_ready_ffi(self__);
     return handle_result(res);
 }
 
-SEXP savvy_BebelFileFinder_new__impl(SEXP c_arg__base_path, SEXP c_arg__frecency_db_path, SEXP c_arg__history_db_path, SEXP c_arg__enable_mmap_cache, SEXP c_arg__enable_content_indexing, SEXP c_arg__watch, SEXP c_arg__ai_mode, SEXP c_arg__wait_timeout_ms) {
-    SEXP res = Rbebelm_BebelFileFinder_new_ffi(c_arg__base_path, c_arg__frecency_db_path, c_arg__history_db_path, c_arg__enable_mmap_cache, c_arg__enable_content_indexing, c_arg__watch, c_arg__ai_mode, c_arg__wait_timeout_ms);
-    return handle_result(res);
-}
-
-SEXP savvy_BebelFileFinder_search__impl(SEXP self__, SEXP c_arg__query, SEXP c_arg__current_file, SEXP c_arg__max_threads, SEXP c_arg__offset, SEXP c_arg__limit, SEXP c_arg__combo_boost_score_multiplier, SEXP c_arg__min_combo_count, SEXP c_arg__wait_timeout_ms) {
-    SEXP res = Rbebelm_BebelFileFinder_search_ffi(self__, c_arg__query, c_arg__current_file, c_arg__max_threads, c_arg__offset, c_arg__limit, c_arg__combo_boost_score_multiplier, c_arg__min_combo_count, c_arg__wait_timeout_ms);
-    return handle_result(res);
-}
-
-SEXP savvy_BebelFileFinder_wait__impl(SEXP self__, SEXP c_arg__timeout_ms) {
-    SEXP res = Rbebelm_BebelFileFinder_wait_ffi(self__, c_arg__timeout_ms);
+SEXP savvy_BebelAsyncJob_result__impl(SEXP self__, SEXP c_arg__wait) {
+    SEXP res = Rbebelm_BebelAsyncJob_result_ffi(self__, c_arg__wait);
     return handle_result(res);
 }
 
 SEXP savvy_BebelModel_chat__impl(SEXP self__, SEXP c_arg__message, SEXP c_arg__greedy, SEXP c_arg__check_interrupt, SEXP c_arg__on_event, SEXP c_arg__max_gen, SEXP c_arg__max_context, SEXP c_arg__max_think, SEXP c_arg__temperature, SEXP c_arg__top_k, SEXP c_arg__repeat_penalty) {
     SEXP res = Rbebelm_BebelModel_chat_ffi(self__, c_arg__message, c_arg__greedy, c_arg__check_interrupt, c_arg__on_event, c_arg__max_gen, c_arg__max_context, c_arg__max_think, c_arg__temperature, c_arg__top_k, c_arg__repeat_penalty);
+    return handle_result(res);
+}
+
+SEXP savvy_BebelModel_chat_async__impl(SEXP self__, SEXP c_arg__message, SEXP c_arg__greedy, SEXP c_arg__max_gen, SEXP c_arg__max_context, SEXP c_arg__max_think, SEXP c_arg__temperature, SEXP c_arg__top_k, SEXP c_arg__repeat_penalty) {
+    SEXP res = Rbebelm_BebelModel_chat_async_ffi(self__, c_arg__message, c_arg__greedy, c_arg__max_gen, c_arg__max_context, c_arg__max_think, c_arg__temperature, c_arg__top_k, c_arg__repeat_penalty);
     return handle_result(res);
 }
 
@@ -191,6 +201,11 @@ SEXP savvy_BebelModel_encode__impl(SEXP self__, SEXP c_arg__text, SEXP c_arg__ad
 
 SEXP savvy_BebelModel_generate__impl(SEXP self__, SEXP c_arg__prompt, SEXP c_arg__greedy, SEXP c_arg__check_interrupt, SEXP c_arg__on_event, SEXP c_arg__max_gen, SEXP c_arg__max_context, SEXP c_arg__max_think, SEXP c_arg__temperature, SEXP c_arg__top_k, SEXP c_arg__repeat_penalty) {
     SEXP res = Rbebelm_BebelModel_generate_ffi(self__, c_arg__prompt, c_arg__greedy, c_arg__check_interrupt, c_arg__on_event, c_arg__max_gen, c_arg__max_context, c_arg__max_think, c_arg__temperature, c_arg__top_k, c_arg__repeat_penalty);
+    return handle_result(res);
+}
+
+SEXP savvy_BebelModel_generate_async__impl(SEXP self__, SEXP c_arg__prompt, SEXP c_arg__greedy, SEXP c_arg__max_gen, SEXP c_arg__max_context, SEXP c_arg__max_think, SEXP c_arg__temperature, SEXP c_arg__top_k, SEXP c_arg__repeat_penalty) {
+    SEXP res = Rbebelm_BebelModel_generate_async_ffi(self__, c_arg__prompt, c_arg__greedy, c_arg__max_gen, c_arg__max_context, c_arg__max_think, c_arg__temperature, c_arg__top_k, c_arg__repeat_penalty);
     return handle_result(res);
 }
 
@@ -218,25 +233,28 @@ static const R_CallMethodDef CallEntries[] = {
     {"savvy_BebelAgent_append_tool_result__impl", (DL_FUNC) &savvy_BebelAgent_append_tool_result__impl, 2},
     {"savvy_BebelAgent_append_user__impl", (DL_FUNC) &savvy_BebelAgent_append_user__impl, 2},
     {"savvy_BebelAgent_assistant_turn__impl", (DL_FUNC) &savvy_BebelAgent_assistant_turn__impl, 3},
+    {"savvy_BebelAgent_assistant_turn_async__impl", (DL_FUNC) &savvy_BebelAgent_assistant_turn_async__impl, 1},
     {"savvy_BebelAgent_assistant_turn_tool_stop__impl", (DL_FUNC) &savvy_BebelAgent_assistant_turn_tool_stop__impl, 3},
+    {"savvy_BebelAgent_assistant_turn_tool_stop_async__impl", (DL_FUNC) &savvy_BebelAgent_assistant_turn_tool_stop_async__impl, 1},
     {"savvy_BebelAgent_clear__impl", (DL_FUNC) &savvy_BebelAgent_clear__impl, 1},
     {"savvy_BebelAgent_clone__impl", (DL_FUNC) &savvy_BebelAgent_clone__impl, 1},
     {"savvy_BebelAgent_configure__impl", (DL_FUNC) &savvy_BebelAgent_configure__impl, 8},
     {"savvy_BebelAgent_generate__impl", (DL_FUNC) &savvy_BebelAgent_generate__impl, 3},
+    {"savvy_BebelAgent_generate_async__impl", (DL_FUNC) &savvy_BebelAgent_generate_async__impl, 1},
     {"savvy_BebelAgent_history__impl", (DL_FUNC) &savvy_BebelAgent_history__impl, 1},
     {"savvy_BebelAgent_info__impl", (DL_FUNC) &savvy_BebelAgent_info__impl, 1},
     {"savvy_BebelAgent_new__impl", (DL_FUNC) &savvy_BebelAgent_new__impl, 8},
     {"savvy_BebelAgent_prefill__impl", (DL_FUNC) &savvy_BebelAgent_prefill__impl, 2},
     {"savvy_BebelAgent_transcript__impl", (DL_FUNC) &savvy_BebelAgent_transcript__impl, 1},
-    {"savvy_BebelFileFinder_info__impl", (DL_FUNC) &savvy_BebelFileFinder_info__impl, 1},
-    {"savvy_BebelFileFinder_new__impl", (DL_FUNC) &savvy_BebelFileFinder_new__impl, 8},
-    {"savvy_BebelFileFinder_search__impl", (DL_FUNC) &savvy_BebelFileFinder_search__impl, 9},
-    {"savvy_BebelFileFinder_wait__impl", (DL_FUNC) &savvy_BebelFileFinder_wait__impl, 2},
+    {"savvy_BebelAsyncJob_ready__impl", (DL_FUNC) &savvy_BebelAsyncJob_ready__impl, 1},
+    {"savvy_BebelAsyncJob_result__impl", (DL_FUNC) &savvy_BebelAsyncJob_result__impl, 2},
     {"savvy_BebelModel_chat__impl", (DL_FUNC) &savvy_BebelModel_chat__impl, 11},
+    {"savvy_BebelModel_chat_async__impl", (DL_FUNC) &savvy_BebelModel_chat_async__impl, 9},
     {"savvy_BebelModel_decode__impl", (DL_FUNC) &savvy_BebelModel_decode__impl, 2},
     {"savvy_BebelModel_embed__impl", (DL_FUNC) &savvy_BebelModel_embed__impl, 5},
     {"savvy_BebelModel_encode__impl", (DL_FUNC) &savvy_BebelModel_encode__impl, 3},
     {"savvy_BebelModel_generate__impl", (DL_FUNC) &savvy_BebelModel_generate__impl, 11},
+    {"savvy_BebelModel_generate_async__impl", (DL_FUNC) &savvy_BebelModel_generate_async__impl, 9},
     {"savvy_BebelModel_info__impl", (DL_FUNC) &savvy_BebelModel_info__impl, 1},
     {"savvy_BebelModel_load__impl", (DL_FUNC) &savvy_BebelModel_load__impl, 2},
     {"Rbebelm_set_backend_impl", (DL_FUNC) &Rbebelm_set_backend_impl, 1},

@@ -1,8 +1,8 @@
 mod agent;
+mod async_job;
 mod backend;
 mod chatml;
 mod events;
-mod fuzzy_files;
 mod generation;
 mod model;
 mod options;

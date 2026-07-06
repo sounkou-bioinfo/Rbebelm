@@ -15,10 +15,10 @@
 /src/Makevars.win
 /src/rust/target/
 /src/rbebelm-backends/
-/src/rbebelm-tools/
 /src/backends/
 /src/vendor/
 /src/rust/.cargo/
+/src/rbebelm-build.stamp
 
 # R/RStudio
 .Rproj.user/

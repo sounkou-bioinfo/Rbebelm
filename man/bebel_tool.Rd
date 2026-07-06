@@ -14,10 +14,10 @@ when it accepts those names, otherwise with progressively simpler fallbacks.}
 
 \item{description}{Optional human-readable description.}
 
-\item{schema}{Optional schema/metadata object for prompts or adapters.}
+\item{schema}{Optional JSON-schema-like list or JSON string.}
 }
 \value{
-A \code{bebelTool} object.
+A \code{BebelToolSpec} object.
 }
 \description{
 Define a BebeLM R tool

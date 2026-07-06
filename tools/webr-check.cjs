@@ -139,7 +139,7 @@ function outputText(capture) {
     const shelter = await new webR.Shelter();
     const capture = await shelter.captureR(`
 library(Rbebelm)
-stopifnot(requireNamespace("s7contract", quietly = TRUE))
+stopifnot(requireNamespace("S7", quietly = TRUE))
 info <- rbebelm_backend_info()
 print(info)
 stopifnot(identical(info$dispatch_mode, "static"))
@@ -153,6 +153,7 @@ stopifnot(isTRUE(info2$backend_loaded))
 stopifnot(identical(features$backend, "wasm_simd128"))
 stopifnot(identical(features$target_arch, "wasm32"))
 stopifnot(identical(features$target_os, "emscripten"))
+stopifnot(identical(features$model_storage, "shared_arc_mmap"))
 stopifnot("tool_call_end" %in% bebel_event_types())
 load_error <- tryCatch({ bebel_model_load("/missing-model.gguf"); "" }, error = function(e) conditionMessage(e))
 stopifnot(nzchar(load_error))
@@ -162,7 +163,7 @@ stopifnot(ids["TOKEN_TOOL_CALL_START"] > 0L)
 call <- bebel_parse_tool_call('echo({"x": 1})')
 stopifnot(identical(call$name, "echo"))
 tool <- bebel_tool("echo", function(args, context, call) args)
-stopifnot(inherits(tool, "bebelTool"))
+stopifnot(S7::S7_inherits(tool, BebelToolSpec))
 `, { withAutoprint: false });
     const text = outputText(capture);
     if (text) console.log(text);
