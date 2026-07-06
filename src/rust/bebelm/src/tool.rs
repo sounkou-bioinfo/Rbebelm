@@ -157,7 +157,7 @@ pub struct ToolCall {
     pub name: String,
     /// `(arg name, value text)` in call order. Quotes are stripped from simple string literals;
     /// `{…}`/`[…]` values are kept verbatim. Look values up with [`ToolCall::arg`].
-    pub args: Vec<(String, String)>,
+    args: Vec<(String, String)>,
     /// The raw call text, e.g. `get_weather(city='Paris')`.
     pub raw: String,
 }
@@ -166,6 +166,11 @@ impl ToolCall {
     /// The value passed for argument `name`, if present.
     pub fn arg(&self, name: &str) -> Option<&str> {
         self.args.iter().find(|(k, _)| k == name).map(|(_, v)| v.as_str())
+    }
+
+    /// All parsed keyword arguments in call order.
+    pub fn args(&self) -> &[(String, String)] {
+        &self.args
     }
 
     /// Argument `name` parsed into type `T` (`i64`, `usize`, `f32`, `bool`, …) via

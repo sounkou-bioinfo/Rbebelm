@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
+use bebelm::cache::Cache;
+use bebelm::config::HIDDEN;
 use bebelm::model::Model;
-use savvy::{savvy, FunctionSexp, IntegerSexp, OwnedListSexp};
+use savvy::{savvy, FunctionSexp, IntegerSexp, OwnedListSexp, OwnedRealSexp};
 
 use crate::chatml::{user_turn, ASSISTANT_OPEN};
 use crate::generation::{run_generation, turn_to_list};
@@ -50,6 +52,52 @@ impl BebelModel {
     fn decode(&self, ids: IntegerSexp) -> savvy::Result<savvy::Sexp> {
         let ids = ids_from_integer(ids)?;
         str_scalar(&self.inner.tokenizer().decode(&ids))?.into()
+    }
+
+    /// Embed text by pooling final hidden states.
+    /// @export
+    fn embed(&self, text: &str, add_bos: bool, normalize: bool, pooling: &str) -> savvy::Result<savvy::Sexp> {
+        let ids = self.inner.tokenizer().encode(text, add_bos);
+        if ids.is_empty() {
+            return Err(err("text produced no tokens"));
+        }
+        let mut cache = Cache::new();
+        let mut pooled = vec![0.0f32; HIDDEN];
+        match pooling {
+            "mean" => {
+                for token in ids.iter().copied() {
+                    let h = self.inner.hidden_step(token, &mut cache);
+                    for (acc, v) in pooled.iter_mut().zip(h.iter()) {
+                        *acc += *v;
+                    }
+                }
+                let denom = ids.len() as f32;
+                for v in pooled.iter_mut() {
+                    *v /= denom;
+                }
+            }
+            "last" => {
+                for token in ids.iter().copied() {
+                    pooled = self.inner.hidden_step(token, &mut cache);
+                }
+            }
+            other => {
+                return Err(err(format!("unsupported pooling mode {other:?}; use \"mean\" or \"last\"")));
+            }
+        }
+        if normalize {
+            let norm = pooled.iter().map(|v| (*v as f64) * (*v as f64)).sum::<f64>().sqrt();
+            if norm > 0.0 && norm.is_finite() {
+                for v in pooled.iter_mut() {
+                    *v = (*v as f64 / norm) as f32;
+                }
+            }
+        }
+        let mut out = OwnedRealSexp::new(HIDDEN)?;
+        for (i, value) in pooled.iter().enumerate() {
+            out.set_elt(i, *value as f64)?;
+        }
+        out.into()
     }
 
     /// Generate a raw continuation from a prompt.

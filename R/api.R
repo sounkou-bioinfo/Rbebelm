@@ -117,6 +117,34 @@ bebel_detokenize <- function(model, ids) {
   model$decode(as.integer(ids))
 }
 
+#' Embed text with pooled BebeLM hidden states
+#'
+#' @param model A `BebelModel` object.
+#' @param text Character vector.
+#' @param add_bos Whether to prepend the BOS token before embedding.
+#' @param normalize L2-normalize each embedding row.
+#' @param pooling Hidden-state pooling strategy: `mean` or `last`.
+#' @return A numeric matrix with one row per input text.
+#' @export
+bebel_embed <- function(model, text, add_bos = TRUE, normalize = TRUE, pooling = c("mean", "last")) {
+  if (!inherits(model, "BebelModel")) {
+    stop("model must be a BebelModel", call. = FALSE)
+  }
+  if (!is.character(text) || anyNA(text)) {
+    stop("text must be a character vector without NA", call. = FALSE)
+  }
+  pooling <- match.arg(pooling)
+  rows <- lapply(text, function(one) {
+    model$embed(one, add_bos = add_bos, normalize = normalize, pooling = pooling)
+  })
+  if (!length(rows)) {
+    return(matrix(numeric(), nrow = 0L, ncol = 0L))
+  }
+  out <- do.call(rbind, rows)
+  rownames(out) <- names(text)
+  out
+}
+
 #' Create a persistent BebeLM agent
 #'
 #' A `BebelAgent` owns an independent token transcript and decode cache while

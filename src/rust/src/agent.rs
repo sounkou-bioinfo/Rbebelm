@@ -7,7 +7,7 @@ use bebelm::tokenizer::TOKEN_IM_END;
 use savvy::{savvy, FunctionSexp, IntegerSexp, OwnedListSexp, StringSexp};
 
 use crate::chatml::{tool_turn, user_turn, ASSISTANT_OPEN};
-use crate::generation::{run_state, turn_to_list};
+use crate::generation::{absorb_tokens, run_state, turn_to_list};
 use crate::model::BebelModel;
 use crate::options::{maybe_update_sampler, GenerationOptions};
 use crate::tools::render_system_turn;
@@ -16,6 +16,7 @@ use crate::util::{checked_positive_usize, checked_usize, ids_from_integer, ids_t
 /// Persistent BebeLM conversation agent with transcript and decode caches.
 /// @export
 #[savvy]
+#[derive(Clone)]
 pub struct BebelAgent {
     model: Arc<Model>,
     model_path: String,
@@ -157,6 +158,29 @@ impl BebelAgent {
             false,
         )?;
         turn_to_list(turn)
+    }
+
+    /// Prefill appended-but-unprocessed prompt tokens into the decode caches.
+    /// @export
+    fn prefill(&mut self, check_interrupt: bool) -> savvy::Result<savvy::Sexp> {
+        let start = self.cache.pos;
+        let end = self.history.len().saturating_sub(1);
+        if start < end {
+            absorb_tokens(
+                self.model.as_ref(),
+                &mut self.cache,
+                &self.history[start..end],
+                self.max_context,
+                check_interrupt,
+            )?;
+        }
+        self.info()
+    }
+
+    /// Clone this agent, including transcript and warmed decode caches.
+    /// @export
+    fn clone(&self) -> savvy::Result<Self> {
+        Ok(Clone::clone(self))
     }
 
     /// Open an assistant ChatML turn, generate it, then close the assistant turn.

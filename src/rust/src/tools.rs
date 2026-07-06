@@ -4,8 +4,8 @@ use savvy::{savvy, OwnedListSexp, StringSexp};
 use crate::util::{err, str_scalar};
 
 fn parse_tool_call_to_list(call: &bebelm::tool::ToolCall) -> savvy::Result<savvy::Sexp> {
-    let mut args = OwnedListSexp::new(call.args.len(), true)?;
-    for (i, (name, value)) in call.args.iter().enumerate() {
+    let mut args = OwnedListSexp::new(call.args().len(), true)?;
+    for (i, (name, value)) in call.args().iter().enumerate() {
         args.set_name_and_value(i, name, str_scalar(value)?)?;
     }
 

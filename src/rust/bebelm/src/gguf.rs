@@ -9,11 +9,8 @@
 use std::collections::HashMap;
 use std::fmt;
 use std::fs::File;
-#[cfg(target_os = "emscripten")]
-use std::io::Read;
 use std::path::Path;
 
-#[cfg(not(target_os = "emscripten"))]
 use memmap2::Mmap;
 
 use crate::tensor::GgmlType;
@@ -144,7 +141,6 @@ impl TensorInfo {
 
 /// Backing storage for the file bytes: an mmap in production, an owned buffer in tests.
 enum Backing {
-    #[cfg(not(target_os = "emscripten"))]
     Mmap(Mmap),
     Owned(Vec<u8>),
 }
@@ -153,7 +149,6 @@ impl std::ops::Deref for Backing {
     type Target = [u8];
     fn deref(&self) -> &[u8] {
         match self {
-            #[cfg(not(target_os = "emscripten"))]
             Backing::Mmap(m) => &m[..],
             Backing::Owned(v) => &v[..],
         }
@@ -172,22 +167,12 @@ pub struct GgufFile {
 }
 
 impl GgufFile {
-    /// Open and parse a GGUF file from disk.
+    /// Open and parse a GGUF file from disk (mmapped read-only).
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self> {
-        #[cfg(target_os = "emscripten")]
-        {
-            let mut file = File::open(path)?;
-            let mut bytes = Vec::new();
-            file.read_to_end(&mut bytes)?;
-            Self::from_backing(Backing::Owned(bytes))
-        }
-        #[cfg(not(target_os = "emscripten"))]
-        {
-            let file = File::open(path)?;
-            // Safety: we only read the mapping; the file is not modified while mapped.
-            let mmap = unsafe { Mmap::map(&file)? };
-            Self::from_backing(Backing::Mmap(mmap))
-        }
+        let file = File::open(path)?;
+        // Safety: we only read the mapping; the file is not modified while mapped.
+        let mmap = unsafe { Mmap::map(&file)? };
+        Self::from_backing(Backing::Mmap(mmap))
     }
 
     /// Parse a GGUF file already resident in memory (used by tests and small files).

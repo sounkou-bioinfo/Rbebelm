@@ -123,6 +123,12 @@ NULL
   }
 }
 
+`BebelAgent_clone` <- function(self) {
+  function() {
+    .savvy_wrap_BebelAgent(.Call(savvy_BebelAgent_clone__impl, `self`))
+  }
+}
+
 `BebelAgent_configure` <- function(self) {
   function(`greedy` = NULL, `max_gen` = NULL, `max_context` = NULL, `max_think` = NULL, `temperature` = NULL, `top_k` = NULL, `repeat_penalty` = NULL) {
     .Call(savvy_BebelAgent_configure__impl, `self`, `greedy`, `max_gen`, `max_context`, `max_think`, `temperature`, `top_k`, `repeat_penalty`)
@@ -147,6 +153,12 @@ NULL
   }
 }
 
+`BebelAgent_prefill` <- function(self) {
+  function(`check_interrupt`) {
+    .Call(savvy_BebelAgent_prefill__impl, `self`, `check_interrupt`)
+  }
+}
+
 `BebelAgent_transcript` <- function(self) {
   function() {
     .Call(savvy_BebelAgent_transcript__impl, `self`)
@@ -165,10 +177,12 @@ NULL
   e$`assistant_turn` <- `BebelAgent_assistant_turn`(ptr)
   e$`assistant_turn_tool_stop` <- `BebelAgent_assistant_turn_tool_stop`(ptr)
   e$`clear` <- `BebelAgent_clear`(ptr)
+  e$`clone` <- `BebelAgent_clone`(ptr)
   e$`configure` <- `BebelAgent_configure`(ptr)
   e$`generate` <- `BebelAgent_generate`(ptr)
   e$`history` <- `BebelAgent_history`(ptr)
   e$`info` <- `BebelAgent_info`(ptr)
+  e$`prefill` <- `BebelAgent_prefill`(ptr)
   e$`transcript` <- `BebelAgent_transcript`(ptr)
 
   class(e) <- c("Rbebelm::BebelAgent", "BebelAgent", "savvy_Rbebelm__sealed")
@@ -259,6 +273,12 @@ class(`BebelFileFinder`) <- c("Rbebelm::BebelFileFinder__bundle", "savvy_Rbebelm
   }
 }
 
+`BebelModel_embed` <- function(self) {
+  function(`text`, `add_bos`, `normalize`, `pooling`) {
+    .Call(savvy_BebelModel_embed__impl, `self`, `text`, `add_bos`, `normalize`, `pooling`)
+  }
+}
+
 `BebelModel_encode` <- function(self) {
   function(`text`, `add_bos`) {
     .Call(savvy_BebelModel_encode__impl, `self`, `text`, `add_bos`)
@@ -282,6 +302,7 @@ class(`BebelFileFinder`) <- c("Rbebelm::BebelFileFinder__bundle", "savvy_Rbebelm
   e$.ptr <- ptr
   e$`chat` <- `BebelModel_chat`(ptr)
   e$`decode` <- `BebelModel_decode`(ptr)
+  e$`embed` <- `BebelModel_embed`(ptr)
   e$`encode` <- `BebelModel_encode`(ptr)
   e$`generate` <- `BebelModel_generate`(ptr)
   e$`info` <- `BebelModel_info`(ptr)

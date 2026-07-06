@@ -109,6 +109,11 @@ SEXP savvy_BebelAgent_clear__impl(SEXP self__) {
     return handle_result(res);
 }
 
+SEXP savvy_BebelAgent_clone__impl(SEXP self__) {
+    SEXP res = Rbebelm_BebelAgent_clone_ffi(self__);
+    return handle_result(res);
+}
+
 SEXP savvy_BebelAgent_configure__impl(SEXP self__, SEXP c_arg__greedy, SEXP c_arg__max_gen, SEXP c_arg__max_context, SEXP c_arg__max_think, SEXP c_arg__temperature, SEXP c_arg__top_k, SEXP c_arg__repeat_penalty) {
     SEXP res = Rbebelm_BebelAgent_configure_ffi(self__, c_arg__greedy, c_arg__max_gen, c_arg__max_context, c_arg__max_think, c_arg__temperature, c_arg__top_k, c_arg__repeat_penalty);
     return handle_result(res);
@@ -131,6 +136,11 @@ SEXP savvy_BebelAgent_info__impl(SEXP self__) {
 
 SEXP savvy_BebelAgent_new__impl(SEXP c_arg__model, SEXP c_arg__greedy, SEXP c_arg__max_gen, SEXP c_arg__max_context, SEXP c_arg__max_think, SEXP c_arg__temperature, SEXP c_arg__top_k, SEXP c_arg__repeat_penalty) {
     SEXP res = Rbebelm_BebelAgent_new_ffi(c_arg__model, c_arg__greedy, c_arg__max_gen, c_arg__max_context, c_arg__max_think, c_arg__temperature, c_arg__top_k, c_arg__repeat_penalty);
+    return handle_result(res);
+}
+
+SEXP savvy_BebelAgent_prefill__impl(SEXP self__, SEXP c_arg__check_interrupt) {
+    SEXP res = Rbebelm_BebelAgent_prefill_ffi(self__, c_arg__check_interrupt);
     return handle_result(res);
 }
 
@@ -166,6 +176,11 @@ SEXP savvy_BebelModel_chat__impl(SEXP self__, SEXP c_arg__message, SEXP c_arg__g
 
 SEXP savvy_BebelModel_decode__impl(SEXP self__, SEXP c_arg__ids) {
     SEXP res = Rbebelm_BebelModel_decode_ffi(self__, c_arg__ids);
+    return handle_result(res);
+}
+
+SEXP savvy_BebelModel_embed__impl(SEXP self__, SEXP c_arg__text, SEXP c_arg__add_bos, SEXP c_arg__normalize, SEXP c_arg__pooling) {
+    SEXP res = Rbebelm_BebelModel_embed_ffi(self__, c_arg__text, c_arg__add_bos, c_arg__normalize, c_arg__pooling);
     return handle_result(res);
 }
 
@@ -205,11 +220,13 @@ static const R_CallMethodDef CallEntries[] = {
     {"savvy_BebelAgent_assistant_turn__impl", (DL_FUNC) &savvy_BebelAgent_assistant_turn__impl, 3},
     {"savvy_BebelAgent_assistant_turn_tool_stop__impl", (DL_FUNC) &savvy_BebelAgent_assistant_turn_tool_stop__impl, 3},
     {"savvy_BebelAgent_clear__impl", (DL_FUNC) &savvy_BebelAgent_clear__impl, 1},
+    {"savvy_BebelAgent_clone__impl", (DL_FUNC) &savvy_BebelAgent_clone__impl, 1},
     {"savvy_BebelAgent_configure__impl", (DL_FUNC) &savvy_BebelAgent_configure__impl, 8},
     {"savvy_BebelAgent_generate__impl", (DL_FUNC) &savvy_BebelAgent_generate__impl, 3},
     {"savvy_BebelAgent_history__impl", (DL_FUNC) &savvy_BebelAgent_history__impl, 1},
     {"savvy_BebelAgent_info__impl", (DL_FUNC) &savvy_BebelAgent_info__impl, 1},
     {"savvy_BebelAgent_new__impl", (DL_FUNC) &savvy_BebelAgent_new__impl, 8},
+    {"savvy_BebelAgent_prefill__impl", (DL_FUNC) &savvy_BebelAgent_prefill__impl, 2},
     {"savvy_BebelAgent_transcript__impl", (DL_FUNC) &savvy_BebelAgent_transcript__impl, 1},
     {"savvy_BebelFileFinder_info__impl", (DL_FUNC) &savvy_BebelFileFinder_info__impl, 1},
     {"savvy_BebelFileFinder_new__impl", (DL_FUNC) &savvy_BebelFileFinder_new__impl, 8},
@@ -217,6 +234,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"savvy_BebelFileFinder_wait__impl", (DL_FUNC) &savvy_BebelFileFinder_wait__impl, 2},
     {"savvy_BebelModel_chat__impl", (DL_FUNC) &savvy_BebelModel_chat__impl, 11},
     {"savvy_BebelModel_decode__impl", (DL_FUNC) &savvy_BebelModel_decode__impl, 2},
+    {"savvy_BebelModel_embed__impl", (DL_FUNC) &savvy_BebelModel_embed__impl, 5},
     {"savvy_BebelModel_encode__impl", (DL_FUNC) &savvy_BebelModel_encode__impl, 3},
     {"savvy_BebelModel_generate__impl", (DL_FUNC) &savvy_BebelModel_generate__impl, 11},
     {"savvy_BebelModel_info__impl", (DL_FUNC) &savvy_BebelModel_info__impl, 1},

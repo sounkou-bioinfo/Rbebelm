@@ -10,6 +10,7 @@ This is a library crate which can be imported into your Rust projects, and it's 
 via [crates.io](https://crates.io/crates/bebelm). There is also a basic command-line
 interface that you can use.
 
+The model needs about ~6-8GB of RAM to run (depending on context length).
 BebeLM was tested on an M5 CPU as well as Ryzen 7x and Threadripper CPUs. It should work
 on Intel and on Raspberry Pi 4/5 as well, but this is untested.
 
@@ -68,18 +69,25 @@ weights from `BEBELM_WEIGHTS_FILE` (see above).
   the `<think>...</think>` reasoning and the final answer in different colors. The KV / conv
   caches persist across turns, so each message only prefills its own new tokens. `Ctrl-D` or
   `/exit` to quit.
+- **`ask [options] <question>…`** — one-shot single-turn chat. Encodes the question as a user
+  turn, streams the model's reply (including reasoning), and exits.
 
-Both commands take the same options (sampling defaults to the model's recommended settings):
+All commands take the same options (sampling defaults to the model's recommended settings):
 
 - `--greedy` — deterministic greedy decoding instead of sampling.
-- `--max-gen N` — cap tokens generated per turn (default 2048).
+- `--max-gen N` — cap tokens generated per turn (default 2048); counts every generated token,
+  reasoning included, so a long `<think>` block eats into the budget left for the answer.
 - `--max-think N` — cap the `<think>` reasoning block to N tokens (forces `</think>`).
 - `--no-think` — disable reasoning (equivalent to `--max-think 0`).
+- `--hide-think` — generate reasoning but hide it from the output (streams only the answer).
 - `--num-threads N` — cap the rayon worker pool (default: one per available core).
 
 ```sh
 # Interactive chat
 cargo run --release -- chat
+
+# One-shot single-turn chat
+cargo run --release -- ask "How do I implement binary search in Rust?"
 
 # One-shot completion
 cargo run --release -- generate --max-gen 64 "The capital of France is"
@@ -122,7 +130,8 @@ model's recommended temperature 0.2 / top-k 80 / repeat-penalty 1.05):
 
 - `.greedy()` — deterministic argmax decoding.
 - `.temperature(f32)` / `.top_k(usize)` / `.repeat_penalty(f32)` — individual sampler knobs.
-- `.max_gen(usize)` — tokens generated per turn (default 2048).
+- `.max_gen(usize)` — tokens generated per turn (default 2048); counts reasoning tokens too, so
+  the `<think>` block and the answer share this budget.
 - `.max_context(usize)` — KV attention-window cap in tokens (default 32768); older context
   slides out rather than stopping generation.
 - `.max_think(usize)` — cap the `<think>` reasoning block (`0` ⇒ no reasoning block at all).
@@ -185,15 +194,20 @@ agent.assistant_turn(|id, text| {
 `agent.clear()` resets the conversation (keeping the weights); `agent.history()` returns the
 full token transcript.
 
-**Cloning** — `Agent` implements `Clone`, so a prefilled prompt (e.g. a system prompt plus a
-few example turns) can be built and prefilled once, then cheaply forked into several
-independent continuations — each clone keeps its own transcript and KV/conv caches, and
-generating on one doesn't affect the others:
+**Prefilling** — `agent.prefill()` runs the model over the appended-but-unprocessed prompt to
+warm the KV/conv caches *without* decoding. `generate` prefills lazily anyway, so this is purely
+an optimization for the fork-many pattern below: warm a shared prefix once, then `clone` it.
+Prefilling never changes what the model produces.
+
+**Cloning** — `Agent` implements `Clone`, so a shared prefix (e.g. a system prompt plus a few
+example turns) can be built and prefilled once, then cheaply forked into several independent
+continuations — each clone keeps its own transcript and KV/conv caches, and generating on one
+doesn't affect the others:
 
 ```rust
 let mut base = Agent::new(&model).greedy();
-base.append_user("You are a terse assistant. Answer in one word where possible.");
-base.assistant_turn(|_, _| {});   // prefill the shared prefix once
+base.append_system("You are a terse assistant. Answer in one word where possible.");
+base.prefill();   // warm the shared prefix into the caches once, without generating
 
 let mut a = base.clone();
 let mut b = base.clone();

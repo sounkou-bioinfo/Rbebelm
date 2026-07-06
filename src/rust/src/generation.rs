@@ -14,6 +14,7 @@ use crate::events::StreamState;
 use crate::options::GenerationOptions;
 use crate::util::{check_user_interrupt, err, ids_to_sexp, int_scalar, real_scalar, str_scalar};
 
+const PREFILL_CHUNK: usize = 512;
 const STOP_TOKENS: [u32; 4] = [TOKEN_ENDOFTEXT, TOKEN_BOS, TOKEN_PAD, TOKEN_IM_START];
 
 pub fn trim_context(cache: &mut Cache, max_context: usize) {
@@ -68,13 +69,7 @@ pub fn run_state(
     let (&last, rest) = history[cache.pos..]
         .split_last()
         .expect("non-empty pending history checked above");
-    for (i, &token) in rest.iter().enumerate() {
-        if check_interrupt && i % 16 == 0 {
-            check_user_interrupt()?;
-        }
-        let _ = model.forward_step(token, cache);
-        trim_context(cache, max_context);
-    }
+    absorb_tokens(model, cache, rest, max_context, check_interrupt)?;
     if check_interrupt {
         check_user_interrupt()?;
     }
@@ -158,6 +153,26 @@ pub fn run_state(
         },
         stop,
     })
+}
+
+pub fn absorb_tokens(model: &Model, cache: &mut Cache, tokens: &[u32], max_context: usize, check_interrupt: bool) -> savvy::Result<()> {
+    if cache.kv_len() + tokens.len() <= max_context {
+        for chunk in tokens.chunks(PREFILL_CHUNK) {
+            if check_interrupt {
+                check_user_interrupt()?;
+            }
+            let _ = model.hidden_batch(chunk, cache);
+        }
+    } else {
+        for (i, &token) in tokens.iter().enumerate() {
+            if check_interrupt && i % 16 == 0 {
+                check_user_interrupt()?;
+            }
+            let _ = model.hidden_step(token, cache);
+            trim_context(cache, max_context);
+        }
+    }
+    Ok(())
 }
 
 pub fn turn_to_list(turn: Turn) -> savvy::Result<savvy::Sexp> {
