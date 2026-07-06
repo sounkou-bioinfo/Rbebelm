@@ -39,7 +39,7 @@ BebeLM tool-call delimiter blocks.}
 A function accepting one generation event list.
 }
 \description{
-\code{bebel_event_handler()} creates a single \code{on_event} callback from handlers for
+\code{bebel_event_handler()} creates a single \code{on_event} handler function from handlers for
 individual event types. Current event types are returned by
 \code{bebel_event_types()}.
 }

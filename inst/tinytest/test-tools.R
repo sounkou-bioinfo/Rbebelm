@@ -69,3 +69,4 @@ expect_error(BebelGenerationOptions(
   top_k = NULL,
   repeat_penalty = NULL
 ))
+expect_error(BebelAsyncEventDrainOptions(max = -1))

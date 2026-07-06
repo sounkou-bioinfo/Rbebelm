@@ -164,6 +164,11 @@ SEXP savvy_BebelAgent_transcript__impl(SEXP self__) {
     return handle_result(res);
 }
 
+SEXP savvy_BebelAsyncJob_events__impl(SEXP self__, SEXP c_arg__max) {
+    SEXP res = Rbebelm_BebelAsyncJob_events_ffi(self__, c_arg__max);
+    return handle_result(res);
+}
+
 SEXP savvy_BebelAsyncJob_ready__impl(SEXP self__) {
     SEXP res = Rbebelm_BebelAsyncJob_ready_ffi(self__);
     return handle_result(res);
@@ -246,6 +251,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"savvy_BebelAgent_new__impl", (DL_FUNC) &savvy_BebelAgent_new__impl, 8},
     {"savvy_BebelAgent_prefill__impl", (DL_FUNC) &savvy_BebelAgent_prefill__impl, 2},
     {"savvy_BebelAgent_transcript__impl", (DL_FUNC) &savvy_BebelAgent_transcript__impl, 1},
+    {"savvy_BebelAsyncJob_events__impl", (DL_FUNC) &savvy_BebelAsyncJob_events__impl, 2},
     {"savvy_BebelAsyncJob_ready__impl", (DL_FUNC) &savvy_BebelAsyncJob_ready__impl, 1},
     {"savvy_BebelAsyncJob_result__impl", (DL_FUNC) &savvy_BebelAsyncJob_result__impl, 2},
     {"savvy_BebelModel_chat__impl", (DL_FUNC) &savvy_BebelModel_chat__impl, 11},

@@ -619,7 +619,7 @@ invoke_bebel_tool <- function(tool, call, context) {
 #'   `tool_result`, `tool_error`, `turn_end`.
 #' @param parse_tool_call Function converting tool-call content to either one `list(name, arguments, raw)` or a list of such calls.
 #' @param max_steps Maximum assistant/tool iterations.
-#' @param on_event Optional event callback or handler list for model events.
+#' @param on_event Optional event handler function or named handler list for model events.
 #' @param check_interrupt Check for Ctrl-C during generation.
 #' @return A `bebelAgentRun` list with turns, tool calls, and final agent info.
 #' @export
@@ -731,7 +731,7 @@ print.bebelAgentRun <- function(x, ...) {
 
 #' Build a BebeLM generation event handler
 #'
-#' `bebel_event_handler()` creates a single `on_event` callback from handlers for
+#' `bebel_event_handler()` creates a single `on_event` handler function from handlers for
 #' individual event types. Current event types are returned by
 #' `bebel_event_types()`.
 #'
@@ -820,7 +820,7 @@ normalize_bebel_on_event <- function(on_event) {
 #' @param model A `BebelModel` object.
 #' @param prompt Prompt text.
 #' @param greedy Use deterministic greedy decoding.
-#' @param on_event Event callback, named list of event-specific handlers, or
+#' @param on_event Event handler function, named list of event-specific handlers, or
 #'   `NULL`. Event types are `bebel_event_types()`. Delta events contain `delta`,
 #'   `id`, and `index`; final events contain accumulated `content` or `text`.
 #' @param check_interrupt Check for Ctrl-C during prefill and before every decoded token.
@@ -1064,6 +1064,18 @@ bebel_async_is_ready <- function(job) {
 #' @export
 bebel_async_poll <- function(job) {
   if (bebel_async_is_ready(job)) "ready" else "pending"
+}
+
+#' Drain queued BebeLM async job events
+#'
+#' @param job A `BebelAsyncJob`.
+#' @param max Optional maximum number of queued events to drain.
+#' @return A list of generation event lists.
+#' @export
+bebel_async_events <- function(job, max = NULL) {
+  job <- S7::prop(BebelAsyncJobRef(value = list(job)), "value")[[1L]]
+  options <- BebelAsyncEventDrainOptions(max = if (is.null(max)) NULL else as.numeric(max))
+  job$events(max = S7::prop(options, "max"))
 }
 
 #' Collect a BebeLM async job result

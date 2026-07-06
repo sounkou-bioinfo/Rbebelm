@@ -10,7 +10,7 @@ use bebelm::tokenizer::{
 };
 use savvy::{FunctionSexp, OwnedListSexp};
 
-use crate::events::StreamState;
+use crate::events::{EventQueue, StreamState};
 use crate::options::GenerationOptions;
 use crate::util::{check_user_interrupt, err, ids_to_sexp, int_scalar, real_scalar, str_scalar};
 
@@ -25,6 +25,15 @@ pub fn trim_context(cache: &mut Cache, max_context: usize) {
 }
 
 pub fn run_generation(model: &Model, history: Vec<u32>, opts: &mut GenerationOptions) -> savvy::Result<Turn> {
+    run_generation_with_events(model, history, opts, None)
+}
+
+pub fn run_generation_with_events(
+    model: &Model,
+    history: Vec<u32>,
+    opts: &mut GenerationOptions,
+    event_queue: Option<&EventQueue>,
+) -> savvy::Result<Turn> {
     let mut cache = Cache::new();
     let mut history = history;
     run_state(
@@ -34,6 +43,7 @@ pub fn run_generation(model: &Model, history: Vec<u32>, opts: &mut GenerationOpt
         &mut opts.sampler,
         opts.check_interrupt,
         &opts.on_event,
+        event_queue,
         opts.max_gen,
         opts.max_context,
         opts.max_think,
@@ -49,6 +59,7 @@ pub fn run_state(
     sampler: &mut Sampler,
     check_interrupt: bool,
     on_event: &Option<FunctionSexp>,
+    event_queue: Option<&EventQueue>,
     max_gen: usize,
     max_context: usize,
     max_think: usize,
@@ -78,7 +89,7 @@ pub fn run_state(
     let prefill = t_prefill.elapsed();
 
     let t_decode = Instant::now();
-    let mut stream = StreamState::new(on_event);
+    let mut stream = StreamState::new(on_event, event_queue);
     stream.start()?;
     let mut ids = Vec::new();
     let mut thinking = false;

@@ -29,7 +29,7 @@ bebel_agent_run(
 
 \item{max_steps}{Maximum assistant/tool iterations.}
 
-\item{on_event}{Optional event callback or handler list for model events.}
+\item{on_event}{Optional event handler function or named handler list for model events.}
 
 \item{check_interrupt}{Check for Ctrl-C during generation.}
 }

@@ -167,11 +167,11 @@ ctx$calls
 
 ## Async jobs
 
-Async jobs use an aio-style surface: submit work, poll the handle, then collect
-the completed `Turn` on the R thread. Several jobs can share one loaded model;
-the weights stay shared and model execution is serialized until the event
-monitor queue lands. Agent async jobs currently run on a cloned agent snapshot:
-the original agent is not mutated.
+Async jobs use an aio-style surface: submit work, drain queued events when the R
+loop is ready, poll the handle, then collect the completed `Turn` on the R
+thread. Several jobs can share one loaded model; the weights stay shared and
+model execution is serialized. Agent async jobs currently run on a cloned agent
+snapshot: the original agent is not mutated.
 
 ```{r async}
 job_a <- bebel_generate_async(
@@ -188,8 +188,10 @@ job_b <- bebel_agent_generate_async(job_b_agent)
 
 bebel_async_poll(job_a)
 async_a <- bebel_async_collect(job_a, wait = TRUE)
+event_types_a <- vapply(bebel_async_events(job_a), `[[`, character(1), "type")
 async_b <- bebel_async_collect(job_b, wait = TRUE)
 
+event_types_a
 async_a
 async_b
 bebel_agent_info(job_b_agent)[c("history_tokens", "processed_tokens")]

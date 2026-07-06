@@ -70,11 +70,21 @@ expect_true(bebel_async_poll(job) %in% c("pending", "ready"))
 async <- bebel_async_collect(job, wait = TRUE)
 expect_true(inherits(async, "bebelGeneration"))
 expect_true(nzchar(async$text))
+first_events <- bebel_async_events(job, max = 2)
+expect_equal(length(first_events), 2L)
+remaining_events <- bebel_async_events(job)
+event_types <- vapply(c(first_events, remaining_events), `[[`, character(1), "type")
+expect_true("start" %in% event_types)
+expect_true("text_delta" %in% event_types)
+expect_true("done" %in% event_types)
+expect_equal(length(bebel_async_events(job)), 0L)
 
 agent_job <- bebel_assistant_turn_async(agent)
 agent_async <- bebel_async_collect(agent_job, wait = TRUE)
 expect_true(inherits(agent_async, "bebelGeneration"))
 expect_true(nzchar(agent_async$text))
+agent_event_types <- vapply(bebel_async_events(agent_job), `[[`, character(1), "type")
+expect_true("done" %in% agent_event_types)
 
 jobs <- lapply(
   c("The capital of Mali is", "The capital of Italy is", "The capital of Japan is"),

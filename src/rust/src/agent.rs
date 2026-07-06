@@ -8,6 +8,7 @@ use bebelm::tokenizer::TOKEN_IM_END;
 use savvy::{savvy, FunctionSexp, IntegerSexp, OwnedListSexp, StringSexp};
 
 use crate::chatml::{tool_turn, user_turn, ASSISTANT_OPEN};
+use crate::events::EventQueue;
 use crate::generation::{absorb_tokens, run_state, turn_to_list};
 use crate::model::BebelModel;
 use crate::options::{maybe_update_sampler, GenerationOptions};
@@ -232,6 +233,15 @@ impl BebelAgent {
     }
 
     pub(crate) fn generate_turn(&mut self, check_interrupt: bool, on_event: Option<FunctionSexp>) -> savvy::Result<Turn> {
+        self.generate_turn_with_events(check_interrupt, on_event, None)
+    }
+
+    pub(crate) fn generate_turn_with_events(
+        &mut self,
+        check_interrupt: bool,
+        on_event: Option<FunctionSexp>,
+        event_queue: Option<&EventQueue>,
+    ) -> savvy::Result<Turn> {
         let _guard = self.exec_lock.lock().map_err(|_| err("model execution lock poisoned"))?;
         run_state(
             self.model.as_ref(),
@@ -240,6 +250,7 @@ impl BebelAgent {
             &mut self.sampler,
             check_interrupt,
             &on_event,
+            event_queue,
             self.max_gen,
             self.max_context,
             self.max_think,
@@ -248,6 +259,16 @@ impl BebelAgent {
     }
 
     pub(crate) fn assistant_turn_impl(&mut self, check_interrupt: bool, on_event: Option<FunctionSexp>, stop_on_tool_call: bool) -> savvy::Result<Turn> {
+        self.assistant_turn_impl_with_events(check_interrupt, on_event, stop_on_tool_call, None)
+    }
+
+    pub(crate) fn assistant_turn_impl_with_events(
+        &mut self,
+        check_interrupt: bool,
+        on_event: Option<FunctionSexp>,
+        stop_on_tool_call: bool,
+        event_queue: Option<&EventQueue>,
+    ) -> savvy::Result<Turn> {
         self.append_text(ASSISTANT_OPEN);
         let turn = {
             let _guard = self.exec_lock.lock().map_err(|_| err("model execution lock poisoned"))?;
@@ -258,6 +279,7 @@ impl BebelAgent {
                 &mut self.sampler,
                 check_interrupt,
                 &on_event,
+                event_queue,
                 self.max_gen,
                 self.max_context,
                 self.max_think,

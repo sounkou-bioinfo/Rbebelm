@@ -58,6 +58,28 @@ BebelAsyncJobRef <- S7::new_class(
   }
 )
 
+#' Async event drain options
+#'
+#' @param max Optional non-negative whole-number event limit.
+#' @export
+BebelAsyncEventDrainOptions <- S7::new_class(
+  "BebelAsyncEventDrainOptions",
+  properties = list(max = S7::class_any),
+  validator = function(self) {
+    max <- S7::prop(self, "max")
+    if (!is.null(max) && (
+      !is.numeric(max) ||
+        length(max) != 1L ||
+        is.na(max) ||
+        !is.finite(max) ||
+        max < 0 ||
+        max != floor(max)
+    )) {
+      "`max` must be NULL or a non-negative whole number."
+    }
+  }
+)
+
 #' BebeLM tool reference
 #'
 #' @param value A one-element list containing a `BebelToolSpec`.

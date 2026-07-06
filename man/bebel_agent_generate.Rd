@@ -9,7 +9,7 @@ bebel_agent_generate(agent, on_event = NULL, check_interrupt = TRUE)
 \arguments{
 \item{agent}{A \code{BebelAgent} object.}
 
-\item{on_event}{Event callback, named list of event-specific handlers, or
+\item{on_event}{Event handler function, named list of event-specific handlers, or
 \code{NULL}. Event types are \code{bebel_event_types()}. Delta events contain \code{delta},
 \code{id}, and \code{index}; final events contain accumulated \code{content} or \code{text}.}
 

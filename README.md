@@ -109,8 +109,8 @@ answer
 #> <BebeLM generation result>
 #>   stop: max_new
 #>   tokens: 8 generated; 6 prompt
-#>   prefill: 14.3 tok/s
-#>   decode: 12.63 tok/s
+#>   prefill: 14.8 tok/s
+#>   decode: 14.74 tok/s
 #>   text:
 #>  the city of Paris. city of Paris
 unique(events)
@@ -133,8 +133,8 @@ chat
 #> <BebeLM chat result>
 #>   stop: eos
 #>   tokens: 20 generated; 21 prompt
-#>   prefill: 17.7 tok/s
-#>   decode: 13.57 tok/s
+#>   prefill: 17.5 tok/s
+#>   decode: 13.42 tok/s
 #>   text:
 #> <|tool_call_start|>[constraints(word_count=5, question="what does mmap help with?")]<|tool_call_end|>
 ```
@@ -156,8 +156,8 @@ turn1
 #> <BebeLM assistant turn>
 #>   stop: eos
 #>   tokens: 10 generated; 15 prompt
-#>   prefill: 16.6 tok/s
-#>   decode: 13.70 tok/s
+#>   prefill: 17.3 tok/s
+#>   decode: 13.55 tok/s
 #>   text:
 #> <
 #> </think>
@@ -167,8 +167,8 @@ turn2
 #> <BebeLM assistant turn>
 #>   stop: eos
 #>   tokens: 11 generated; 17 prompt
-#>   prefill: 17.7 tok/s
-#>   decode: 13.31 tok/s
+#>   prefill: 17.5 tok/s
+#>   decode: 13.89 tok/s
 #>   text:
 #> <
 #> </Answer>
@@ -241,11 +241,12 @@ ctx$calls
 
 ## Async jobs
 
-Async jobs use an aio-style surface: submit work, poll the handle, then
-collect the completed `Turn` on the R thread. Several jobs can share one
-loaded model; the weights stay shared and model execution is serialized
-until the event monitor queue lands. Agent async jobs currently run on a
-cloned agent snapshot: the original agent is not mutated.
+Async jobs use an aio-style surface: submit work, drain queued events
+when the R loop is ready, poll the handle, then collect the completed
+`Turn` on the R thread. Several jobs can share one loaded model; the
+weights stay shared and model execution is serialized. Agent async jobs
+currently run on a cloned agent snapshot: the original agent is not
+mutated.
 
 ``` r
 job_a <- bebel_generate_async(
@@ -263,22 +264,27 @@ job_b <- bebel_agent_generate_async(job_b_agent)
 bebel_async_poll(job_a)
 #> [1] "pending"
 async_a <- bebel_async_collect(job_a, wait = TRUE)
+event_types_a <- vapply(bebel_async_events(job_a), `[[`, character(1), "type")
 async_b <- bebel_async_collect(job_b, wait = TRUE)
 
+event_types_a
+#>  [1] "start"      "text_start" "text_delta" "text_delta" "text_delta"
+#>  [6] "text_delta" "text_delta" "text_delta" "text_delta" "text_delta"
+#> [11] "text_end"   "done"
 async_a
 #> <BebeLM generation result>
 #>   stop: max_new
 #>   tokens: 8 generated; 6 prompt
-#>   prefill: 14.5 tok/s
-#>   decode: 15.49 tok/s
+#>   prefill: 14.7 tok/s
+#>   decode: 15.69 tok/s
 #>   text:
 #>  Rome. city of... ... ... ...
 async_b
 #> <BebeLM generation result>
 #>   stop: max_new
 #>   tokens: 8 generated; 6 prompt
-#>   prefill: 14.6 tok/s
-#>   decode: 15.98 tok/s
+#>   prefill: 14.5 tok/s
+#>   decode: 15.29 tok/s
 #>   text:
 #>  the city of Bamako. city of
 bebel_agent_info(job_b_agent)[c("history_tokens", "processed_tokens")]
@@ -321,7 +327,7 @@ do.call(rbind, bench)
 #> 2 The capital of Italy is      Rome. city of... ... ... ...             6
 #> 3 The capital of Japan is Tokyo. city. The capital of Japan             6
 #>   generated_tokens prefill_tps decode_tps
-#> 1                8    14.64088   15.81038
-#> 2                8    14.90955   15.73636
-#> 3                8    14.59386   15.52764
+#> 1                8    14.28969   15.28434
+#> 2                8    14.05595   14.81557
+#> 3                8    14.30677   15.02516
 ```
