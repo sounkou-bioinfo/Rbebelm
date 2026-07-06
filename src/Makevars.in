@@ -47,7 +47,9 @@ $(RUST_STAMP):
 		CARGO_TARGET_FLAG="--target=$$RUST_TARGET"; \
 		RUSTFLAGS_ENV="CARGO_TARGET_$$(printf '%s' "$$RUST_TARGET" | tr '[:lower:]-' '[:upper:]_')_RUSTFLAGS"; \
 		BUILD_BACKENDS="wasm_simd128"; \
-		if [ -x "$$HOME/.cargo/bin/cargo" ]; then CARGO_CMD="$$HOME/.cargo/bin/cargo"; fi; \
+		for cargo_candidate in "$$HOME/.cargo/bin/cargo" /usr/local/cargo/bin/cargo /opt/webr/host/bin/cargo; do \
+			if [ -x "$$cargo_candidate" ]; then CARGO_CMD="$$cargo_candidate"; break; fi; \
+		done; \
 	else \
 		case "$$RUST_HOST" in \
 			x86_64-*) BUILD_BACKENDS="scalar,avx2,avx512";; \
