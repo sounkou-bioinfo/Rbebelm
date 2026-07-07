@@ -19,6 +19,8 @@
   prefill batching, and text vectors use independent sequence batching so short
   ontology labels can share batched matmul work. `bebel_embed()` exposes
   `token_batch_size` and `sequence_batch_size`.
+- Kept batched embeddings memory-bounded by processing text chunks to completion
+  with at most `sequence_batch_size` live sequence caches.
 
 # Rbebelm 0.0.0.9000
 

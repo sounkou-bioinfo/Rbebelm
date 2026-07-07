@@ -286,45 +286,52 @@ fn pooled_embeddings(
         return Err(err(format!("unsupported pooling mode {pooling:?}; use \"mean\" or \"last\"")));
     }
 
-    let ids: Vec<Vec<u32>> = texts
-        .iter()
-        .enumerate()
-        .map(|(i, text)| {
-            let ids = model.tokenizer().encode(text, add_bos);
-            if ids.is_empty() {
-                Err(err(format!("text at index {} produced no tokens", i + 1)))
-            } else {
-                Ok(ids)
-            }
-        })
-        .collect::<savvy::Result<Vec<_>>>()?;
-
-    let n = ids.len();
-    let mut caches: Vec<Cache> = (0..n).map(|_| Cache::new()).collect();
+    let n = texts.len();
     let mut pooled = vec![0.0f32; n * HIDDEN];
-    let max_len = ids.iter().map(Vec::len).max().unwrap_or(0);
 
-    for depth in 0..max_len {
-        let active: Vec<usize> = ids
+    for start in (0..n).step_by(sequence_batch_size) {
+        let end = (start + sequence_batch_size).min(n);
+        let ids: Vec<Vec<u32>> = texts[start..end]
             .iter()
             .enumerate()
-            .filter_map(|(i, one)| (depth < one.len()).then_some(i))
-            .collect();
-        for group in active.chunks(sequence_batch_size) {
+            .map(|(i, text)| {
+                let ids = model.tokenizer().encode(text, add_bos);
+                if ids.is_empty() {
+                    Err(err(format!("text at index {} produced no tokens", start + i + 1)))
+                } else {
+                    Ok(ids)
+                }
+            })
+            .collect::<savvy::Result<Vec<_>>>()?;
+
+        let local_n = ids.len();
+        let mut caches: Vec<Cache> = (0..local_n).map(|_| Cache::new()).collect();
+        let max_len = ids.iter().map(Vec::len).max().unwrap_or(0);
+
+        for depth in 0..max_len {
+            let active: Vec<usize> = ids
+                .iter()
+                .enumerate()
+                .filter_map(|(i, one)| (depth < one.len()).then_some(i))
+                .collect();
+            if active.is_empty() {
+                continue;
+            }
             if check_interrupt {
                 check_user_interrupt()?;
             }
-            let tokens: Vec<u32> = group.iter().map(|&i| ids[i][depth]).collect();
-            let mut group_caches: Vec<Cache> = group
+            let tokens: Vec<u32> = active.iter().map(|&i| ids[i][depth]).collect();
+            let mut active_caches: Vec<Cache> = active
                 .iter()
                 .map(|&i| std::mem::take(&mut caches[i]))
                 .collect();
-            let mut cache_refs: Vec<&mut Cache> = group_caches.iter_mut().collect();
+            let mut cache_refs: Vec<&mut Cache> = active_caches.iter_mut().collect();
             let hidden = model.hidden_independent_batch(&tokens, &mut cache_refs);
             drop(cache_refs);
 
-            for (j, &row) in group.iter().enumerate() {
+            for (j, &local_row) in active.iter().enumerate() {
                 let src = &hidden[j * HIDDEN..(j + 1) * HIDDEN];
+                let row = start + local_row;
                 let dst = &mut pooled[row * HIDDEN..(row + 1) * HIDDEN];
                 if pooling == "mean" {
                     for (d, s) in dst.iter_mut().zip(src.iter()) {
@@ -334,23 +341,25 @@ fn pooled_embeddings(
                     dst.copy_from_slice(src);
                 }
             }
-            for (cache, &row) in group_caches.into_iter().zip(group.iter()) {
-                caches[row] = cache;
+            for (cache, &local_row) in active_caches.into_iter().zip(active.iter()) {
+                caches[local_row] = cache;
             }
         }
-    }
 
-    if pooling == "mean" {
-        for (row, one) in ids.iter().enumerate() {
-            let denom = one.len() as f32;
-            for v in &mut pooled[row * HIDDEN..(row + 1) * HIDDEN] {
-                *v /= denom;
+        if pooling == "mean" {
+            for (local_row, one) in ids.iter().enumerate() {
+                let denom = one.len() as f32;
+                let row = start + local_row;
+                for v in &mut pooled[row * HIDDEN..(row + 1) * HIDDEN] {
+                    *v /= denom;
+                }
             }
         }
-    }
-    if normalize {
-        for row in 0..n {
-            normalize_embedding(&mut pooled[row * HIDDEN..(row + 1) * HIDDEN]);
+        if normalize {
+            for local_row in 0..local_n {
+                let row = start + local_row;
+                normalize_embedding(&mut pooled[row * HIDDEN..(row + 1) * HIDDEN]);
+            }
         }
     }
     Ok(pooled)
