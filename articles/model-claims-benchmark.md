@@ -58,13 +58,13 @@ bench
     ## 2 capital-italy The capital of Italy is     Rome
     ## 3 capital-japan The capital of Japan is    Tokyo
     ##                                text prompt_tokens generated_tokens prefill_tps
-    ## 1       the city of Bamako. city of             6                8    9.517814
-    ## 2      Rome. city of... ... ... ...             6                8   10.823092
-    ## 3 Tokyo. city. The capital of Japan             6                8   11.044138
+    ## 1       the city of Bamako. city of             6                8    9.743548
+    ## 2      Rome. city of... ... ... ...             6                8   10.885147
+    ## 3 Tokyo. city. The capital of Japan             6                8   10.870569
     ##   decode_tps matched
-    ## 1   10.91057    TRUE
-    ## 2   11.31228   FALSE
-    ## 3   11.38944   FALSE
+    ## 1   11.12199    TRUE
+    ## 2   11.15707   FALSE
+    ## 3   11.39298   FALSE
 
 Async jobs let several bounded runs share one loaded model in the same R
 process.
@@ -86,6 +86,6 @@ data.frame(
 ```
 
     ##              id                              text generated_tokens decode_tps
-    ## 1  capital-mali       the city of Bamako. city of                8   4.079008
-    ## 2 capital-italy      Rome. city of... ... ... ...                8   4.048006
-    ## 3 capital-japan Tokyo. city. The capital of Japan                8   4.174654
+    ## 1  capital-mali       the city of Bamako. city of                8   3.876260
+    ## 2 capital-italy      Rome. city of... ... ... ...                8   3.814731
+    ## 3 capital-japan Tokyo. city. The capital of Japan                8   3.852301
