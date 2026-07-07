@@ -14,6 +14,9 @@
   Jobs are represented as `BebelAsyncJob` objects and collected from R
   with
   [`bebel_async_collect()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_async_collect.md).
+- Removed the model execution mutex so async jobs can run concurrently
+  while sharing immutable memory-mapped weights and keeping independent
+  caches.
 - Surfaced the shared-weight model design: agents own transcript/decode
   state while sharing loaded GGUF weights through the Rust backend.
 - Updated README, vignettes, pkgdown metadata, tinytests, and the webR

@@ -44,6 +44,7 @@
 <li>Removed the R-side agent framework, interactive frontend, session tree, extension layer, provider registry, and fuzzy-file-search code.</li>
 <li>Added S7 classes with property validators for model options, agent options, generation options, embedding options, tool specs, and native pointer refs.</li>
 <li>Added async model and agent generation through Rust worker threads. Jobs are represented as <code>BebelAsyncJob</code> objects and collected from R with <code><a href="../reference/bebel_async_collect.html">bebel_async_collect()</a></code>.</li>
+<li>Removed the model execution mutex so async jobs can run concurrently while sharing immutable memory-mapped weights and keeping independent caches.</li>
 <li>Surfaced the shared-weight model design: agents own transcript/decode state while sharing loaded GGUF weights through the Rust backend.</li>
 <li>Updated README, vignettes, pkgdown metadata, tinytests, and the webR package-load check around real BebeLM runs and the lean public API.</li>
 <li>Hardened native SIMD dispatch: scalar builds use a baseline target and optimized dylibs are selected by runtime CPU checks.</li>
