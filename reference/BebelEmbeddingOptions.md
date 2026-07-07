@@ -10,6 +10,7 @@ BebelEmbeddingOptions(
   normalize = logical(0),
   pooling = character(0),
   token_batch_size = integer(0),
+  sequence_batch_size = integer(0),
   check_interrupt = logical(0)
 )
 ```
@@ -31,6 +32,10 @@ BebelEmbeddingOptions(
 - token_batch_size:
 
   Number of tokens per Rust batched prefill/matmul call.
+
+- sequence_batch_size:
+
+  Number of texts per independent-sequence embedding batch.
 
 - check_interrupt:
 

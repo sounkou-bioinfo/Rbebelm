@@ -12,6 +12,7 @@ bebel_embed(
   normalize = TRUE,
   pooling = c("mean", "last"),
   token_batch_size = 512L,
+  sequence_batch_size = 64L,
   check_interrupt = TRUE
 )
 ```
@@ -41,6 +42,10 @@ bebel_embed(
 - token_batch_size:
 
   Number of tokens per Rust batched prefill/matmul call.
+
+- sequence_batch_size:
+
+  Number of texts per independent-sequence embedding batch.
 
 - check_interrupt:
 

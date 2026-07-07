@@ -20,10 +20,12 @@
   package-load check around real BebeLM runs and the lean public API.
 - Hardened native SIMD dispatch: scalar builds use a baseline target and
   optimized dylibs are selected by runtime CPU checks.
-- Moved pooled embeddings onto the Rust batched prefill path so token
-  chunks use the existing batched matmul kernels, and exposed
-  `token_batch_size` through
-  [`bebel_embed()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_embed.md).
+- Moved pooled embeddings onto Rust batched paths: long texts use
+  token-chunk prefill batching, and text vectors use independent
+  sequence batching so short ontology labels can share batched matmul
+  work.
+  [`bebel_embed()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_embed.md)
+  exposes `token_batch_size` and `sequence_batch_size`.
 
 ## Rbebelm 0.0.0.9000
 

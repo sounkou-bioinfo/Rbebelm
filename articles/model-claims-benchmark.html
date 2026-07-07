@@ -114,13 +114,13 @@ reuse the same shape with real ontology prompts and expected labels.</p>
 <span><span class="co">## 2 capital-italy The capital of Italy is     Rome</span></span>
 <span><span class="co">## 3 capital-japan The capital of Japan is    Tokyo</span></span>
 <span><span class="co">##                                text prompt_tokens generated_tokens prefill_tps</span></span>
-<span><span class="co">## 1       the city of Bamako. city of             6                8    7.860906</span></span>
-<span><span class="co">## 2      Rome. city of... ... ... ...             6                8    8.185724</span></span>
-<span><span class="co">## 3 Tokyo. city. The capital of Japan             6                8    8.191140</span></span>
+<span><span class="co">## 1       the city of Bamako. city of             6                8    9.605505</span></span>
+<span><span class="co">## 2      Rome. city of... ... ... ...             6                8   10.917035</span></span>
+<span><span class="co">## 3 Tokyo. city. The capital of Japan             6                8   10.974196</span></span>
 <span><span class="co">##   decode_tps matched</span></span>
-<span><span class="co">## 1   8.868042    TRUE</span></span>
-<span><span class="co">## 2   8.656616   FALSE</span></span>
-<span><span class="co">## 3   8.816211   FALSE</span></span></code></pre>
+<span><span class="co">## 1   11.19935    TRUE</span></span>
+<span><span class="co">## 2   11.33689   FALSE</span></span>
+<span><span class="co">## 3   11.40202   FALSE</span></span></code></pre>
 <p>Async jobs let several bounded runs share one loaded model in the
 same R process.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
@@ -137,9 +137,9 @@ same R process.</p>
 <span>  stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">##              id                              text generated_tokens decode_tps</span></span>
-<span><span class="co">## 1  capital-mali       the city of Bamako. city of                8   8.953357</span></span>
-<span><span class="co">## 2 capital-italy      Rome. city of... ... ... ...                8   8.943005</span></span>
-<span><span class="co">## 3 capital-japan Tokyo. city. The capital of Japan                8   8.524497</span></span></code></pre>
+<span><span class="co">## 1  capital-mali       the city of Bamako. city of                8   11.37563</span></span>
+<span><span class="co">## 2 capital-italy      Rome. city of... ... ... ...                8   11.13607</span></span>
+<span><span class="co">## 3 capital-japan Tokyo. city. The capital of Japan                8   11.49845</span></span></code></pre>
   </main>
 </div>
 

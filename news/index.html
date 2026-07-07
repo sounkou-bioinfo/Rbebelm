@@ -47,7 +47,7 @@
 <li>Surfaced the shared-weight model design: agents own transcript/decode state while sharing loaded GGUF weights through the Rust backend.</li>
 <li>Updated README, vignettes, pkgdown metadata, tinytests, and the webR package-load check around real BebeLM runs and the lean public API.</li>
 <li>Hardened native SIMD dispatch: scalar builds use a baseline target and optimized dylibs are selected by runtime CPU checks.</li>
-<li>Moved pooled embeddings onto the Rust batched prefill path so token chunks use the existing batched matmul kernels, and exposed <code>token_batch_size</code> through <code><a href="../reference/bebel_embed.html">bebel_embed()</a></code>.</li>
+<li>Moved pooled embeddings onto Rust batched paths: long texts use token-chunk prefill batching, and text vectors use independent sequence batching so short ontology labels can share batched matmul work. <code><a href="../reference/bebel_embed.html">bebel_embed()</a></code> exposes <code>token_batch_size</code> and <code>sequence_batch_size</code>.</li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.0.0.9000" id="rbebelm-0009000">Rbebelm 0.0.0.9000<a class="anchor" aria-label="anchor" href="#rbebelm-0009000"></a></h2>
