@@ -26,6 +26,8 @@
   work.
   [`bebel_embed()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_embed.md)
   exposes `token_batch_size` and `sequence_batch_size`.
+- Kept batched embeddings memory-bounded by processing text chunks to
+  completion with at most `sequence_batch_size` live sequence caches.
 
 ## Rbebelm 0.0.0.9000
 
