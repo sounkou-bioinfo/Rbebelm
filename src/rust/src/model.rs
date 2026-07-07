@@ -3,12 +3,14 @@ use std::sync::{Arc, Mutex};
 use bebelm::cache::Cache;
 use bebelm::config::HIDDEN;
 use bebelm::model::Model;
-use savvy::{savvy, FunctionSexp, IntegerSexp, OwnedListSexp, OwnedRealSexp};
+use savvy::{savvy, FunctionSexp, IntegerSexp, OwnedListSexp, OwnedRealSexp, StringSexp};
 
 use crate::chatml::{user_turn, ASSISTANT_OPEN};
 use crate::generation::{run_generation, turn_to_list};
 use crate::options::GenerationOptions;
-use crate::util::{err, ids_from_integer, ids_to_sexp, init_rayon, str_scalar};
+use crate::util::{check_user_interrupt, checked_positive_usize, err, ids_from_integer, ids_to_sexp, init_rayon, str_scalar};
+
+const DEFAULT_EMBED_TOKEN_BATCH: usize = 512;
 
 /// Loaded BebeLM GGUF model.
 /// @export
@@ -61,46 +63,43 @@ impl BebelModel {
     /// @export
     fn embed(&self, text: &str, add_bos: bool, normalize: bool, pooling: &str) -> savvy::Result<savvy::Sexp> {
         let _guard = self.exec_lock.lock().map_err(|_| err("model execution lock poisoned"))?;
-        let ids = self.inner.tokenizer().encode(text, add_bos);
-        if ids.is_empty() {
-            return Err(err("text produced no tokens"));
-        }
-        let mut cache = Cache::new();
-        let mut pooled = vec![0.0f32; HIDDEN];
-        match pooling {
-            "mean" => {
-                for token in ids.iter().copied() {
-                    let h = self.inner.hidden_step(token, &mut cache);
-                    for (acc, v) in pooled.iter_mut().zip(h.iter()) {
-                        *acc += *v;
-                    }
-                }
-                let denom = ids.len() as f32;
-                for v in pooled.iter_mut() {
-                    *v /= denom;
-                }
-            }
-            "last" => {
-                for token in ids.iter().copied() {
-                    pooled = self.inner.hidden_step(token, &mut cache);
-                }
-            }
-            other => {
-                return Err(err(format!("unsupported pooling mode {other:?}; use \"mean\" or \"last\"")));
-            }
-        }
-        if normalize {
-            let norm = pooled.iter().map(|v| (*v as f64) * (*v as f64)).sum::<f64>().sqrt();
-            if norm > 0.0 && norm.is_finite() {
-                for v in pooled.iter_mut() {
-                    *v = (*v as f64 / norm) as f32;
-                }
-            }
-        }
+        let pooled = pooled_embedding(self.inner.as_ref(), text, add_bos, normalize, pooling, DEFAULT_EMBED_TOKEN_BATCH, false)?;
         let mut out = OwnedRealSexp::new(HIDDEN)?;
         for (i, value) in pooled.iter().enumerate() {
             out.set_elt(i, *value as f64)?;
         }
+        out.into()
+    }
+
+    /// Embed a character vector by pooling final hidden states.
+    /// @export
+    fn embed_batch(
+        &self,
+        text: StringSexp,
+        add_bos: bool,
+        normalize: bool,
+        pooling: &str,
+        check_interrupt: bool,
+        token_batch_size: Option<f64>,
+    ) -> savvy::Result<savvy::Sexp> {
+        let texts = text.to_vec();
+        let token_batch_size = checked_positive_usize(token_batch_size, "token_batch_size")?.unwrap_or(DEFAULT_EMBED_TOKEN_BATCH);
+        let n = texts.len();
+        let _guard = self.exec_lock.lock().map_err(|_| err("model execution lock poisoned"))?;
+        let mut out = OwnedRealSexp::new(n * HIDDEN)?;
+        {
+            let values = out.as_mut_slice();
+            for (row, one) in texts.iter().enumerate() {
+                if check_interrupt {
+                    check_user_interrupt()?;
+                }
+                let pooled = pooled_embedding(self.inner.as_ref(), one, add_bos, normalize, pooling, token_batch_size, check_interrupt)?;
+                for col in 0..HIDDEN {
+                    values[row + col * n] = pooled[col] as f64;
+                }
+            }
+        }
+        out.set_dim(&[n, HIDDEN])?;
         out.into()
     }
 
@@ -201,5 +200,67 @@ impl BebelModel {
             top_k,
             repeat_penalty,
         )
+    }
+}
+
+fn pooled_embedding(
+    model: &Model,
+    text: &str,
+    add_bos: bool,
+    normalize: bool,
+    pooling: &str,
+    token_batch_size: usize,
+    check_interrupt: bool,
+) -> savvy::Result<Vec<f32>> {
+    let ids = model.tokenizer().encode(text, add_bos);
+    if ids.is_empty() {
+        return Err(err("text produced no tokens"));
+    }
+    let mut cache = Cache::new();
+    let mut pooled = vec![0.0f32; HIDDEN];
+    match pooling {
+        "mean" => {
+            for chunk in ids.chunks(token_batch_size) {
+                if check_interrupt {
+                    check_user_interrupt()?;
+                }
+                let hidden = model.hidden_batch(chunk, &mut cache);
+                for row in hidden.chunks_exact(HIDDEN) {
+                    for (acc, v) in pooled.iter_mut().zip(row.iter()) {
+                        *acc += *v;
+                    }
+                }
+            }
+            let denom = ids.len() as f32;
+            for v in pooled.iter_mut() {
+                *v /= denom;
+            }
+        }
+        "last" => {
+            for chunk in ids.chunks(token_batch_size) {
+                if check_interrupt {
+                    check_user_interrupt()?;
+                }
+                let hidden = model.hidden_batch(chunk, &mut cache);
+                let last = &hidden[hidden.len() - HIDDEN..];
+                pooled.copy_from_slice(last);
+            }
+        }
+        other => {
+            return Err(err(format!("unsupported pooling mode {other:?}; use \"mean\" or \"last\"")));
+        }
+    }
+    if normalize {
+        normalize_embedding(&mut pooled);
+    }
+    Ok(pooled)
+}
+
+fn normalize_embedding(values: &mut [f32]) {
+    let norm = values.iter().map(|v| (*v as f64) * (*v as f64)).sum::<f64>().sqrt();
+    if norm > 0.0 && norm.is_finite() {
+        for v in values.iter_mut() {
+            *v = (*v as f64 / norm) as f32;
+        }
     }
 }

@@ -108,7 +108,13 @@ bebel_model_load <- function(path, num_threads = NULL) {
 bebel_tokenize <- function(model, text, add_bos = TRUE) {
   model <- S7::prop(BebelModelRef(value = list(model)), "value")[[1L]]
   text <- S7::prop(BebelScalarText(value = text), "value")
-  options <- BebelEmbeddingOptions(add_bos = isTRUE(add_bos), normalize = TRUE, pooling = "mean")
+  options <- BebelEmbeddingOptions(
+    add_bos = isTRUE(add_bos),
+    normalize = TRUE,
+    pooling = "mean",
+    token_batch_size = 1L,
+    check_interrupt = FALSE
+  )
   model$encode(text, add_bos = S7::prop(options, "add_bos"))
 }
 
@@ -130,9 +136,18 @@ bebel_detokenize <- function(model, ids) {
 #' @param add_bos Whether to prepend the BOS token before embedding.
 #' @param normalize L2-normalize each embedding row.
 #' @param pooling Hidden-state pooling strategy: `mean` or `last`.
+#' @param token_batch_size Number of tokens per Rust batched prefill/matmul call.
+#' @param check_interrupt Whether long embedding runs should poll R interrupts
+#'   between texts and token batches.
 #' @return A numeric matrix with one row per input text.
 #' @export
-bebel_embed <- function(model, text, add_bos = TRUE, normalize = TRUE, pooling = c("mean", "last")) {
+bebel_embed <- function(model,
+                        text,
+                        add_bos = TRUE,
+                        normalize = TRUE,
+                        pooling = c("mean", "last"),
+                        token_batch_size = 512L,
+                        check_interrupt = TRUE) {
   model <- S7::prop(BebelModelRef(value = list(model)), "value")[[1L]]
   if (!is.character(text) || anyNA(text)) {
     stop("`text` must be a character vector without NA.", call. = FALSE)
@@ -140,20 +155,18 @@ bebel_embed <- function(model, text, add_bos = TRUE, normalize = TRUE, pooling =
   options <- BebelEmbeddingOptions(
     add_bos = isTRUE(add_bos),
     normalize = isTRUE(normalize),
-    pooling = match.arg(pooling)
+    pooling = match.arg(pooling),
+    token_batch_size = token_batch_size,
+    check_interrupt = isTRUE(check_interrupt)
   )
-  rows <- lapply(text, function(one) {
-    model$embed(
-      one,
-      add_bos = S7::prop(options, "add_bos"),
-      normalize = S7::prop(options, "normalize"),
-      pooling = S7::prop(options, "pooling")
-    )
-  })
-  if (!length(rows)) {
-    return(matrix(numeric(), nrow = 0L, ncol = 0L))
-  }
-  out <- do.call(rbind, rows)
+  out <- model$embed_batch(
+    text,
+    add_bos = S7::prop(options, "add_bos"),
+    normalize = S7::prop(options, "normalize"),
+    pooling = S7::prop(options, "pooling"),
+    token_batch_size = as.numeric(S7::prop(options, "token_batch_size")),
+    check_interrupt = S7::prop(options, "check_interrupt")
+  )
   rownames(out) <- names(text)
   out
 }

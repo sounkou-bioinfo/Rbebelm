@@ -69,4 +69,11 @@ expect_error(BebelGenerationOptions(
   top_k = NULL,
   repeat_penalty = NULL
 ))
+expect_error(BebelEmbeddingOptions(
+  add_bos = TRUE,
+  normalize = TRUE,
+  pooling = "mean",
+  token_batch_size = 0,
+  check_interrupt = TRUE
+))
 expect_error(BebelAsyncEventDrainOptions(max = -1))

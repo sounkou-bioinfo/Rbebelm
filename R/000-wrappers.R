@@ -303,6 +303,12 @@ class(`BebelAsyncJob`) <- c("Rbebelm::BebelAsyncJob__bundle", "savvy_Rbebelm__se
   }
 }
 
+`BebelModel_embed_batch` <- function(self) {
+  function(`text`, `add_bos`, `normalize`, `pooling`, `check_interrupt`, `token_batch_size` = NULL) {
+    .Call(savvy_BebelModel_embed_batch__impl, `self`, `text`, `add_bos`, `normalize`, `pooling`, `check_interrupt`, `token_batch_size`)
+  }
+}
+
 `BebelModel_encode` <- function(self) {
   function(`text`, `add_bos`) {
     .Call(savvy_BebelModel_encode__impl, `self`, `text`, `add_bos`)
@@ -334,6 +340,7 @@ class(`BebelAsyncJob`) <- c("Rbebelm::BebelAsyncJob__bundle", "savvy_Rbebelm__se
   e$`chat_async` <- `BebelModel_chat_async`(ptr)
   e$`decode` <- `BebelModel_decode`(ptr)
   e$`embed` <- `BebelModel_embed`(ptr)
+  e$`embed_batch` <- `BebelModel_embed_batch`(ptr)
   e$`encode` <- `BebelModel_encode`(ptr)
   e$`generate` <- `BebelModel_generate`(ptr)
   e$`generate_async` <- `BebelModel_generate_async`(ptr)

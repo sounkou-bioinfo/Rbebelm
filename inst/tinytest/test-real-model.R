@@ -15,6 +15,22 @@ expect_equal(nrow(emb), 2L)
 expect_true(ncol(emb) > 0L)
 expect_true(all(is.finite(emb)))
 
+emb_chunk1 <- bebel_embed(model, c("Mali capital", "Italy capital"), token_batch_size = 1L)
+emb_chunk8 <- bebel_embed(model, c("Mali capital", "Italy capital"), token_batch_size = 8L)
+expect_equal(dim(emb_chunk1), dim(emb_chunk8))
+expect_true(max(abs(emb_chunk1 - emb_chunk8)) < 1e-6)
+
+direct_batch <- model$embed_batch(
+  c("Mali capital", "Italy capital"),
+  add_bos = TRUE,
+  normalize = TRUE,
+  pooling = "mean",
+  check_interrupt = TRUE,
+  token_batch_size = 8
+)
+expect_equal(dim(direct_batch), dim(emb_chunk8))
+expect_true(max(abs(direct_batch - emb_chunk8)) < 1e-6)
+
 events <- character()
 out <- bebel_generate(
   model,

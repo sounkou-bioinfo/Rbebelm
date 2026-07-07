@@ -9,7 +9,9 @@ bebel_embed(
   text,
   add_bos = TRUE,
   normalize = TRUE,
-  pooling = c("mean", "last")
+  pooling = c("mean", "last"),
+  token_batch_size = 512L,
+  check_interrupt = TRUE
 )
 }
 \arguments{
@@ -22,6 +24,11 @@ bebel_embed(
 \item{normalize}{L2-normalize each embedding row.}
 
 \item{pooling}{Hidden-state pooling strategy: \code{mean} or \code{last}.}
+
+\item{token_batch_size}{Number of tokens per Rust batched prefill/matmul call.}
+
+\item{check_interrupt}{Whether long embedding runs should poll R interrupts
+between texts and token batches.}
 }
 \value{
 A numeric matrix with one row per input text.
