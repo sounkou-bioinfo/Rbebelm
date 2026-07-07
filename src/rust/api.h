@@ -36,7 +36,7 @@ SEXP savvy_BebelModel_chat__ffi(SEXP self__, SEXP c_arg__message, SEXP c_arg__gr
 SEXP savvy_BebelModel_chat_async__ffi(SEXP self__, SEXP c_arg__message, SEXP c_arg__greedy, SEXP c_arg__max_gen, SEXP c_arg__max_context, SEXP c_arg__max_think, SEXP c_arg__temperature, SEXP c_arg__top_k, SEXP c_arg__repeat_penalty);
 SEXP savvy_BebelModel_decode__ffi(SEXP self__, SEXP c_arg__ids);
 SEXP savvy_BebelModel_embed__ffi(SEXP self__, SEXP c_arg__text, SEXP c_arg__add_bos, SEXP c_arg__normalize, SEXP c_arg__pooling);
-SEXP savvy_BebelModel_embed_batch__ffi(SEXP self__, SEXP c_arg__text, SEXP c_arg__add_bos, SEXP c_arg__normalize, SEXP c_arg__pooling, SEXP c_arg__check_interrupt, SEXP c_arg__token_batch_size);
+SEXP savvy_BebelModel_embed_batch__ffi(SEXP self__, SEXP c_arg__text, SEXP c_arg__add_bos, SEXP c_arg__normalize, SEXP c_arg__pooling, SEXP c_arg__check_interrupt, SEXP c_arg__token_batch_size, SEXP c_arg__sequence_batch_size);
 SEXP savvy_BebelModel_encode__ffi(SEXP self__, SEXP c_arg__text, SEXP c_arg__add_bos);
 SEXP savvy_BebelModel_generate__ffi(SEXP self__, SEXP c_arg__prompt, SEXP c_arg__greedy, SEXP c_arg__check_interrupt, SEXP c_arg__on_event, SEXP c_arg__max_gen, SEXP c_arg__max_context, SEXP c_arg__max_think, SEXP c_arg__temperature, SEXP c_arg__top_k, SEXP c_arg__repeat_penalty);
 SEXP savvy_BebelModel_generate_async__ffi(SEXP self__, SEXP c_arg__prompt, SEXP c_arg__greedy, SEXP c_arg__max_gen, SEXP c_arg__max_context, SEXP c_arg__max_think, SEXP c_arg__temperature, SEXP c_arg__top_k, SEXP c_arg__repeat_penalty);

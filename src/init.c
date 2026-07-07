@@ -199,8 +199,8 @@ SEXP savvy_BebelModel_embed__impl(SEXP self__, SEXP c_arg__text, SEXP c_arg__add
     return handle_result(res);
 }
 
-SEXP savvy_BebelModel_embed_batch__impl(SEXP self__, SEXP c_arg__text, SEXP c_arg__add_bos, SEXP c_arg__normalize, SEXP c_arg__pooling, SEXP c_arg__check_interrupt, SEXP c_arg__token_batch_size) {
-    SEXP res = Rbebelm_BebelModel_embed_batch_ffi(self__, c_arg__text, c_arg__add_bos, c_arg__normalize, c_arg__pooling, c_arg__check_interrupt, c_arg__token_batch_size);
+SEXP savvy_BebelModel_embed_batch__impl(SEXP self__, SEXP c_arg__text, SEXP c_arg__add_bos, SEXP c_arg__normalize, SEXP c_arg__pooling, SEXP c_arg__check_interrupt, SEXP c_arg__token_batch_size, SEXP c_arg__sequence_batch_size) {
+    SEXP res = Rbebelm_BebelModel_embed_batch_ffi(self__, c_arg__text, c_arg__add_bos, c_arg__normalize, c_arg__pooling, c_arg__check_interrupt, c_arg__token_batch_size, c_arg__sequence_batch_size);
     return handle_result(res);
 }
 
@@ -263,7 +263,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"savvy_BebelModel_chat_async__impl", (DL_FUNC) &savvy_BebelModel_chat_async__impl, 9},
     {"savvy_BebelModel_decode__impl", (DL_FUNC) &savvy_BebelModel_decode__impl, 2},
     {"savvy_BebelModel_embed__impl", (DL_FUNC) &savvy_BebelModel_embed__impl, 5},
-    {"savvy_BebelModel_embed_batch__impl", (DL_FUNC) &savvy_BebelModel_embed_batch__impl, 7},
+    {"savvy_BebelModel_embed_batch__impl", (DL_FUNC) &savvy_BebelModel_embed_batch__impl, 8},
     {"savvy_BebelModel_encode__impl", (DL_FUNC) &savvy_BebelModel_encode__impl, 3},
     {"savvy_BebelModel_generate__impl", (DL_FUNC) &savvy_BebelModel_generate__impl, 11},
     {"savvy_BebelModel_generate_async__impl", (DL_FUNC) &savvy_BebelModel_generate_async__impl, 9},

@@ -304,8 +304,8 @@ class(`BebelAsyncJob`) <- c("Rbebelm::BebelAsyncJob__bundle", "savvy_Rbebelm__se
 }
 
 `BebelModel_embed_batch` <- function(self) {
-  function(`text`, `add_bos`, `normalize`, `pooling`, `check_interrupt`, `token_batch_size` = NULL) {
-    .Call(savvy_BebelModel_embed_batch__impl, `self`, `text`, `add_bos`, `normalize`, `pooling`, `check_interrupt`, `token_batch_size`)
+  function(`text`, `add_bos`, `normalize`, `pooling`, `check_interrupt`, `token_batch_size` = NULL, `sequence_batch_size` = NULL) {
+    .Call(savvy_BebelModel_embed_batch__impl, `self`, `text`, `add_bos`, `normalize`, `pooling`, `check_interrupt`, `token_batch_size`, `sequence_batch_size`)
   }
 }
 

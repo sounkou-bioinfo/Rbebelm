@@ -187,6 +187,46 @@ impl Model {
         self.run_layers_batch(tokens, cache)
     }
 
+    /// Run one token for each independent sequence cache.
+    ///
+    /// This is the embedding/throughput analogue of [`hidden_batch`](Self::hidden_batch):
+    /// projections and FFNs use the same batched matmul kernels over all active sequences,
+    /// while attention and short-conv read and update each sequence's own cache. It therefore
+    /// computes the same hidden state as calling [`hidden_step`](Self::hidden_step) once per
+    /// `(token, cache)` pair, without letting one sequence attend to another.
+    pub fn hidden_independent_batch(&self, tokens: &[u32], caches: &mut [&mut Cache]) -> Vec<f32> {
+        assert_eq!(tokens.len(), caches.len(), "hidden_independent_batch: one cache per token");
+        let t = tokens.len();
+        let positions: Vec<usize> = caches.iter().map(|cache| cache.pos).collect();
+        let mut h = vec![0.0f32; t * HIDDEN];
+        for (i, &tok) in tokens.iter().enumerate() {
+            self.embed_token(tok, &mut h[i * HIDDEN..(i + 1) * HIDDEN]);
+        }
+
+        for layer in 0..N_LAYERS {
+            let normed = self.norm_batch(&h, &name(layer, "attn_norm.weight"), t);
+            let op = if config::is_attention(layer) {
+                self.attn_independent_batch(layer, &normed, &positions, t, caches)
+            } else {
+                self.conv_independent_batch(layer, &normed, t, caches)
+            };
+            add_assign(&mut h, &op);
+
+            let normed = self.norm_batch(&h, &name(layer, "ffn_norm.weight"), t);
+            let ffn = if config::is_dense_ffn(layer) {
+                self.dense_ffn_batch(layer, &normed, t)
+            } else {
+                self.moe_ffn_batch(layer, &normed, t)
+            };
+            add_assign(&mut h, &ffn);
+        }
+
+        for cache in caches.iter_mut() {
+            cache.pos += 1;
+        }
+        h
+    }
+
     /// RMSNorm each of the `t` token rows of `h` (token-major `t × HIDDEN`) with the named gain.
     fn norm_batch(&self, h: &[f32], gain_name: &str, t: usize) -> Vec<f32> {
         let gain = self.f32(gain_name);
@@ -230,6 +270,43 @@ impl Model {
         out
     }
 
+    /// Batched short-conv over independent sequence caches. The in/out projections are shared
+    /// over the active sequences; the depthwise conv state is per sequence.
+    fn conv_independent_batch(&self, layer: usize, x: &[f32], t: usize, caches: &mut [&mut Cache]) -> Vec<f32> {
+        let mut bcx = vec![0.0f32; t * 3 * HIDDEN];
+        self.matmul1(&name(layer, "shortconv.in_proj.weight"), x, HIDDEN, 3 * HIDDEN, t, &mut bcx);
+
+        let mut bx = vec![0.0f32; t * HIDDEN];
+        for i in 0..t {
+            let base = i * 3 * HIDDEN;
+            for (c, bxc) in bx[i * HIDDEN..(i + 1) * HIDDEN].iter_mut().enumerate() {
+                *bxc = bcx[base + c] * bcx[base + 2 * HIDDEN + c];
+            }
+        }
+
+        let conv_w = self.f32(&name(layer, "shortconv.conv.weight"));
+        let mut conv_out = vec![0.0f32; t * HIDDEN];
+        for i in 0..t {
+            let cache = &mut *caches[i];
+            let bx_i = &bx[i * HIDDEN..(i + 1) * HIDDEN];
+            conv_step(&cache.conv[layer], bx_i, conv_w, HIDDEN, CONV_L_CACHE, &mut conv_out[i * HIDDEN..(i + 1) * HIDDEN]);
+            let state = &mut cache.conv[layer];
+            state.copy_within(HIDDEN.., 0);
+            state[(CONV_L_CACHE - 2) * HIDDEN..].copy_from_slice(bx_i);
+        }
+
+        let mut y = vec![0.0f32; t * HIDDEN];
+        for i in 0..t {
+            let base = i * 3 * HIDDEN;
+            for (c, yc) in y[i * HIDDEN..(i + 1) * HIDDEN].iter_mut().enumerate() {
+                *yc = bcx[base + HIDDEN + c] * conv_out[i * HIDDEN + c];
+            }
+        }
+        let mut out = vec![0.0f32; t * HIDDEN];
+        self.matmul1(&name(layer, "shortconv.out_proj.weight"), &y, HIDDEN, HIDDEN, t, &mut out);
+        out
+    }
+
     /// Batched GQA attention operator: q/k/v/o projections run over all `t` tokens via [`matmul`];
     /// each token is then q/k-normed + RoPE'd at its own position, appended to the KV cache, and
     /// attended over the cache prefix it can see (causal by construction — token `i` attends to
@@ -251,6 +328,53 @@ impl Model {
 
         let mut attn = vec![0.0f32; t * HIDDEN];
         for i in 0..t {
+            cache.k[layer].extend_from_slice(&k[i * KV_DIM..(i + 1) * KV_DIM]);
+            cache.v[layer].extend_from_slice(&v[i * KV_DIM..(i + 1) * KV_DIM]);
+            let n_ctx = cache.k[layer].len() / KV_DIM;
+            attention_decode(
+                &q[i * HIDDEN..(i + 1) * HIDDEN],
+                &cache.k[layer],
+                &cache.v[layer],
+                n_ctx,
+                N_HEADS,
+                N_KV_HEADS,
+                HEAD_DIM,
+                &mut attn[i * HIDDEN..(i + 1) * HIDDEN],
+            );
+        }
+
+        let mut out = vec![0.0f32; t * HIDDEN];
+        self.matmul1(&name(layer, "attn_output.weight"), &attn, HIDDEN, HIDDEN, t, &mut out);
+        out
+    }
+
+    /// Batched GQA attention over independent sequence caches. Q/K/V/O projections are shared
+    /// over active sequences; each token appends to and attends over its own sequence cache.
+    fn attn_independent_batch(
+        &self,
+        layer: usize,
+        x: &[f32],
+        positions: &[usize],
+        t: usize,
+        caches: &mut [&mut Cache],
+    ) -> Vec<f32> {
+        let mut q = vec![0.0f32; t * HIDDEN];
+        let mut k = vec![0.0f32; t * KV_DIM];
+        let mut v = vec![0.0f32; t * KV_DIM];
+        self.matmul1(&name(layer, "attn_q.weight"), x, HIDDEN, HIDDEN, t, &mut q);
+        self.matmul1(&name(layer, "attn_k.weight"), x, HIDDEN, KV_DIM, t, &mut k);
+        self.matmul1(&name(layer, "attn_v.weight"), x, HIDDEN, KV_DIM, t, &mut v);
+
+        let q_gain = self.f32(&name(layer, "attn_q_norm.weight"));
+        let k_gain = self.f32(&name(layer, "attn_k_norm.weight"));
+        for i in 0..t {
+            norm_rope_heads(&mut q[i * HIDDEN..(i + 1) * HIDDEN], N_HEADS, q_gain, positions[i]);
+            norm_rope_heads(&mut k[i * KV_DIM..(i + 1) * KV_DIM], N_KV_HEADS, k_gain, positions[i]);
+        }
+
+        let mut attn = vec![0.0f32; t * HIDDEN];
+        for i in 0..t {
+            let cache = &mut *caches[i];
             cache.k[layer].extend_from_slice(&k[i * KV_DIM..(i + 1) * KV_DIM]);
             cache.v[layer].extend_from_slice(&v[i * KV_DIM..(i + 1) * KV_DIM]);
             let n_ctx = cache.k[layer].len() / KV_DIM;

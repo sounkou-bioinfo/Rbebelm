@@ -113,6 +113,7 @@ bebel_tokenize <- function(model, text, add_bos = TRUE) {
     normalize = TRUE,
     pooling = "mean",
     token_batch_size = 1L,
+    sequence_batch_size = 1L,
     check_interrupt = FALSE
   )
   model$encode(text, add_bos = S7::prop(options, "add_bos"))
@@ -137,6 +138,8 @@ bebel_detokenize <- function(model, ids) {
 #' @param normalize L2-normalize each embedding row.
 #' @param pooling Hidden-state pooling strategy: `mean` or `last`.
 #' @param token_batch_size Number of tokens per Rust batched prefill/matmul call.
+#' @param sequence_batch_size Number of texts per independent-sequence embedding
+#'   batch.
 #' @param check_interrupt Whether long embedding runs should poll R interrupts
 #'   between texts and token batches.
 #' @return A numeric matrix with one row per input text.
@@ -147,6 +150,7 @@ bebel_embed <- function(model,
                         normalize = TRUE,
                         pooling = c("mean", "last"),
                         token_batch_size = 512L,
+                        sequence_batch_size = 64L,
                         check_interrupt = TRUE) {
   model <- S7::prop(BebelModelRef(value = list(model)), "value")[[1L]]
   if (!is.character(text) || anyNA(text)) {
@@ -157,6 +161,7 @@ bebel_embed <- function(model,
     normalize = isTRUE(normalize),
     pooling = match.arg(pooling),
     token_batch_size = token_batch_size,
+    sequence_batch_size = sequence_batch_size,
     check_interrupt = isTRUE(check_interrupt)
   )
   out <- model$embed_batch(
@@ -165,6 +170,7 @@ bebel_embed <- function(model,
     normalize = S7::prop(options, "normalize"),
     pooling = S7::prop(options, "pooling"),
     token_batch_size = as.numeric(S7::prop(options, "token_batch_size")),
+    sequence_batch_size = as.numeric(S7::prop(options, "sequence_batch_size")),
     check_interrupt = S7::prop(options, "check_interrupt")
   )
   rownames(out) <- names(text)

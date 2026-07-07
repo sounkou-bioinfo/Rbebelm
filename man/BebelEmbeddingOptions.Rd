@@ -9,6 +9,7 @@ BebelEmbeddingOptions(
   normalize = logical(0),
   pooling = character(0),
   token_batch_size = integer(0),
+  sequence_batch_size = integer(0),
   check_interrupt = logical(0)
 )
 }
@@ -20,6 +21,9 @@ BebelEmbeddingOptions(
 \item{pooling}{Hidden-state pooling mode, \code{"mean"} or \code{"last"}.}
 
 \item{token_batch_size}{Number of tokens per Rust batched prefill/matmul call.}
+
+\item{sequence_batch_size}{Number of texts per independent-sequence embedding
+batch.}
 
 \item{check_interrupt}{Whether long embedding runs should poll R interrupts
 between texts and token batches.}

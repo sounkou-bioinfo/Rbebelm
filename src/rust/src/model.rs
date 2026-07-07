@@ -11,6 +11,7 @@ use crate::options::GenerationOptions;
 use crate::util::{check_user_interrupt, checked_positive_usize, err, ids_from_integer, ids_to_sexp, init_rayon, str_scalar};
 
 const DEFAULT_EMBED_TOKEN_BATCH: usize = 512;
+const DEFAULT_EMBED_SEQUENCE_BATCH: usize = 64;
 
 /// Loaded BebeLM GGUF model.
 /// @export
@@ -81,19 +82,28 @@ impl BebelModel {
         pooling: &str,
         check_interrupt: bool,
         token_batch_size: Option<f64>,
+        sequence_batch_size: Option<f64>,
     ) -> savvy::Result<savvy::Sexp> {
         let texts = text.to_vec();
         let token_batch_size = checked_positive_usize(token_batch_size, "token_batch_size")?.unwrap_or(DEFAULT_EMBED_TOKEN_BATCH);
+        let sequence_batch_size = checked_positive_usize(sequence_batch_size, "sequence_batch_size")?.unwrap_or(DEFAULT_EMBED_SEQUENCE_BATCH);
         let n = texts.len();
         let _guard = self.exec_lock.lock().map_err(|_| err("model execution lock poisoned"))?;
+        let rows = pooled_embeddings(
+            self.inner.as_ref(),
+            &texts,
+            add_bos,
+            normalize,
+            pooling,
+            token_batch_size,
+            sequence_batch_size,
+            check_interrupt,
+        )?;
         let mut out = OwnedRealSexp::new(n * HIDDEN)?;
         {
             let values = out.as_mut_slice();
-            for (row, one) in texts.iter().enumerate() {
-                if check_interrupt {
-                    check_user_interrupt()?;
-                }
-                let pooled = pooled_embedding(self.inner.as_ref(), one, add_bos, normalize, pooling, token_batch_size, check_interrupt)?;
+            for row in 0..n {
+                let pooled = &rows[row * HIDDEN..(row + 1) * HIDDEN];
                 for col in 0..HIDDEN {
                     values[row + col * n] = pooled[col] as f64;
                 }
@@ -252,6 +262,96 @@ fn pooled_embedding(
     }
     if normalize {
         normalize_embedding(&mut pooled);
+    }
+    Ok(pooled)
+}
+
+fn pooled_embeddings(
+    model: &Model,
+    texts: &[&str],
+    add_bos: bool,
+    normalize: bool,
+    pooling: &str,
+    token_batch_size: usize,
+    sequence_batch_size: usize,
+    check_interrupt: bool,
+) -> savvy::Result<Vec<f32>> {
+    if texts.is_empty() {
+        return Ok(Vec::new());
+    }
+    if texts.len() == 1 {
+        return pooled_embedding(model, texts[0], add_bos, normalize, pooling, token_batch_size, check_interrupt);
+    }
+    if !matches!(pooling, "mean" | "last") {
+        return Err(err(format!("unsupported pooling mode {pooling:?}; use \"mean\" or \"last\"")));
+    }
+
+    let ids: Vec<Vec<u32>> = texts
+        .iter()
+        .enumerate()
+        .map(|(i, text)| {
+            let ids = model.tokenizer().encode(text, add_bos);
+            if ids.is_empty() {
+                Err(err(format!("text at index {} produced no tokens", i + 1)))
+            } else {
+                Ok(ids)
+            }
+        })
+        .collect::<savvy::Result<Vec<_>>>()?;
+
+    let n = ids.len();
+    let mut caches: Vec<Cache> = (0..n).map(|_| Cache::new()).collect();
+    let mut pooled = vec![0.0f32; n * HIDDEN];
+    let max_len = ids.iter().map(Vec::len).max().unwrap_or(0);
+
+    for depth in 0..max_len {
+        let active: Vec<usize> = ids
+            .iter()
+            .enumerate()
+            .filter_map(|(i, one)| (depth < one.len()).then_some(i))
+            .collect();
+        for group in active.chunks(sequence_batch_size) {
+            if check_interrupt {
+                check_user_interrupt()?;
+            }
+            let tokens: Vec<u32> = group.iter().map(|&i| ids[i][depth]).collect();
+            let mut group_caches: Vec<Cache> = group
+                .iter()
+                .map(|&i| std::mem::take(&mut caches[i]))
+                .collect();
+            let mut cache_refs: Vec<&mut Cache> = group_caches.iter_mut().collect();
+            let hidden = model.hidden_independent_batch(&tokens, &mut cache_refs);
+            drop(cache_refs);
+
+            for (j, &row) in group.iter().enumerate() {
+                let src = &hidden[j * HIDDEN..(j + 1) * HIDDEN];
+                let dst = &mut pooled[row * HIDDEN..(row + 1) * HIDDEN];
+                if pooling == "mean" {
+                    for (d, s) in dst.iter_mut().zip(src.iter()) {
+                        *d += *s;
+                    }
+                } else {
+                    dst.copy_from_slice(src);
+                }
+            }
+            for (cache, &row) in group_caches.into_iter().zip(group.iter()) {
+                caches[row] = cache;
+            }
+        }
+    }
+
+    if pooling == "mean" {
+        for (row, one) in ids.iter().enumerate() {
+            let denom = one.len() as f32;
+            for v in &mut pooled[row * HIDDEN..(row + 1) * HIDDEN] {
+                *v /= denom;
+            }
+        }
+    }
+    if normalize {
+        for row in 0..n {
+            normalize_embedding(&mut pooled[row * HIDDEN..(row + 1) * HIDDEN]);
+        }
     }
     Ok(pooled)
 }

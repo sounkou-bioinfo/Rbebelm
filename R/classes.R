@@ -291,6 +291,8 @@ BebelAgentConfigureOptions <- S7::new_class(
 #' @param normalize Whether to L2-normalize each embedding row.
 #' @param pooling Hidden-state pooling mode, `"mean"` or `"last"`.
 #' @param token_batch_size Number of tokens per Rust batched prefill/matmul call.
+#' @param sequence_batch_size Number of texts per independent-sequence embedding
+#'   batch.
 #' @param check_interrupt Whether long embedding runs should poll R interrupts
 #'   between texts and token batches.
 #' @export
@@ -301,6 +303,7 @@ BebelEmbeddingOptions <- S7::new_class(
     normalize = S7::class_logical,
     pooling = S7::class_character,
     token_batch_size = S7::class_numeric,
+    sequence_batch_size = S7::class_numeric,
     check_interrupt = S7::class_logical
   ),
   validator = function(self) {
@@ -315,12 +318,14 @@ BebelEmbeddingOptions <- S7::new_class(
     if (length(pooling) != 1L || is.na(pooling) || !pooling %in% c("mean", "last")) {
       errors <- c(errors, "`pooling` must be \"mean\" or \"last\".")
     }
-    token_batch_size <- S7::prop(self, "token_batch_size")
-    if (length(token_batch_size) != 1L ||
-        is.na(token_batch_size) ||
-        token_batch_size < 1 ||
-        token_batch_size != as.integer(token_batch_size)) {
-      errors <- c(errors, "`token_batch_size` must be a positive integer scalar.")
+    for (name in c("token_batch_size", "sequence_batch_size")) {
+      value <- S7::prop(self, name)
+      if (length(value) != 1L ||
+          is.na(value) ||
+          value < 1 ||
+          value != as.integer(value)) {
+        errors <- c(errors, paste0("`", name, "` must be a positive integer scalar."))
+      }
     }
     if (length(errors)) errors else NULL
   }

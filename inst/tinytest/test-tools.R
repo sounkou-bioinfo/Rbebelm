@@ -74,6 +74,15 @@ expect_error(BebelEmbeddingOptions(
   normalize = TRUE,
   pooling = "mean",
   token_batch_size = 0,
+  sequence_batch_size = 1,
+  check_interrupt = TRUE
+))
+expect_error(BebelEmbeddingOptions(
+  add_bos = TRUE,
+  normalize = TRUE,
+  pooling = "mean",
+  token_batch_size = 1,
+  sequence_batch_size = 0,
   check_interrupt = TRUE
 ))
 expect_error(BebelAsyncEventDrainOptions(max = -1))
