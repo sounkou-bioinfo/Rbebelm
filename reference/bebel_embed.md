@@ -10,7 +10,9 @@ bebel_embed(
   text,
   add_bos = TRUE,
   normalize = TRUE,
-  pooling = c("mean", "last")
+  pooling = c("mean", "last"),
+  token_batch_size = 512L,
+  check_interrupt = TRUE
 )
 ```
 
@@ -35,6 +37,15 @@ bebel_embed(
 - pooling:
 
   Hidden-state pooling strategy: `mean` or `last`.
+
+- token_batch_size:
+
+  Number of tokens per Rust batched prefill/matmul call.
+
+- check_interrupt:
+
+  Whether long embedding runs should poll R interrupts between texts and
+  token batches.
 
 ## Value
 

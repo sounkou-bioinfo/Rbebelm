@@ -19,10 +19,10 @@ rbebelm_backend_info()
     ## <Rbebelm backend dispatch>
     ##   mode: dynamic
     ##   requested: auto
-    ##   selected: avx2
+    ##   selected: avx512
     ##   loaded: yes
     ##   installed: scalar,avx2,avx512
-    ##   supported: scalar,avx2
+    ##   supported: scalar,avx2,avx512
 
 ``` r
 
@@ -30,13 +30,13 @@ rbebelm_backend_features()
 ```
 
     ## <Rbebelm backend features>
-    ##   backend: avx2
+    ##   backend: avx512
     ##   target: x86_64-linux
     ##   Rust crate: rbebelm_backend 0.1.0
     ##   native SIMD feature: yes
     ##   compiled features:
     ##     AVX2: yes
-    ##     AVX-512F: no
+    ##     AVX-512F: yes
     ##     NEON: no
     ##     ARM dotprod: no
     ##     wasm simd128: no
@@ -85,8 +85,8 @@ out
     ## <BebeLM generation result>
     ##   stop: max_new
     ##   tokens: 8 generated; 6 prompt
-    ##   prefill: 11.0 tok/s
-    ##   decode: 11.34 tok/s
+    ##   prefill: 7.7 tok/s
+    ##   decode: 8.77 tok/s
     ##   text:
     ##  the city of Paris. city of Paris
 
@@ -104,8 +104,8 @@ bebel_assistant_turn(agent, on_event = NULL)
     ## <BebeLM assistant turn>
     ##   stop: eos
     ##   tokens: 10 generated; 15 prompt
-    ##   prefill: 13.7 tok/s
-    ##   decode: 10.03 tok/s
+    ##   prefill: 10.3 tok/s
+    ##   decode: 7.69 tok/s
     ##   text:
     ## <
     ## </think>
@@ -121,8 +121,8 @@ bebel_assistant_turn(agent, on_event = NULL)
     ## <BebeLM assistant turn>
     ##   stop: eos
     ##   tokens: 11 generated; 17 prompt
-    ##   prefill: 14.1 tok/s
-    ##   decode: 10.12 tok/s
+    ##   prefill: 10.8 tok/s
+    ##   decode: 7.80 tok/s
     ##   text:
     ## <
     ## </Answer>  

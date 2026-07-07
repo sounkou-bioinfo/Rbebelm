@@ -79,20 +79,20 @@ embedding primitives, and runs bounded CPU generation from R.</p>
 <pre><code><span><span class="co">## &lt;Rbebelm backend dispatch&gt;</span></span>
 <span><span class="co">##   mode: dynamic</span></span>
 <span><span class="co">##   requested: auto</span></span>
-<span><span class="co">##   selected: avx2</span></span>
+<span><span class="co">##   selected: avx512</span></span>
 <span><span class="co">##   loaded: yes</span></span>
 <span><span class="co">##   installed: scalar,avx2,avx512</span></span>
-<span><span class="co">##   supported: scalar,avx2</span></span></code></pre>
+<span><span class="co">##   supported: scalar,avx2,avx512</span></span></code></pre>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rbebelm_backend_features.html">rbebelm_backend_features</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## &lt;Rbebelm backend features&gt;</span></span>
-<span><span class="co">##   backend: avx2</span></span>
+<span><span class="co">##   backend: avx512</span></span>
 <span><span class="co">##   target: x86_64-linux</span></span>
 <span><span class="co">##   Rust crate: rbebelm_backend 0.1.0</span></span>
 <span><span class="co">##   native SIMD feature: yes</span></span>
 <span><span class="co">##   compiled features:</span></span>
 <span><span class="co">##     AVX2: yes</span></span>
-<span><span class="co">##     AVX-512F: no</span></span>
+<span><span class="co">##     AVX-512F: yes</span></span>
 <span><span class="co">##     NEON: no</span></span>
 <span><span class="co">##     ARM dotprod: no</span></span>
 <span><span class="co">##     wasm simd128: no</span></span>
@@ -124,8 +124,8 @@ statistics.</p>
 <pre><code><span><span class="co">## &lt;BebeLM generation result&gt;</span></span>
 <span><span class="co">##   stop: max_new</span></span>
 <span><span class="co">##   tokens: 8 generated; 6 prompt</span></span>
-<span><span class="co">##   prefill: 11.0 tok/s</span></span>
-<span><span class="co">##   decode: 11.34 tok/s</span></span>
+<span><span class="co">##   prefill: 7.7 tok/s</span></span>
+<span><span class="co">##   decode: 8.77 tok/s</span></span>
 <span><span class="co">##   text:</span></span>
 <span><span class="co">##  the city of Paris. city of Paris</span></span></code></pre>
 <p>A persistent agent keeps transcript and decode caches across turns
@@ -138,8 +138,8 @@ while sharing model weights with every other agent created from the same
 <pre><code><span><span class="co">## &lt;BebeLM assistant turn&gt;</span></span>
 <span><span class="co">##   stop: eos</span></span>
 <span><span class="co">##   tokens: 10 generated; 15 prompt</span></span>
-<span><span class="co">##   prefill: 13.7 tok/s</span></span>
-<span><span class="co">##   decode: 10.03 tok/s</span></span>
+<span><span class="co">##   prefill: 10.3 tok/s</span></span>
+<span><span class="co">##   decode: 7.69 tok/s</span></span>
 <span><span class="co">##   text:</span></span>
 <span><span class="co">## &lt;</span></span>
 <span><span class="co">## &lt;/think&gt;</span></span>
@@ -151,8 +151,8 @@ while sharing model weights with every other agent created from the same
 <pre><code><span><span class="co">## &lt;BebeLM assistant turn&gt;</span></span>
 <span><span class="co">##   stop: eos</span></span>
 <span><span class="co">##   tokens: 11 generated; 17 prompt</span></span>
-<span><span class="co">##   prefill: 14.1 tok/s</span></span>
-<span><span class="co">##   decode: 10.12 tok/s</span></span>
+<span><span class="co">##   prefill: 10.8 tok/s</span></span>
+<span><span class="co">##   decode: 7.80 tok/s</span></span>
 <span><span class="co">##   text:</span></span>
 <span><span class="co">## &lt;</span></span>
 <span><span class="co">## &lt;/Answer&gt;  </span></span>

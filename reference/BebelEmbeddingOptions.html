@@ -48,7 +48,9 @@
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">BebelEmbeddingOptions</span><span class="op">(</span></span>
 <span>  add_bos <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  normalize <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
-<span>  pooling <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span></span>
+<span>  pooling <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  token_batch_size <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  check_interrupt <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -66,6 +68,15 @@
 
 <dt id="arg-pooling">pooling<a class="anchor" aria-label="anchor" href="#arg-pooling"></a></dt>
 <dd><p>Hidden-state pooling mode, <code>"mean"</code> or <code>"last"</code>.</p></dd>
+
+
+<dt id="arg-token-batch-size">token_batch_size<a class="anchor" aria-label="anchor" href="#arg-token-batch-size"></a></dt>
+<dd><p>Number of tokens per Rust batched prefill/matmul call.</p></dd>
+
+
+<dt id="arg-check-interrupt">check_interrupt<a class="anchor" aria-label="anchor" href="#arg-check-interrupt"></a></dt>
+<dd><p>Whether long embedding runs should poll R interrupts
+between texts and token batches.</p></dd>
 
 </dl></div>
 
