@@ -28,4 +28,3 @@ RoxygenNote: 7.3.3
 SystemRequirements: Rust toolchain with cargo (>= 1.85), GNU make
 Imports: S7, yyjsonr
 Suggests: tinytest, roxygen2, rmarkdown, knitr, pkgdown
-VignetteBuilder: knitr

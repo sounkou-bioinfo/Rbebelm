@@ -12,6 +12,7 @@
 ^AGENTS\.md$
 ^docs$
 ^\.github$
+^vignettes(/|$)
 
 ^src/rust/\.cargo(/|$)
 ^src/Makevars$
