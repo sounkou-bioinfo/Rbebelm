@@ -40,7 +40,7 @@ dispatcher selects the best installed backend for the current CPU.
 ``` r
 library(Rbebelm)
 
-model <- bebel_model_load(weights_file, num_threads = 2)
+model <- bebel_model_load(weights_file, num_threads = bebel_threads)
 model
 #> <BebelModel>
 #>   path: /root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf
@@ -62,13 +62,15 @@ rbebelm_backend_features()
 
 The GGUF is memory-mapped read-only by upstream BebeLM. Multiple agents
 created from one `BebelModel` share the same in-process `Arc<Model>`.
-Separate processes that load the same GGUF can share physical pages
-through the operating-system page cache.
+Async jobs created from that model also share those weights while
+keeping independent caches. Separate processes that load the same GGUF
+can share physical pages through the operating-system page cache.
 
 Threading is set when the model is loaded. `num_threads` initializes the
-process-global Rayon pool once; generation calls use that pool. Async
-calls add one Rust worker per job, so total concurrency is controlled by
-the model-load thread count and by how many jobs the caller launches.
+process-global Rayon pool once; generation and embedding calls use that
+pool. Async calls add one Rust worker per job and can execute
+concurrently, so total CPU demand is controlled by the model-load thread
+count and by how many jobs the caller launches.
 
 ## Tokenizer and embeddings
 
@@ -109,8 +111,8 @@ answer
 #> <BebeLM generation result>
 #>   stop: max_new
 #>   tokens: 8 generated; 6 prompt
-#>   prefill: 14.8 tok/s
-#>   decode: 14.74 tok/s
+#>   prefill: 28.8 tok/s
+#>   decode: 30.55 tok/s
 #>   text:
 #>  the city of Paris. city of Paris
 unique(events)
@@ -133,8 +135,8 @@ chat
 #> <BebeLM chat result>
 #>   stop: eos
 #>   tokens: 20 generated; 21 prompt
-#>   prefill: 17.5 tok/s
-#>   decode: 13.42 tok/s
+#>   prefill: 35.9 tok/s
+#>   decode: 27.97 tok/s
 #>   text:
 #> <|tool_call_start|>[constraints(word_count=5, question="what does mmap help with?")]<|tool_call_end|>
 ```
@@ -156,8 +158,8 @@ turn1
 #> <BebeLM assistant turn>
 #>   stop: eos
 #>   tokens: 10 generated; 15 prompt
-#>   prefill: 17.3 tok/s
-#>   decode: 13.55 tok/s
+#>   prefill: 35.1 tok/s
+#>   decode: 28.16 tok/s
 #>   text:
 #> <
 #> </think>
@@ -167,8 +169,8 @@ turn2
 #> <BebeLM assistant turn>
 #>   stop: eos
 #>   tokens: 11 generated; 17 prompt
-#>   prefill: 17.5 tok/s
-#>   decode: 13.89 tok/s
+#>   prefill: 36.1 tok/s
+#>   decode: 29.82 tok/s
 #>   text:
 #> <
 #> </Answer>
@@ -244,9 +246,9 @@ ctx$calls
 Async jobs use an aio-style surface: submit work, drain queued events
 when the R loop is ready, poll the handle, then collect the completed
 `Turn` on the R thread. Several jobs can share one loaded model; the
-weights stay shared and model execution is serialized. Agent async jobs
-currently run on a cloned agent snapshot: the original agent is not
-mutated.
+weights stay shared and execution can overlap. Agent async jobs run on a
+cloned agent snapshot: the original agent is not mutated. Worker threads
+queue stream events for R to drain; they do not call R functions.
 
 ``` r
 job_a <- bebel_generate_async(
@@ -275,16 +277,16 @@ async_a
 #> <BebeLM generation result>
 #>   stop: max_new
 #>   tokens: 8 generated; 6 prompt
-#>   prefill: 14.7 tok/s
-#>   decode: 15.69 tok/s
+#>   prefill: 17.1 tok/s
+#>   decode: 17.40 tok/s
 #>   text:
 #>  Rome. city of... ... ... ...
 async_b
 #> <BebeLM generation result>
 #>   stop: max_new
 #>   tokens: 8 generated; 6 prompt
-#>   prefill: 14.5 tok/s
-#>   decode: 15.29 tok/s
+#>   prefill: 16.4 tok/s
+#>   decode: 17.55 tok/s
 #>   text:
 #>  the city of Bamako. city of
 bebel_agent_info(job_b_agent)[c("history_tokens", "processed_tokens")]
@@ -327,7 +329,7 @@ do.call(rbind, bench)
 #> 2 The capital of Italy is      Rome. city of... ... ... ...             6
 #> 3 The capital of Japan is Tokyo. city. The capital of Japan             6
 #>   generated_tokens prefill_tps decode_tps
-#> 1                8    14.28969   15.28434
-#> 2                8    14.05595   14.81557
-#> 3                8    14.30677   15.02516
+#> 1                8    30.61279   31.98260
+#> 2                8    29.17948   32.78591
+#> 3                8    29.36526   32.56053
 ```

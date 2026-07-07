@@ -8,6 +8,8 @@ output: github_document
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 weights_file <- Sys.getenv("BEBELM_WEIGHTS_FILE", "/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf")
 stopifnot(file.exists(weights_file))
+bebel_threads <- as.integer(Sys.getenv("BEBELM_NUM_THREADS", "8"))
+if (is.na(bebel_threads) || bebel_threads < 1L) bebel_threads <- 8L
 ```
 
 # Rbebelm
@@ -45,20 +47,22 @@ best installed backend for the current CPU.
 ```{r load}
 library(Rbebelm)
 
-model <- bebel_model_load(weights_file, num_threads = 2)
+model <- bebel_model_load(weights_file, num_threads = bebel_threads)
 model
 rbebelm_backend_features()
 ```
 
 The GGUF is memory-mapped read-only by upstream BebeLM. Multiple agents created
-from one `BebelModel` share the same in-process `Arc<Model>`. Separate processes
-that load the same GGUF can share physical pages through the operating-system
-page cache.
+from one `BebelModel` share the same in-process `Arc<Model>`. Async jobs created
+from that model also share those weights while keeping independent caches.
+Separate processes that load the same GGUF can share physical pages through the
+operating-system page cache.
 
 Threading is set when the model is loaded. `num_threads` initializes the
-process-global Rayon pool once; generation calls use that pool. Async calls add
-one Rust worker per job, so total concurrency is controlled by the model-load
-thread count and by how many jobs the caller launches.
+process-global Rayon pool once; generation and embedding calls use that pool.
+Async calls add one Rust worker per job and can execute concurrently, so total
+CPU demand is controlled by the model-load thread count and by how many jobs the
+caller launches.
 
 ## Tokenizer and embeddings
 
@@ -170,8 +174,9 @@ ctx$calls
 Async jobs use an aio-style surface: submit work, drain queued events when the R
 loop is ready, poll the handle, then collect the completed `Turn` on the R
 thread. Several jobs can share one loaded model; the weights stay shared and
-model execution is serialized. Agent async jobs currently run on a cloned agent
-snapshot: the original agent is not mutated.
+execution can overlap. Agent async jobs run on a cloned agent snapshot: the
+original agent is not mutated. Worker threads queue stream events for R to
+drain; they do not call R functions.
 
 ```{r async}
 job_a <- bebel_generate_async(

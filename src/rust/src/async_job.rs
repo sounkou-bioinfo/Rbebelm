@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 
 use bebelm::agent::Turn;
@@ -84,7 +84,6 @@ impl BebelAsyncJob {
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn spawn_model_generate(
     model: Arc<Model>,
-    exec_lock: Arc<Mutex<()>>,
     prompt: String,
     greedy: bool,
     max_gen: Option<f64>,
@@ -107,7 +106,6 @@ pub(crate) fn spawn_model_generate(
             repeat_penalty,
         )?;
         let history = model.tokenizer().encode(&prompt, true);
-        let _guard = exec_lock.lock().map_err(|_| err("model execution lock poisoned"))?;
         run_generation_with_events(model.as_ref(), history, &mut opts, Some(&events))
     }))
 }
@@ -115,7 +113,6 @@ pub(crate) fn spawn_model_generate(
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn spawn_model_chat(
     model: Arc<Model>,
-    exec_lock: Arc<Mutex<()>>,
     message: String,
     greedy: bool,
     max_gen: Option<f64>,
@@ -139,7 +136,6 @@ pub(crate) fn spawn_model_chat(
         )?;
         let mut history = model.tokenizer().encode(&user_turn(&message), true);
         history.extend(model.tokenizer().encode(ASSISTANT_OPEN, false));
-        let _guard = exec_lock.lock().map_err(|_| err("model execution lock poisoned"))?;
         run_generation_with_events(model.as_ref(), history, &mut opts, Some(&events))
     }))
 }

@@ -2,8 +2,10 @@ library(Rbebelm)
 
 weights <- Sys.getenv("BEBELM_WEIGHTS_FILE", "/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf")
 expect_true(file.exists(weights))
+threads <- as.integer(Sys.getenv("BEBELM_TEST_NUM_THREADS", Sys.getenv("BEBELM_NUM_THREADS", "2")))
+if (is.na(threads) || threads < 1L) threads <- 2L
 
-model <- bebel_model_load(weights, num_threads = 2)
+model <- bebel_model_load(weights, num_threads = threads)
 expect_true(inherits(model, "BebelModel"))
 
 tokens <- bebel_tokenize(model, "Bamako", add_bos = FALSE)

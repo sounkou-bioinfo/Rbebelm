@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use bebelm::cache::Cache;
 use bebelm::config::HIDDEN;
@@ -19,7 +19,6 @@ const DEFAULT_EMBED_SEQUENCE_BATCH: usize = 64;
 #[derive(Clone)]
 pub struct BebelModel {
     pub(crate) inner: Arc<Model>,
-    pub(crate) exec_lock: Arc<Mutex<()>>,
     pub(crate) path: String,
 }
 
@@ -32,7 +31,6 @@ impl BebelModel {
         let model = Model::load(path).map_err(|e| err(format!("cannot load BebeLM model: {e}")))?;
         Ok(Self {
             inner: Arc::new(model),
-            exec_lock: Arc::new(Mutex::new(())),
             path: path.to_string(),
         })
     }
@@ -63,7 +61,6 @@ impl BebelModel {
     /// Embed text by pooling final hidden states.
     /// @export
     fn embed(&self, text: &str, add_bos: bool, normalize: bool, pooling: &str) -> savvy::Result<savvy::Sexp> {
-        let _guard = self.exec_lock.lock().map_err(|_| err("model execution lock poisoned"))?;
         let pooled = pooled_embedding(self.inner.as_ref(), text, add_bos, normalize, pooling, DEFAULT_EMBED_TOKEN_BATCH, false)?;
         let mut out = OwnedRealSexp::new(HIDDEN)?;
         for (i, value) in pooled.iter().enumerate() {
@@ -88,7 +85,6 @@ impl BebelModel {
         let token_batch_size = checked_positive_usize(token_batch_size, "token_batch_size")?.unwrap_or(DEFAULT_EMBED_TOKEN_BATCH);
         let sequence_batch_size = checked_positive_usize(sequence_batch_size, "sequence_batch_size")?.unwrap_or(DEFAULT_EMBED_SEQUENCE_BATCH);
         let n = texts.len();
-        let _guard = self.exec_lock.lock().map_err(|_| err("model execution lock poisoned"))?;
         let rows = pooled_embeddings(
             self.inner.as_ref(),
             &texts,
@@ -130,7 +126,6 @@ impl BebelModel {
     ) -> savvy::Result<savvy::Sexp> {
         let mut opts = GenerationOptions::new(greedy, check_interrupt, on_event, max_gen, max_context, max_think, temperature, top_k, repeat_penalty)?;
         let history = self.inner.tokenizer().encode(prompt, true);
-        let _guard = self.exec_lock.lock().map_err(|_| err("model execution lock poisoned"))?;
         let turn = run_generation(self.inner.as_ref(), history, &mut opts)?;
         turn_to_list(turn)
     }
@@ -150,7 +145,6 @@ impl BebelModel {
     ) -> savvy::Result<crate::async_job::BebelAsyncJob> {
         crate::async_job::spawn_model_generate(
             Arc::clone(&self.inner),
-            Arc::clone(&self.exec_lock),
             prompt.to_string(),
             greedy,
             max_gen,
@@ -180,7 +174,6 @@ impl BebelModel {
         let mut opts = GenerationOptions::new(greedy, check_interrupt, on_event, max_gen, max_context, max_think, temperature, top_k, repeat_penalty)?;
         let mut history = self.inner.tokenizer().encode(&user_turn(message), true);
         history.extend(self.inner.tokenizer().encode(ASSISTANT_OPEN, false));
-        let _guard = self.exec_lock.lock().map_err(|_| err("model execution lock poisoned"))?;
         let turn = run_generation(self.inner.as_ref(), history, &mut opts)?;
         turn_to_list(turn)
     }
@@ -200,7 +193,6 @@ impl BebelModel {
     ) -> savvy::Result<crate::async_job::BebelAsyncJob> {
         crate::async_job::spawn_model_chat(
             Arc::clone(&self.inner),
-            Arc::clone(&self.exec_lock),
             message.to_string(),
             greedy,
             max_gen,
