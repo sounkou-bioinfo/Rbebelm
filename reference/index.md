@@ -23,8 +23,12 @@
 
 - [`bebel_embed()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_embed.md)
   : Embed text with pooled BebeLM hidden states
+- [`bebel_token_embed()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_token_embed.md)
+  : Embed each token with BebeLM hidden states
 - [`BebelEmbeddingOptions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelEmbeddingOptions.md)
   : Embedding options
+- [`BebelTokenEmbeddingOptions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelTokenEmbeddingOptions.md)
+  : Token embedding options
 
 ## Generation and agents
 

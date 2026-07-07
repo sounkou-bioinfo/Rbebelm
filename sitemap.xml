@@ -26,6 +26,7 @@
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelModelLoadOptions.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelModelRef.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelScalarText.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelTokenEmbeddingOptions.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelToolRef.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelToolSpec.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent.html</loc></url>
@@ -62,6 +63,7 @@
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_model_load.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_parse_tool_call.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_parse_tool_calls.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_token_embed.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_token_ids.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_tokenize.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_tool.html</loc></url>
