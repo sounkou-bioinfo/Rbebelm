@@ -138,8 +138,8 @@
 <span><span class="co">#&gt; &lt;BebeLM generation result&gt;</span></span>
 <span><span class="co">#&gt;   stop: max_new</span></span>
 <span><span class="co">#&gt;   tokens: 8 generated; 6 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 28.8 tok/s</span></span>
-<span><span class="co">#&gt;   decode: 30.55 tok/s</span></span>
+<span><span class="co">#&gt;   prefill: 28.5 tok/s</span></span>
+<span><span class="co">#&gt;   decode: 31.80 tok/s</span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt;  the city of Paris. city of Paris</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">events</span><span class="op">)</span></span>
@@ -155,11 +155,11 @@
 <span>  on_event <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span>
 <span><span class="va">chat</span></span>
-<span><span class="co">#&gt; &lt;BebeLM chat result&gt;</span></span>
+<span><span class="co">#&gt; &lt;BebeLM generation result&gt;</span></span>
 <span><span class="co">#&gt;   stop: eos</span></span>
 <span><span class="co">#&gt;   tokens: 20 generated; 21 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 35.9 tok/s</span></span>
-<span><span class="co">#&gt;   decode: 27.97 tok/s</span></span>
+<span><span class="co">#&gt;   prefill: 36.5 tok/s</span></span>
+<span><span class="co">#&gt;   decode: 26.84 tok/s</span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; &lt;|tool_call_start|&gt;[constraints(word_count=5, question="what does mmap help with?")]&lt;|tool_call_end|&gt;</span></span></code></pre></div>
 </div>
@@ -179,8 +179,8 @@
 <span><span class="co">#&gt; &lt;BebeLM assistant turn&gt;</span></span>
 <span><span class="co">#&gt;   stop: eos</span></span>
 <span><span class="co">#&gt;   tokens: 10 generated; 15 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 35.1 tok/s</span></span>
-<span><span class="co">#&gt;   decode: 28.16 tok/s</span></span>
+<span><span class="co">#&gt;   prefill: 34.4 tok/s</span></span>
+<span><span class="co">#&gt;   decode: 28.20 tok/s</span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; &lt;</span></span>
 <span><span class="co">#&gt; &lt;/think&gt;</span></span>
@@ -190,8 +190,8 @@
 <span><span class="co">#&gt; &lt;BebeLM assistant turn&gt;</span></span>
 <span><span class="co">#&gt;   stop: eos</span></span>
 <span><span class="co">#&gt;   tokens: 11 generated; 17 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 36.1 tok/s</span></span>
-<span><span class="co">#&gt;   decode: 29.82 tok/s</span></span>
+<span><span class="co">#&gt;   prefill: 35.5 tok/s</span></span>
+<span><span class="co">#&gt;   decode: 27.49 tok/s</span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; &lt;</span></span>
 <span><span class="co">#&gt; &lt;/Answer&gt;</span></span>
@@ -258,7 +258,7 @@
 <div class="section level2">
 <h2 id="async-jobs">Async jobs<a class="anchor" aria-label="anchor" href="#async-jobs"></a>
 </h2>
-<p>Async jobs use an aio-style surface: submit work, drain queued events when the R loop is ready, poll the handle, then collect the completed <code>Turn</code> on the R thread. Several jobs can share one loaded model; the weights stay shared and execution can overlap. Agent async jobs run on a cloned agent snapshot: the original agent is not mutated. Worker threads queue stream events for R to drain; they do not call R functions.</p>
+<p>Async jobs use an aio-style surface: submit work, monitor queued events on the R thread, then collect the completed <code>Turn</code>. <code><a href="reference/bebel_async_wait.html">bebel_async_wait()</a></code> is the blocking monitor used by model-level sync helpers, so stream callbacks always run on the R thread. Several jobs can share one loaded model; the weights stay shared and execution can overlap. Agent async jobs run on a cloned agent snapshot: the original agent is not mutated.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">job_a</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bebel_generate_async.html">bebel_generate_async</a></span><span class="op">(</span></span>
 <span>  <span class="va">model</span>,</span>
@@ -272,30 +272,29 @@
 <span><span class="fu"><a href="reference/bebel_append.html">bebel_append</a></span><span class="op">(</span><span class="va">job_b_agent</span>, <span class="st">"The capital of Mali is"</span><span class="op">)</span></span>
 <span><span class="va">job_b</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bebel_agent_generate_async.html">bebel_agent_generate_async</a></span><span class="op">(</span><span class="va">job_b_agent</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="reference/bebel_async_poll.html">bebel_async_poll</a></span><span class="op">(</span><span class="va">job_a</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "pending"</span></span>
-<span><span class="va">async_a</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bebel_async_collect.html">bebel_async_collect</a></span><span class="op">(</span><span class="va">job_a</span>, wait <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="va">event_types_a</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="fu"><a href="reference/bebel_async_events.html">bebel_async_events</a></span><span class="op">(</span><span class="va">job_a</span><span class="op">)</span>, <span class="va">`[[`</span>, <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, <span class="st">"type"</span><span class="op">)</span></span>
+<span><span class="va">event_types_a</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">async_a</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bebel_async_wait.html">bebel_async_wait</a></span><span class="op">(</span></span>
+<span>  <span class="va">job_a</span>,</span>
+<span>  on_event <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">event</span><span class="op">)</span> <span class="va">event_types_a</span> <span class="op">&lt;&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">event_types_a</span>, <span class="va">event</span><span class="op">$</span><span class="va">type</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
 <span><span class="va">async_b</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bebel_async_collect.html">bebel_async_collect</a></span><span class="op">(</span><span class="va">job_b</span>, wait <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">event_types_a</span></span>
-<span><span class="co">#&gt;  [1] "start"      "text_start" "text_delta" "text_delta" "text_delta"</span></span>
-<span><span class="co">#&gt;  [6] "text_delta" "text_delta" "text_delta" "text_delta" "text_delta"</span></span>
-<span><span class="co">#&gt; [11] "text_end"   "done"</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">event_types_a</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] "start"      "text_start" "text_delta" "text_end"   "done"</span></span>
 <span><span class="va">async_a</span></span>
 <span><span class="co">#&gt; &lt;BebeLM generation result&gt;</span></span>
 <span><span class="co">#&gt;   stop: max_new</span></span>
 <span><span class="co">#&gt;   tokens: 8 generated; 6 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 17.1 tok/s</span></span>
-<span><span class="co">#&gt;   decode: 17.40 tok/s</span></span>
+<span><span class="co">#&gt;   prefill: 16.1 tok/s</span></span>
+<span><span class="co">#&gt;   decode: 17.33 tok/s</span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt;  Rome. city of... ... ... ...</span></span>
 <span><span class="va">async_b</span></span>
 <span><span class="co">#&gt; &lt;BebeLM generation result&gt;</span></span>
 <span><span class="co">#&gt;   stop: max_new</span></span>
 <span><span class="co">#&gt;   tokens: 8 generated; 6 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 16.4 tok/s</span></span>
-<span><span class="co">#&gt;   decode: 17.55 tok/s</span></span>
+<span><span class="co">#&gt;   prefill: 15.5 tok/s</span></span>
+<span><span class="co">#&gt;   decode: 17.50 tok/s</span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt;  the city of Bamako. city of</span></span>
 <span><span class="fu"><a href="reference/bebel_agent_info.html">bebel_agent_info</a></span><span class="op">(</span><span class="va">job_b_agent</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"history_tokens"</span>, <span class="st">"processed_tokens"</span><span class="op">)</span><span class="op">]</span></span>
@@ -306,9 +305,9 @@
 <span><span class="co">#&gt; [1] 0</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="small-benchmark-table">Small benchmark table<a class="anchor" aria-label="anchor" href="#small-benchmark-table"></a>
+<h2 id="generation-benchmark">Generation benchmark<a class="anchor" aria-label="anchor" href="#generation-benchmark"></a>
 </h2>
-<p>This is not a model-quality benchmark. It is a reproducible package-level regression benchmark that records prompt size, generation size, and throughput for a few deterministic tasks.</p>
+<p>The generation benchmark uses bounded async batches against one loaded model. It records per-job timings, token counts, event counts, and aggregate throughput for reproducible CPU comparisons.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">prompts</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
 <span>  <span class="st">"The capital of Mali is"</span>,</span>
@@ -316,28 +315,34 @@
 <span>  <span class="st">"The capital of Japan is"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">bench</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">prompts</span>, <span class="kw">function</span><span class="op">(</span><span class="va">prompt</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">out</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bebel_generate.html">bebel_generate</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">prompt</span>, greedy <span class="op">=</span> <span class="cn">TRUE</span>, max_gen <span class="op">=</span> <span class="fl">8</span>, max_think <span class="op">=</span> <span class="fl">0</span>, on_event <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>    prompt <span class="op">=</span> <span class="va">prompt</span>,</span>
-<span>    text <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/trimws.html" class="external-link">trimws</a></span><span class="op">(</span><span class="va">out</span><span class="op">$</span><span class="va">text</span><span class="op">)</span>,</span>
-<span>    prompt_tokens <span class="op">=</span> <span class="va">out</span><span class="op">$</span><span class="va">prompt_tokens</span>,</span>
-<span>    generated_tokens <span class="op">=</span> <span class="va">out</span><span class="op">$</span><span class="va">generated_tokens</span>,</span>
-<span>    prefill_tps <span class="op">=</span> <span class="va">out</span><span class="op">$</span><span class="va">prefill_tps</span>,</span>
-<span>    decode_tps <span class="op">=</span> <span class="va">out</span><span class="op">$</span><span class="va">decode_tps</span>,</span>
-<span>    stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span>  <span class="op">)</span></span>
-<span><span class="op">}</span><span class="op">)</span></span>
+<span><span class="va">bench</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bebel_benchmark_generation.html">bebel_benchmark_generation</a></span><span class="op">(</span></span>
+<span>  <span class="va">model</span>,</span>
+<span>  <span class="va">prompts</span>,</span>
+<span>  concurrency <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">prompts</span><span class="op">)</span>, <span class="fl">2L</span><span class="op">)</span>,</span>
+<span>  repeats <span class="op">=</span> <span class="fl">1L</span>,</span>
+<span>  greedy <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  max_gen <span class="op">=</span> <span class="fl">8</span>,</span>
+<span>  max_think <span class="op">=</span> <span class="fl">0</span></span>
+<span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="va">bench</span><span class="op">)</span></span>
-<span><span class="co">#&gt;                    prompt                              text prompt_tokens</span></span>
-<span><span class="co">#&gt; 1  The capital of Mali is       the city of Bamako. city of             6</span></span>
-<span><span class="co">#&gt; 2 The capital of Italy is      Rome. city of... ... ... ...             6</span></span>
-<span><span class="co">#&gt; 3 The capital of Japan is Tokyo. city. The capital of Japan             6</span></span>
-<span><span class="co">#&gt;   generated_tokens prefill_tps decode_tps</span></span>
-<span><span class="co">#&gt; 1                8    30.61279   31.98260</span></span>
-<span><span class="co">#&gt; 2                8    29.17948   32.78591</span></span>
-<span><span class="co">#&gt; 3                8    29.36526   32.56053</span></span></code></pre></div>
+<span><span class="va">bench</span></span>
+<span><span class="co">#&gt; &lt;BebeLM generation benchmark&gt;</span></span>
+<span><span class="co">#&gt;   jobs: 3</span></span>
+<span><span class="co">#&gt;   concurrency: 2</span></span>
+<span><span class="co">#&gt;   elapsed: 1.288 s</span></span>
+<span><span class="co">#&gt;   generated throughput: 18.63 tok/s</span></span>
+<span><span class="va">bench</span><span class="op">$</span><span class="va">aggregate</span></span>
+<span><span class="co">#&gt;   job_count prompt_count repeats concurrency elapsed_seconds</span></span>
+<span><span class="co">#&gt; 1         3            3       1           2           1.288</span></span>
+<span><span class="co">#&gt;   total_prompt_tokens total_generated_tokens generated_tps_wall</span></span>
+<span><span class="co">#&gt; 1                  18                     24           18.63354</span></span>
+<span><span class="co">#&gt;   generated_tps_decode mean_job_wall_seconds mean_decode_tps</span></span>
+<span><span class="co">#&gt; 1             20.49946             0.6986667        22.00653</span></span>
+<span><span class="va">bench</span><span class="op">$</span><span class="va">jobs</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"prompt"</span>, <span class="st">"generated_tokens"</span>, <span class="st">"wall_seconds"</span>, <span class="st">"decode_tps"</span>, <span class="st">"event_count"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt;                    prompt generated_tokens wall_seconds decode_tps event_count</span></span>
+<span><span class="co">#&gt; 1  The capital of Mali is                8        0.824   17.56391          12</span></span>
+<span><span class="co">#&gt; 2 The capital of Italy is                8        0.811   17.51658          12</span></span>
+<span><span class="co">#&gt; 3 The capital of Japan is                8        0.461   30.93909          12</span></span></code></pre></div>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">

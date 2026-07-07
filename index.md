@@ -104,8 +104,8 @@ answer
 #> <BebeLM generation result>
 #>   stop: max_new
 #>   tokens: 8 generated; 6 prompt
-#>   prefill: 28.8 tok/s
-#>   decode: 30.55 tok/s
+#>   prefill: 28.5 tok/s
+#>   decode: 31.80 tok/s
 #>   text:
 #>  the city of Paris. city of Paris
 unique(events)
@@ -127,11 +127,11 @@ chat <- bebel_chat(
   on_event = NULL
 )
 chat
-#> <BebeLM chat result>
+#> <BebeLM generation result>
 #>   stop: eos
 #>   tokens: 20 generated; 21 prompt
-#>   prefill: 35.9 tok/s
-#>   decode: 27.97 tok/s
+#>   prefill: 36.5 tok/s
+#>   decode: 26.84 tok/s
 #>   text:
 #> <|tool_call_start|>[constraints(word_count=5, question="what does mmap help with?")]<|tool_call_end|>
 ```
@@ -154,8 +154,8 @@ turn1
 #> <BebeLM assistant turn>
 #>   stop: eos
 #>   tokens: 10 generated; 15 prompt
-#>   prefill: 35.1 tok/s
-#>   decode: 28.16 tok/s
+#>   prefill: 34.4 tok/s
+#>   decode: 28.20 tok/s
 #>   text:
 #> <
 #> </think>
@@ -165,8 +165,8 @@ turn2
 #> <BebeLM assistant turn>
 #>   stop: eos
 #>   tokens: 11 generated; 17 prompt
-#>   prefill: 36.1 tok/s
-#>   decode: 29.82 tok/s
+#>   prefill: 35.5 tok/s
+#>   decode: 27.49 tok/s
 #>   text:
 #> <
 #> </Answer>
@@ -241,12 +241,13 @@ ctx$calls
 
 ## Async jobs
 
-Async jobs use an aio-style surface: submit work, drain queued events
-when the R loop is ready, poll the handle, then collect the completed
-`Turn` on the R thread. Several jobs can share one loaded model; the
-weights stay shared and execution can overlap. Agent async jobs run on a
-cloned agent snapshot: the original agent is not mutated. Worker threads
-queue stream events for R to drain; they do not call R functions.
+Async jobs use an aio-style surface: submit work, monitor queued events
+on the R thread, then collect the completed `Turn`.
+[`bebel_async_wait()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_async_wait.md)
+is the blocking monitor used by model-level sync helpers, so stream
+callbacks always run on the R thread. Several jobs can share one loaded
+model; the weights stay shared and execution can overlap. Agent async
+jobs run on a cloned agent snapshot: the original agent is not mutated.
 
 ``` r
 
@@ -262,30 +263,29 @@ job_b_agent <- bebel_agent(model, greedy = TRUE, max_gen = 8, max_think = 0)
 bebel_append(job_b_agent, "The capital of Mali is")
 job_b <- bebel_agent_generate_async(job_b_agent)
 
-bebel_async_poll(job_a)
-#> [1] "pending"
-async_a <- bebel_async_collect(job_a, wait = TRUE)
-event_types_a <- vapply(bebel_async_events(job_a), `[[`, character(1), "type")
+event_types_a <- character()
+async_a <- bebel_async_wait(
+  job_a,
+  on_event = function(event) event_types_a <<- c(event_types_a, event$type)
+)
 async_b <- bebel_async_collect(job_b, wait = TRUE)
 
-event_types_a
-#>  [1] "start"      "text_start" "text_delta" "text_delta" "text_delta"
-#>  [6] "text_delta" "text_delta" "text_delta" "text_delta" "text_delta"
-#> [11] "text_end"   "done"
+unique(event_types_a)
+#> [1] "start"      "text_start" "text_delta" "text_end"   "done"
 async_a
 #> <BebeLM generation result>
 #>   stop: max_new
 #>   tokens: 8 generated; 6 prompt
-#>   prefill: 17.1 tok/s
-#>   decode: 17.40 tok/s
+#>   prefill: 16.1 tok/s
+#>   decode: 17.33 tok/s
 #>   text:
 #>  Rome. city of... ... ... ...
 async_b
 #> <BebeLM generation result>
 #>   stop: max_new
 #>   tokens: 8 generated; 6 prompt
-#>   prefill: 16.4 tok/s
-#>   decode: 17.55 tok/s
+#>   prefill: 15.5 tok/s
+#>   decode: 17.50 tok/s
 #>   text:
 #>  the city of Bamako. city of
 bebel_agent_info(job_b_agent)[c("history_tokens", "processed_tokens")]
@@ -296,11 +296,11 @@ bebel_agent_info(job_b_agent)[c("history_tokens", "processed_tokens")]
 #> [1] 0
 ```
 
-## Small benchmark table
+## Generation benchmark
 
-This is not a model-quality benchmark. It is a reproducible
-package-level regression benchmark that records prompt size, generation
-size, and throughput for a few deterministic tasks.
+The generation benchmark uses bounded async batches against one loaded
+model. It records per-job timings, token counts, event counts, and
+aggregate throughput for reproducible CPU comparisons.
 
 ``` r
 
@@ -310,26 +310,32 @@ prompts <- c(
   "The capital of Japan is"
 )
 
-bench <- lapply(prompts, function(prompt) {
-  out <- bebel_generate(model, prompt, greedy = TRUE, max_gen = 8, max_think = 0, on_event = NULL)
-  data.frame(
-    prompt = prompt,
-    text = trimws(out$text),
-    prompt_tokens = out$prompt_tokens,
-    generated_tokens = out$generated_tokens,
-    prefill_tps = out$prefill_tps,
-    decode_tps = out$decode_tps,
-    stringsAsFactors = FALSE
-  )
-})
+bench <- bebel_benchmark_generation(
+  model,
+  prompts,
+  concurrency = min(length(prompts), 2L),
+  repeats = 1L,
+  greedy = TRUE,
+  max_gen = 8,
+  max_think = 0
+)
 
-do.call(rbind, bench)
-#>                    prompt                              text prompt_tokens
-#> 1  The capital of Mali is       the city of Bamako. city of             6
-#> 2 The capital of Italy is      Rome. city of... ... ... ...             6
-#> 3 The capital of Japan is Tokyo. city. The capital of Japan             6
-#>   generated_tokens prefill_tps decode_tps
-#> 1                8    30.61279   31.98260
-#> 2                8    29.17948   32.78591
-#> 3                8    29.36526   32.56053
+bench
+#> <BebeLM generation benchmark>
+#>   jobs: 3
+#>   concurrency: 2
+#>   elapsed: 1.288 s
+#>   generated throughput: 18.63 tok/s
+bench$aggregate
+#>   job_count prompt_count repeats concurrency elapsed_seconds
+#> 1         3            3       1           2           1.288
+#>   total_prompt_tokens total_generated_tokens generated_tps_wall
+#> 1                  18                     24           18.63354
+#>   generated_tps_decode mean_job_wall_seconds mean_decode_tps
+#> 1             20.49946             0.6986667        22.00653
+bench$jobs[, c("prompt", "generated_tokens", "wall_seconds", "decode_tps", "event_count")]
+#>                    prompt generated_tokens wall_seconds decode_tps event_count
+#> 1  The capital of Mali is                8        0.824   17.56391          12
+#> 2 The capital of Italy is                8        0.811   17.51658          12
+#> 3 The capital of Japan is                8        0.461   30.93909          12
 ```

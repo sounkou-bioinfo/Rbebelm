@@ -18,7 +18,9 @@
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelAsyncEventDrainOptions.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelAsyncJob.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelAsyncJobRef.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelAsyncWaitOptions.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelEmbeddingOptions.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelGenerationBenchmarkOptions.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelGenerationOptions.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelModel.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelModelLoadOptions.html</loc></url>
@@ -41,9 +43,12 @@
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_assistant_turn_async.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_assistant_turn_tool_stop.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_assistant_turn_tool_stop_async.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_async_cancel.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_async_collect.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_async_events.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_async_poll.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_async_wait.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_benchmark_generation.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_chat.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_chat_async.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_clear.html</loc></url>

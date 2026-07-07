@@ -56,7 +56,8 @@
 <span>  max_think <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  temperature <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  top_k <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  repeat_penalty <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  repeat_penalty <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  poll_interval <span class="op">=</span> <span class="fl">0.005</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -83,7 +84,7 @@
 
 
 <dt id="arg-check-interrupt">check_interrupt<a class="anchor" aria-label="anchor" href="#arg-check-interrupt"></a></dt>
-<dd><p>Check for Ctrl-C during prefill and before every decoded token.</p></dd>
+<dd><p>Cancel the underlying async job when the R wait is interrupted.</p></dd>
 
 
 <dt id="arg-max-gen-max-context-max-think">max_gen, max_context, max_think<a class="anchor" aria-label="anchor" href="#arg-max-gen-max-context-max-think"></a></dt>
@@ -92,6 +93,10 @@
 
 <dt id="arg-temperature-top-k-repeat-penalty">temperature, top_k, repeat_penalty<a class="anchor" aria-label="anchor" href="#arg-temperature-top-k-repeat-penalty"></a></dt>
 <dd><p>Optional sampling settings.</p></dd>
+
+
+<dt id="arg-poll-interval">poll_interval<a class="anchor" aria-label="anchor" href="#arg-poll-interval"></a></dt>
+<dd><p>Seconds to sleep between async-job polls.</p></dd>
 
 </dl></div>
     <div class="section level2">

@@ -27,7 +27,7 @@ bebel_assistant_turn_tool_stop(agent, on_event = NULL, check_interrupt = TRUE)
 
 - check_interrupt:
 
-  Check for Ctrl-C during prefill and before every decoded token.
+  Check for R interrupts during synchronous agent generation.
 
 ## Value
 

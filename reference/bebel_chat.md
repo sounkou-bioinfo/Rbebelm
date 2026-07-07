@@ -16,7 +16,8 @@ bebel_chat(
   max_think = NULL,
   temperature = NULL,
   top_k = NULL,
-  repeat_penalty = NULL
+  repeat_penalty = NULL,
+  poll_interval = 0.005
 )
 ```
 
@@ -44,7 +45,7 @@ bebel_chat(
 
 - check_interrupt:
 
-  Check for Ctrl-C during prefill and before every decoded token.
+  Cancel the underlying async job when the R wait is interrupted.
 
 - max_gen, max_context, max_think:
 
@@ -53,6 +54,10 @@ bebel_chat(
 - temperature, top_k, repeat_penalty:
 
   Optional sampling settings.
+
+- poll_interval:
+
+  Seconds to sleep between async-job polls.
 
 ## Value
 

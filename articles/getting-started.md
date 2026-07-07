@@ -85,8 +85,8 @@ out
     ## <BebeLM generation result>
     ##   stop: max_new
     ##   tokens: 8 generated; 6 prompt
-    ##   prefill: 10.8 tok/s
-    ##   decode: 11.40 tok/s
+    ##   prefill: 10.9 tok/s
+    ##   decode: 11.42 tok/s
     ##   text:
     ##  the city of Paris. city of Paris
 
@@ -104,8 +104,8 @@ bebel_assistant_turn(agent, on_event = NULL)
     ## <BebeLM assistant turn>
     ##   stop: eos
     ##   tokens: 10 generated; 15 prompt
-    ##   prefill: 13.6 tok/s
-    ##   decode: 10.09 tok/s
+    ##   prefill: 13.8 tok/s
+    ##   decode: 10.14 tok/s
     ##   text:
     ## <
     ## </think>
@@ -121,7 +121,7 @@ bebel_assistant_turn(agent, on_event = NULL)
     ## <BebeLM assistant turn>
     ##   stop: eos
     ##   tokens: 11 generated; 17 prompt
-    ##   prefill: 14.1 tok/s
+    ##   prefill: 14.3 tok/s
     ##   decode: 9.92 tok/s
     ##   text:
     ## <

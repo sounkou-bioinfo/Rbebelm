@@ -88,14 +88,27 @@
   : Poll a BebeLM async job
 - [`bebel_async_events()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_async_events.md)
   : Drain queued BebeLM async job events
+- [`bebel_async_wait()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_async_wait.md)
+  : Wait for a BebeLM async job
 - [`bebel_async_collect()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_async_collect.md)
   : Collect a BebeLM async job result
+- [`bebel_async_cancel()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_async_cancel.md)
+  : Cancel a BebeLM async job
 - [`BebelAsyncJob`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelAsyncJob.md)
   : Background BebeLM generation job.
 - [`BebelAsyncJobRef()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelAsyncJobRef.md)
   : BebeLM async job reference
 - [`BebelAsyncEventDrainOptions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelAsyncEventDrainOptions.md)
   : Async event drain options
+- [`BebelAsyncWaitOptions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelAsyncWaitOptions.md)
+  : Async wait options
+
+## Benchmarks
+
+- [`bebel_benchmark_generation()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_benchmark_generation.md)
+  : Benchmark async BebeLM generation throughput
+- [`BebelGenerationBenchmarkOptions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelGenerationBenchmarkOptions.md)
+  : Generation benchmark options
 
 ## Tools and events
 
