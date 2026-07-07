@@ -78,6 +78,14 @@ emb <- bebel_embed(model, c(
 ))
 dim(emb)
 round(emb[1:2, 1:6], 3)
+
+token_emb <- bebel_token_embed(model, "short stature", add_bos = FALSE)
+token_emb
+data.frame(
+  token_index = token_emb$token_index,
+  token_id = token_emb$ids,
+  token = token_emb$tokens
+)
 ```
 
 ## Generation

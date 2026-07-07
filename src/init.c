@@ -234,6 +234,11 @@ SEXP savvy_BebelModel_load__impl(SEXP c_arg__path, SEXP c_arg__num_threads) {
     return handle_result(res);
 }
 
+SEXP savvy_BebelModel_token_embeddings__impl(SEXP self__, SEXP c_arg__text, SEXP c_arg__add_bos, SEXP c_arg__normalize, SEXP c_arg__check_interrupt, SEXP c_arg__token_batch_size) {
+    SEXP res = Rbebelm_BebelModel_token_embeddings_ffi(self__, c_arg__text, c_arg__add_bos, c_arg__normalize, c_arg__check_interrupt, c_arg__token_batch_size);
+    return handle_result(res);
+}
+
 
 static const R_CallMethodDef CallEntries[] = {
     {"savvy_bebel_event_types__impl", (DL_FUNC) &savvy_bebel_event_types__impl, 0},
@@ -275,6 +280,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"savvy_BebelModel_generate_async__impl", (DL_FUNC) &savvy_BebelModel_generate_async__impl, 9},
     {"savvy_BebelModel_info__impl", (DL_FUNC) &savvy_BebelModel_info__impl, 1},
     {"savvy_BebelModel_load__impl", (DL_FUNC) &savvy_BebelModel_load__impl, 2},
+    {"savvy_BebelModel_token_embeddings__impl", (DL_FUNC) &savvy_BebelModel_token_embeddings__impl, 6},
     {"Rbebelm_set_backend_impl", (DL_FUNC) &Rbebelm_set_backend_impl, 1},
     {"Rbebelm_backend_info_impl", (DL_FUNC) &Rbebelm_backend_info_impl, 0},
     {"Rbebelm_cpuid_info_impl", (DL_FUNC) &Rbebelm_cpuid_info_impl, 0},

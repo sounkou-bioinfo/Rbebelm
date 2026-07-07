@@ -133,6 +133,8 @@ typedef SEXP (*fn_038)(SEXP);
 static fn_038 p_038 = NULL;
 typedef SEXP (*fn_039)(SEXP, SEXP);
 static fn_039 p_039 = NULL;
+typedef SEXP (*fn_040)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+static fn_040 p_040 = NULL;
 
 #ifdef __EMSCRIPTEN__
 static void bind_static_backend_symbols(void) {
@@ -175,6 +177,7 @@ static void bind_static_backend_symbols(void) {
     p_037 = (fn_037)savvy_BebelModel_generate_async__ffi;
     p_038 = (fn_038)savvy_BebelModel_info__ffi;
     p_039 = (fn_039)savvy_BebelModel_load__ffi;
+    p_040 = (fn_040)savvy_BebelModel_token_embeddings__ffi;
 }
 #endif
 
@@ -562,6 +565,7 @@ static int try_load_backend(const char *backend, char *err, size_t err_size) {
     p_037 = (fn_037)load_symbol(handle, "savvy_BebelModel_generate_async__ffi");
     p_038 = (fn_038)load_symbol(handle, "savvy_BebelModel_info__ffi");
     p_039 = (fn_039)load_symbol(handle, "savvy_BebelModel_load__ffi");
+    p_040 = (fn_040)load_symbol(handle, "savvy_BebelModel_token_embeddings__ffi");
     snprintf(selected_backend, sizeof(selected_backend), "%s", backend);
     backend_loaded = 1;
     return 1;
@@ -659,6 +663,8 @@ SEXP Rbebelm_BebelModel_generate_ffi(SEXP self__, SEXP c_arg__prompt, SEXP c_arg
 SEXP Rbebelm_BebelModel_generate_async_ffi(SEXP self__, SEXP c_arg__prompt, SEXP c_arg__greedy, SEXP c_arg__max_gen, SEXP c_arg__max_context, SEXP c_arg__max_think, SEXP c_arg__temperature, SEXP c_arg__top_k, SEXP c_arg__repeat_penalty) { Rbebelm_init_backend(); return p_037(self__, c_arg__prompt, c_arg__greedy, c_arg__max_gen, c_arg__max_context, c_arg__max_think, c_arg__temperature, c_arg__top_k, c_arg__repeat_penalty); }
 SEXP Rbebelm_BebelModel_info_ffi(SEXP self__) { Rbebelm_init_backend(); return p_038(self__); }
 SEXP Rbebelm_BebelModel_load_ffi(SEXP c_arg__path, SEXP c_arg__num_threads) { Rbebelm_init_backend(); return p_039(c_arg__path, c_arg__num_threads); }
+SEXP Rbebelm_BebelModel_token_embeddings_ffi(SEXP self__, SEXP c_arg__text, SEXP c_arg__add_bos, SEXP c_arg__normalize, SEXP c_arg__check_interrupt, SEXP c_arg__token_batch_size) { Rbebelm_init_backend(); return p_040(self__, c_arg__text, c_arg__add_bos, c_arg__normalize, c_arg__check_interrupt, c_arg__token_batch_size); }
+
 
 
 

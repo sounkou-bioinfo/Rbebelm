@@ -92,6 +92,22 @@ round(emb[1:2, 1:6], 3)
 #>        [,1]   [,2]   [,3]   [,4]  [,5]  [,6]
 #> mali  0.005  0.000 -0.018 -0.007 0.012 0.013
 #> italy 0.006 -0.004 -0.018 -0.008 0.015 0.014
+
+token_emb <- bebel_token_embed(model, "short stature", add_bos = FALSE)
+token_emb
+#> <BebeLM token embeddings>
+#>   tokens: 3
+#>   dimensions: 2048
+#>   normalized: TRUE
+data.frame(
+  token_index = token_emb$token_index,
+  token_id = token_emb$ids,
+  token = token_emb$tokens
+)
+#>   token_index token_id token
+#> 1           0    24629 short
+#> 2           1      377    st
+#> 3           2     1239 ature
 ```
 
 ## Generation
@@ -111,8 +127,8 @@ answer
 #> <BebeLM generation result>
 #>   stop: max_new
 #>   tokens: 8 generated; 6 prompt
-#>   prefill: 28.5 tok/s
-#>   decode: 31.80 tok/s
+#>   prefill: 29.5 tok/s
+#>   decode: 31.65 tok/s
 #>   text:
 #>  the city of Paris. city of Paris
 unique(events)
@@ -135,8 +151,8 @@ chat
 #> <BebeLM generation result>
 #>   stop: eos
 #>   tokens: 20 generated; 21 prompt
-#>   prefill: 36.5 tok/s
-#>   decode: 26.84 tok/s
+#>   prefill: 34.8 tok/s
+#>   decode: 27.39 tok/s
 #>   text:
 #> <|tool_call_start|>[constraints(word_count=5, question="what does mmap help with?")]<|tool_call_end|>
 ```
@@ -158,8 +174,8 @@ turn1
 #> <BebeLM assistant turn>
 #>   stop: eos
 #>   tokens: 10 generated; 15 prompt
-#>   prefill: 34.4 tok/s
-#>   decode: 28.20 tok/s
+#>   prefill: 34.3 tok/s
+#>   decode: 29.77 tok/s
 #>   text:
 #> <
 #> </think>
@@ -169,8 +185,8 @@ turn2
 #> <BebeLM assistant turn>
 #>   stop: eos
 #>   tokens: 11 generated; 17 prompt
-#>   prefill: 35.5 tok/s
-#>   decode: 27.49 tok/s
+#>   prefill: 35.3 tok/s
+#>   decode: 27.06 tok/s
 #>   text:
 #> <
 #> </Answer>
@@ -276,16 +292,16 @@ async_a
 #> <BebeLM generation result>
 #>   stop: max_new
 #>   tokens: 8 generated; 6 prompt
-#>   prefill: 16.1 tok/s
-#>   decode: 17.33 tok/s
+#>   prefill: 17.9 tok/s
+#>   decode: 17.56 tok/s
 #>   text:
 #>  Rome. city of... ... ... ...
 async_b
 #> <BebeLM generation result>
 #>   stop: max_new
 #>   tokens: 8 generated; 6 prompt
-#>   prefill: 15.5 tok/s
-#>   decode: 17.50 tok/s
+#>   prefill: 16.9 tok/s
+#>   decode: 17.82 tok/s
 #>   text:
 #>  the city of Bamako. city of
 bebel_agent_info(job_b_agent)[c("history_tokens", "processed_tokens")]
@@ -323,18 +339,18 @@ bench
 #> <BebeLM generation benchmark>
 #>   jobs: 3
 #>   concurrency: 2
-#>   elapsed: 1.288 s
-#>   generated throughput: 18.63 tok/s
+#>   elapsed: 1.313 s
+#>   generated throughput: 18.28 tok/s
 bench$aggregate
 #>   job_count prompt_count repeats concurrency elapsed_seconds
-#> 1         3            3       1           2           1.288
+#> 1         3            3       1           2           1.313
 #>   total_prompt_tokens total_generated_tokens generated_tps_wall
-#> 1                  18                     24           18.63354
+#> 1                  18                     24           18.27875
 #>   generated_tps_decode mean_job_wall_seconds mean_decode_tps
-#> 1             20.49946             0.6986667        22.00653
+#> 1             20.11324             0.7123333         21.7817
 bench$jobs[, c("prompt", "generated_tokens", "wall_seconds", "decode_tps", "event_count")]
 #>                    prompt generated_tokens wall_seconds decode_tps event_count
-#> 1  The capital of Mali is                8        0.824   17.56391          12
-#> 2 The capital of Italy is                8        0.811   17.51658          12
-#> 3 The capital of Japan is                8        0.461   30.93909          12
+#> 1  The capital of Mali is                8        0.838   17.07711          12
+#> 2 The capital of Italy is                8        0.828   17.08585          12
+#> 3 The capital of Japan is                8        0.471   31.18214          12
 ```

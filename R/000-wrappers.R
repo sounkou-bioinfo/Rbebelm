@@ -340,6 +340,12 @@ class(`BebelAsyncJob`) <- c("Rbebelm::BebelAsyncJob__bundle", "savvy_Rbebelm__se
   }
 }
 
+`BebelModel_token_embeddings` <- function(self) {
+  function(`text`, `add_bos`, `normalize`, `check_interrupt`, `token_batch_size` = NULL) {
+    .Call(savvy_BebelModel_token_embeddings__impl, `self`, `text`, `add_bos`, `normalize`, `check_interrupt`, `token_batch_size`)
+  }
+}
+
 `.savvy_wrap_BebelModel` <- function(ptr) {
   e <- new.env(parent = emptyenv())
   e$.ptr <- ptr
@@ -352,6 +358,7 @@ class(`BebelAsyncJob`) <- c("Rbebelm::BebelAsyncJob__bundle", "savvy_Rbebelm__se
   e$`generate` <- `BebelModel_generate`(ptr)
   e$`generate_async` <- `BebelModel_generate_async`(ptr)
   e$`info` <- `BebelModel_info`(ptr)
+  e$`token_embeddings` <- `BebelModel_token_embeddings`(ptr)
 
   class(e) <- c("Rbebelm::BebelModel", "BebelModel", "savvy_Rbebelm__sealed")
   e

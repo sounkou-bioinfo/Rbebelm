@@ -43,3 +43,4 @@ SEXP savvy_BebelModel_generate__ffi(SEXP self__, SEXP c_arg__prompt, SEXP c_arg_
 SEXP savvy_BebelModel_generate_async__ffi(SEXP self__, SEXP c_arg__prompt, SEXP c_arg__greedy, SEXP c_arg__max_gen, SEXP c_arg__max_context, SEXP c_arg__max_think, SEXP c_arg__temperature, SEXP c_arg__top_k, SEXP c_arg__repeat_penalty);
 SEXP savvy_BebelModel_info__ffi(SEXP self__);
 SEXP savvy_BebelModel_load__ffi(SEXP c_arg__path, SEXP c_arg__num_threads);
+SEXP savvy_BebelModel_token_embeddings__ffi(SEXP self__, SEXP c_arg__text, SEXP c_arg__add_bos, SEXP c_arg__normalize, SEXP c_arg__check_interrupt, SEXP c_arg__token_batch_size);

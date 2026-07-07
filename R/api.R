@@ -177,6 +177,44 @@ bebel_embed <- function(model,
   out
 }
 
+#' Embed each token with BebeLM hidden states
+#'
+#' @param model A `BebelModel` object.
+#' @param text Character scalar.
+#' @param add_bos Whether to prepend the BOS token before embedding.
+#' @param normalize L2-normalize each token row.
+#' @param token_batch_size Number of tokens per Rust batched prefill/matmul call.
+#' @param check_interrupt Whether long embedding runs should poll R interrupts
+#'   between token batches.
+#' @return A `bebelTokenEmbeddings` list with token ids, decoded token strings,
+#'   zero-based token indices, and an `n_token x hidden_dim` numeric matrix.
+#' @export
+bebel_token_embed <- function(model,
+                              text,
+                              add_bos = TRUE,
+                              normalize = TRUE,
+                              token_batch_size = 512L,
+                              check_interrupt = TRUE) {
+  model <- S7::prop(BebelModelRef(value = list(model)), "value")[[1L]]
+  text <- S7::prop(BebelScalarText(value = text), "value")
+  options <- BebelTokenEmbeddingOptions(
+    add_bos = isTRUE(add_bos),
+    normalize = isTRUE(normalize),
+    token_batch_size = token_batch_size,
+    check_interrupt = isTRUE(check_interrupt)
+  )
+  out <- model$token_embeddings(
+    text,
+    add_bos = S7::prop(options, "add_bos"),
+    normalize = S7::prop(options, "normalize"),
+    check_interrupt = S7::prop(options, "check_interrupt"),
+    token_batch_size = as.numeric(S7::prop(options, "token_batch_size"))
+  )
+  rownames(out$embeddings) <- paste0("token_", out$token_index)
+  class(out) <- c("bebelTokenEmbeddings", class(out))
+  out
+}
+
 #' Create a persistent BebeLM agent
 #'
 #' A `BebelAgent` owns an independent token transcript and decode cache while
@@ -1381,6 +1419,15 @@ print.bebelGenerationBenchmark <- function(x, ...) {
   cat("  concurrency: ", x$aggregate$concurrency, "\n", sep = "")
   cat("  elapsed: ", sprintf("%.3f s", x$aggregate$elapsed_seconds), "\n", sep = "")
   cat("  generated throughput: ", sprintf("%.2f tok/s", x$aggregate$generated_tps_wall), "\n", sep = "")
+  invisible(x)
+}
+
+#' @export
+print.bebelTokenEmbeddings <- function(x, ...) {
+  cat("<BebeLM token embeddings>\n")
+  cat("  tokens: ", nrow(x$embeddings), "\n", sep = "")
+  cat("  dimensions: ", ncol(x$embeddings), "\n", sep = "")
+  cat("  normalized: ", isTRUE(x$normalized), "\n", sep = "")
   invisible(x)
 }
 

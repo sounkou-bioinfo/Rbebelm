@@ -395,6 +395,42 @@ BebelEmbeddingOptions <- S7::new_class(
   }
 )
 
+#' Token embedding options
+#'
+#' @param add_bos Whether to prepend the BOS token before embedding.
+#' @param normalize Whether to L2-normalize each token row.
+#' @param token_batch_size Number of tokens per Rust batched prefill/matmul call.
+#' @param check_interrupt Whether long embedding runs should poll R interrupts
+#'   between token batches.
+#' @export
+BebelTokenEmbeddingOptions <- S7::new_class(
+  "BebelTokenEmbeddingOptions",
+  properties = list(
+    add_bos = S7::class_logical,
+    normalize = S7::class_logical,
+    token_batch_size = S7::class_numeric,
+    check_interrupt = S7::class_logical
+  ),
+  validator = function(self) {
+    errors <- character()
+    for (name in c("add_bos", "normalize", "check_interrupt")) {
+      value <- S7::prop(self, name)
+      if (length(value) != 1L || is.na(value)) {
+        errors <- c(errors, paste0("`", name, "` must be TRUE or FALSE."))
+      }
+    }
+    token_batch_size <- S7::prop(self, "token_batch_size")
+    if (length(token_batch_size) != 1L ||
+        is.na(token_batch_size) ||
+        !is.finite(token_batch_size) ||
+        token_batch_size < 1 ||
+        token_batch_size != floor(token_batch_size)) {
+      errors <- c(errors, "`token_batch_size` must be a positive whole number.")
+    }
+    if (length(errors)) errors else NULL
+  }
+)
+
 #' R tool exposed to BebeLM
 #'
 #' @param name Tool name exposed to the model and dispatcher.

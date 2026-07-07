@@ -21,7 +21,9 @@ reference:
   - title: Embeddings
     contents:
       - bebel_embed
+      - bebel_token_embed
       - BebelEmbeddingOptions
+      - BebelTokenEmbeddingOptions
   - title: Generation and agents
     contents:
       - bebel_generate

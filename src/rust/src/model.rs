@@ -3,7 +3,7 @@ use std::sync::Arc;
 use bebelm::cache::Cache;
 use bebelm::config::HIDDEN;
 use bebelm::model::Model;
-use savvy::{savvy, FunctionSexp, IntegerSexp, OwnedListSexp, OwnedRealSexp, StringSexp};
+use savvy::{savvy, FunctionSexp, IntegerSexp, OwnedIntegerSexp, OwnedListSexp, OwnedRealSexp, OwnedStringSexp, StringSexp};
 
 use crate::chatml::{user_turn, ASSISTANT_OPEN};
 use crate::generation::{run_generation, turn_to_list};
@@ -107,6 +107,20 @@ impl BebelModel {
         }
         out.set_dim(&[n, HIDDEN])?;
         out.into()
+    }
+
+    /// Embed each token with final hidden states.
+    /// @export
+    fn token_embeddings(
+        &self,
+        text: &str,
+        add_bos: bool,
+        normalize: bool,
+        check_interrupt: bool,
+        token_batch_size: Option<f64>,
+    ) -> savvy::Result<savvy::Sexp> {
+        let token_batch_size = checked_positive_usize(token_batch_size, "token_batch_size")?.unwrap_or(DEFAULT_EMBED_TOKEN_BATCH);
+        token_embeddings_to_list(self.inner.as_ref(), text, add_bos, normalize, token_batch_size, check_interrupt)
     }
 
     /// Generate a raw continuation from a prompt.
@@ -355,6 +369,70 @@ fn pooled_embeddings(
         }
     }
     Ok(pooled)
+}
+
+fn token_embeddings_to_list(
+    model: &Model,
+    text: &str,
+    add_bos: bool,
+    normalize: bool,
+    token_batch_size: usize,
+    check_interrupt: bool,
+) -> savvy::Result<savvy::Sexp> {
+    let ids = model.tokenizer().encode(text, add_bos);
+    if ids.is_empty() {
+        return Err(err("text produced no tokens"));
+    }
+    let n = ids.len();
+    let mut cache = Cache::new();
+    let mut embeddings = vec![0.0f32; n * HIDDEN];
+    let mut row = 0usize;
+    for chunk in ids.chunks(token_batch_size) {
+        if check_interrupt {
+            check_user_interrupt()?;
+        }
+        let hidden = model.hidden_batch(chunk, &mut cache);
+        for chunk_row in 0..chunk.len() {
+            let src = &hidden[chunk_row * HIDDEN..(chunk_row + 1) * HIDDEN];
+            let dst = &mut embeddings[row * HIDDEN..(row + 1) * HIDDEN];
+            dst.copy_from_slice(src);
+            if normalize {
+                normalize_embedding(dst);
+            }
+            row += 1;
+        }
+    }
+
+    let mut matrix = OwnedRealSexp::new(n * HIDDEN)?;
+    {
+        let values = matrix.as_mut_slice();
+        for r in 0..n {
+            for col in 0..HIDDEN {
+                values[r + col * n] = embeddings[r * HIDDEN + col] as f64;
+            }
+        }
+    }
+    matrix.set_dim(&[n, HIDDEN])?;
+
+    let mut token_index = OwnedIntegerSexp::new(n)?;
+    for i in 0..n {
+        let value = i32::try_from(i).map_err(|_| err("token index does not fit in R integer"))?;
+        token_index.set_elt(i, value)?;
+    }
+
+    let mut tokens = OwnedStringSexp::new(n)?;
+    for (i, &id) in ids.iter().enumerate() {
+        tokens.set_elt(i, &model.tokenizer().decode(&[id]))?;
+    }
+
+    let mut out = OwnedListSexp::new(6, true)?;
+    out.set_name_and_value(0, "text", str_scalar(text)?)?;
+    out.set_name_and_value(1, "ids", ids_to_sexp(&ids)?)?;
+    out.set_name_and_value(2, "tokens", tokens)?;
+    out.set_name_and_value(3, "token_index", token_index)?;
+    out.set_name_and_value(4, "embeddings", matrix)?;
+    out.set_name_and_value(5, "normalized", crate::util::bool_scalar(normalize)?)?;
+    out.into()
 }
 
 fn normalize_embedding(values: &mut [f32]) {
