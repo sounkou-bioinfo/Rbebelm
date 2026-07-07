@@ -342,6 +342,7 @@ bebel_append_tool_result <- function(agent, content) {
 #'
 #' @param agent A `BebelAgent` object.
 #' @inheritParams bebel_generate
+#' @param check_interrupt Check for R interrupts during synchronous agent generation.
 #' @return A classed generation result.
 #' @export
 bebel_agent_generate <- function(agent, on_event = NULL, check_interrupt = TRUE) {
@@ -842,9 +843,10 @@ normalize_bebel_on_event <- function(on_event) {
 #' @param on_event Event handler function, named list of event-specific handlers, or
 #'   `NULL`. Event types are `bebel_event_types()`. Delta events contain `delta`,
 #'   `id`, and `index`; final events contain accumulated `content` or `text`.
-#' @param check_interrupt Check for Ctrl-C during prefill and before every decoded token.
+#' @param check_interrupt Cancel the underlying async job when the R wait is interrupted.
 #' @param max_gen,max_context,max_think Optional generation limits.
 #' @param temperature,top_k,repeat_penalty Optional sampling settings.
+#' @param poll_interval Seconds to sleep between async-job polls.
 #' @return A classed list with generated text, token ids, stop reason, and timing statistics.
 #' @export
 bebel_generate <- function(
@@ -858,9 +860,9 @@ bebel_generate <- function(
   max_think = NULL,
   temperature = NULL,
   top_k = NULL,
-  repeat_penalty = NULL
+  repeat_penalty = NULL,
+  poll_interval = 0.005
 ) {
-  model <- S7::prop(BebelModelRef(value = list(model)), "value")[[1L]]
   prompt <- S7::prop(BebelScalarText(value = prompt), "value")
   options <- BebelGenerationOptions(
     greedy = isTRUE(greedy),
@@ -873,11 +875,10 @@ bebel_generate <- function(
     repeat_penalty = if (is.null(repeat_penalty)) NULL else as.numeric(repeat_penalty)
   )
   on_event <- normalize_bebel_on_event(on_event)
-  out <- model$generate(
+  job <- bebel_generate_async(
+    model = model,
     prompt = prompt,
     greedy = S7::prop(options, "greedy"),
-    check_interrupt = S7::prop(options, "check_interrupt"),
-    on_event = on_event,
     max_gen = S7::prop(options, "max_gen"),
     max_context = S7::prop(options, "max_context"),
     max_think = S7::prop(options, "max_think"),
@@ -885,8 +886,12 @@ bebel_generate <- function(
     top_k = S7::prop(options, "top_k"),
     repeat_penalty = S7::prop(options, "repeat_penalty")
   )
-  class(out) <- c("bebelGenerateResult", "bebelGeneration", class(out))
-  out
+  bebel_async_wait(
+    job,
+    on_event = on_event,
+    poll_interval = poll_interval,
+    cancel_on_interrupt = S7::prop(options, "check_interrupt")
+  )
 }
 
 #' Generate a single ChatML assistant reply
@@ -906,9 +911,9 @@ bebel_chat <- function(
   max_think = NULL,
   temperature = NULL,
   top_k = NULL,
-  repeat_penalty = NULL
+  repeat_penalty = NULL,
+  poll_interval = 0.005
 ) {
-  model <- S7::prop(BebelModelRef(value = list(model)), "value")[[1L]]
   message <- S7::prop(BebelScalarText(value = message), "value")
   options <- BebelGenerationOptions(
     greedy = isTRUE(greedy),
@@ -921,11 +926,10 @@ bebel_chat <- function(
     repeat_penalty = if (is.null(repeat_penalty)) NULL else as.numeric(repeat_penalty)
   )
   on_event <- normalize_bebel_on_event(on_event)
-  out <- model$chat(
+  job <- bebel_chat_async(
+    model = model,
     message = message,
     greedy = S7::prop(options, "greedy"),
-    check_interrupt = S7::prop(options, "check_interrupt"),
-    on_event = on_event,
     max_gen = S7::prop(options, "max_gen"),
     max_context = S7::prop(options, "max_context"),
     max_think = S7::prop(options, "max_think"),
@@ -933,8 +937,12 @@ bebel_chat <- function(
     top_k = S7::prop(options, "top_k"),
     repeat_penalty = S7::prop(options, "repeat_penalty")
   )
-  class(out) <- c("bebelChatResult", "bebelGeneration", class(out))
-  out
+  bebel_async_wait(
+    job,
+    on_event = on_event,
+    poll_interval = poll_interval,
+    cancel_on_interrupt = S7::prop(options, "check_interrupt")
+  )
 }
 
 #' Start a background raw generation job
@@ -1097,6 +1105,19 @@ bebel_async_events <- function(job, max = NULL) {
   job$events(max = S7::prop(options, "max"))
 }
 
+#' Cancel a BebeLM async job
+#'
+#' Requests cancellation from Rust. A cancelled job stops at the next generation
+#' checkpoint and raises an error when collected.
+#'
+#' @param job A `BebelAsyncJob`.
+#' @return `TRUE` when this call set the cancellation flag for the first time.
+#' @export
+bebel_async_cancel <- function(job) {
+  job <- S7::prop(BebelAsyncJobRef(value = list(job)), "value")[[1L]]
+  isTRUE(job$cancel())
+}
+
 #' Collect a BebeLM async job result
 #'
 #' @param job A `BebelAsyncJob`.
@@ -1121,6 +1142,246 @@ bebel_async_collect <- function(job, wait = TRUE) {
   }
   class(out) <- c(result_class, "bebelAsyncResult", "bebelGeneration", class(out))
   out
+}
+
+dispatch_bebel_async_events <- function(events, on_event) {
+  if (is.null(on_event) || !length(events)) return(invisible(NULL))
+  for (event in events) {
+    on_event(event)
+  }
+  invisible(NULL)
+}
+
+#' Wait for a BebeLM async job
+#'
+#' Drains queued stream events on the R thread while polling the job, then
+#' collects the finished result.
+#'
+#' @param job A `BebelAsyncJob`.
+#' @param on_event Event handler function, named list of event-specific handlers,
+#'   or `NULL`.
+#' @param poll_interval Seconds to sleep between polls while the job is pending.
+#' @param cancel_on_interrupt Whether an interrupted wait should request
+#'   Rust-side job cancellation.
+#' @return A classed generation result.
+#' @export
+bebel_async_wait <- function(job,
+                             on_event = NULL,
+                             poll_interval = 0.005,
+                             cancel_on_interrupt = TRUE) {
+  job <- S7::prop(BebelAsyncJobRef(value = list(job)), "value")[[1L]]
+  on_event <- normalize_bebel_on_event(on_event)
+  options <- BebelAsyncWaitOptions(
+    poll_interval = as.numeric(poll_interval),
+    cancel_on_interrupt = isTRUE(cancel_on_interrupt)
+  )
+  poll_interval <- S7::prop(options, "poll_interval")
+  cancel_on_interrupt <- S7::prop(options, "cancel_on_interrupt")
+
+  completed <- FALSE
+  on.exit({
+    if (!completed && cancel_on_interrupt && !bebel_async_is_ready(job)) {
+      try(bebel_async_cancel(job), silent = TRUE)
+    }
+  }, add = TRUE)
+
+  repeat {
+    dispatch_bebel_async_events(bebel_async_events(job), on_event)
+    out <- bebel_async_collect(job, wait = FALSE)
+    if (!is.null(out)) {
+      completed <- TRUE
+      dispatch_bebel_async_events(bebel_async_events(job), on_event)
+      return(out)
+    }
+    if (poll_interval > 0) {
+      Sys.sleep(poll_interval)
+    }
+  }
+}
+
+#' Benchmark async BebeLM generation throughput
+#'
+#' Launches deterministic generation jobs in bounded async batches against one
+#' loaded model and records per-job timing, token counts, event counts, and
+#' aggregate throughput.
+#'
+#' @param model A `BebelModel` object.
+#' @param prompts Character vector of prompts.
+#' @param concurrency Maximum number of async jobs in flight.
+#' @param repeats Number of times to repeat the prompt set.
+#' @inheritParams bebel_generate
+#' @return A `bebelGenerationBenchmark` list.
+#' @export
+bebel_benchmark_generation <- function(model,
+                                       prompts,
+                                       concurrency = min(length(prompts), 2L),
+                                       repeats = 1L,
+                                       greedy = TRUE,
+                                       max_gen = 64L,
+                                       max_context = NULL,
+                                       max_think = 0L,
+                                       temperature = NULL,
+                                       top_k = NULL,
+                                       repeat_penalty = NULL,
+                                       poll_interval = 0.001) {
+  model <- S7::prop(BebelModelRef(value = list(model)), "value")[[1L]]
+  bench_options <- BebelGenerationBenchmarkOptions(
+    prompts = prompts,
+    concurrency = as.numeric(concurrency),
+    repeats = as.numeric(repeats),
+    poll_interval = as.numeric(poll_interval)
+  )
+  gen_options <- BebelGenerationOptions(
+    greedy = isTRUE(greedy),
+    check_interrupt = TRUE,
+    max_gen = if (is.null(max_gen)) NULL else as.numeric(max_gen),
+    max_context = if (is.null(max_context)) NULL else as.numeric(max_context),
+    max_think = if (is.null(max_think)) NULL else as.numeric(max_think),
+    temperature = if (is.null(temperature)) NULL else as.numeric(temperature),
+    top_k = if (is.null(top_k)) NULL else as.numeric(top_k),
+    repeat_penalty = if (is.null(repeat_penalty)) NULL else as.numeric(repeat_penalty)
+  )
+
+  prompts <- S7::prop(bench_options, "prompts")
+  concurrency <- as.integer(S7::prop(bench_options, "concurrency"))
+  repeats <- as.integer(S7::prop(bench_options, "repeats"))
+  poll_interval <- S7::prop(bench_options, "poll_interval")
+
+  tasks <- data.frame(
+    job_id = seq_len(length(prompts) * repeats),
+    prompt_id = rep(seq_along(prompts), times = repeats),
+    repeat_id = rep(seq_len(repeats), each = length(prompts)),
+    prompt = rep(prompts, times = repeats),
+    stringsAsFactors = FALSE
+  )
+
+  active_jobs <- list()
+  on.exit({
+    for (job in active_jobs) {
+      try(bebel_async_cancel(job), silent = TRUE)
+    }
+  }, add = TRUE)
+
+  wall_start <- proc.time()[["elapsed"]]
+  started_at <- format(Sys.time(), "%Y-%m-%d %H:%M:%OS3%z")
+  results <- vector("list", nrow(tasks))
+  event_counts <- integer(nrow(tasks))
+  launch_elapsed <- rep(NA_real_, nrow(tasks))
+  finish_elapsed <- rep(NA_real_, nrow(tasks))
+
+  for (first in seq(1L, nrow(tasks), by = concurrency)) {
+    idx <- first:min(first + concurrency - 1L, nrow(tasks))
+    jobs <- vector("list", length(idx))
+    for (slot in seq_along(idx)) {
+      task <- tasks[idx[[slot]], , drop = FALSE]
+      launch_elapsed[[idx[[slot]]]] <- proc.time()[["elapsed"]] - wall_start
+      jobs[[slot]] <- bebel_generate_async(
+        model = model,
+        prompt = task$prompt[[1L]],
+        greedy = S7::prop(gen_options, "greedy"),
+        max_gen = S7::prop(gen_options, "max_gen"),
+        max_context = S7::prop(gen_options, "max_context"),
+        max_think = S7::prop(gen_options, "max_think"),
+        temperature = S7::prop(gen_options, "temperature"),
+        top_k = S7::prop(gen_options, "top_k"),
+        repeat_penalty = S7::prop(gen_options, "repeat_penalty")
+      )
+      active_jobs[[as.character(idx[[slot]])]] <- jobs[[slot]]
+    }
+
+    pending <- seq_along(idx)
+    while (length(pending)) {
+      completed_slots <- integer()
+      for (slot in pending) {
+        task_index <- idx[[slot]]
+        events <- bebel_async_events(jobs[[slot]])
+        event_counts[[task_index]] <- event_counts[[task_index]] + length(events)
+        out <- bebel_async_collect(jobs[[slot]], wait = FALSE)
+        if (!is.null(out)) {
+          events <- bebel_async_events(jobs[[slot]])
+          event_counts[[task_index]] <- event_counts[[task_index]] + length(events)
+          finish_elapsed[[task_index]] <- proc.time()[["elapsed"]] - wall_start
+          task <- tasks[task_index, , drop = FALSE]
+          results[[task_index]] <- data.frame(
+            job_id = task$job_id,
+            prompt_id = task$prompt_id,
+            repeat_id = task$repeat_id,
+            prompt = task$prompt,
+            text = trimws(out$text),
+            stop = out$stop,
+            prompt_chars = nchar(task$prompt, type = "chars"),
+            prompt_tokens = out$prompt_tokens,
+            generated_tokens = out$generated_tokens,
+            prefill_seconds = out$prefill_seconds,
+            decode_seconds = out$decode_seconds,
+            prefill_tps = out$prefill_tps,
+            decode_tps = out$decode_tps,
+            launch_elapsed = launch_elapsed[[task_index]],
+            finish_elapsed = finish_elapsed[[task_index]],
+            wall_seconds = finish_elapsed[[task_index]] - launch_elapsed[[task_index]],
+            event_count = event_counts[[task_index]],
+            stringsAsFactors = FALSE
+          )
+          active_jobs[[as.character(task_index)]] <- NULL
+          completed_slots <- c(completed_slots, slot)
+        }
+      }
+      pending <- setdiff(pending, completed_slots)
+      if (length(pending) && poll_interval > 0) {
+        Sys.sleep(poll_interval)
+      }
+    }
+  }
+
+  jobs <- do.call(rbind, results)
+  row.names(jobs) <- NULL
+  elapsed_seconds <- proc.time()[["elapsed"]] - wall_start
+  total_prompt_tokens <- sum(jobs$prompt_tokens)
+  total_generated_tokens <- sum(jobs$generated_tokens)
+  total_decode_seconds <- sum(jobs$decode_seconds)
+  aggregate <- data.frame(
+    job_count = nrow(jobs),
+    prompt_count = length(prompts),
+    repeats = repeats,
+    concurrency = concurrency,
+    elapsed_seconds = elapsed_seconds,
+    total_prompt_tokens = total_prompt_tokens,
+    total_generated_tokens = total_generated_tokens,
+    generated_tps_wall = if (elapsed_seconds > 0) total_generated_tokens / elapsed_seconds else NA_real_,
+    generated_tps_decode = if (total_decode_seconds > 0) total_generated_tokens / total_decode_seconds else NA_real_,
+    mean_job_wall_seconds = mean(jobs$wall_seconds),
+    mean_decode_tps = mean(jobs$decode_tps),
+    stringsAsFactors = FALSE
+  )
+
+  out <- list(
+    started_at = started_at,
+    model = model$info(),
+    backend = rbebelm_backend_info(),
+    parameters = list(
+      greedy = S7::prop(gen_options, "greedy"),
+      max_gen = S7::prop(gen_options, "max_gen"),
+      max_context = S7::prop(gen_options, "max_context"),
+      max_think = S7::prop(gen_options, "max_think"),
+      temperature = S7::prop(gen_options, "temperature"),
+      top_k = S7::prop(gen_options, "top_k"),
+      repeat_penalty = S7::prop(gen_options, "repeat_penalty")
+    ),
+    aggregate = aggregate,
+    jobs = jobs
+  )
+  class(out) <- c("bebelGenerationBenchmark", "list")
+  out
+}
+
+#' @export
+print.bebelGenerationBenchmark <- function(x, ...) {
+  cat("<BebeLM generation benchmark>\n")
+  cat("  jobs: ", x$aggregate$job_count, "\n", sep = "")
+  cat("  concurrency: ", x$aggregate$concurrency, "\n", sep = "")
+  cat("  elapsed: ", sprintf("%.3f s", x$aggregate$elapsed_seconds), "\n", sep = "")
+  cat("  generated throughput: ", sprintf("%.2f tok/s", x$aggregate$generated_tps_wall), "\n", sep = "")
+  invisible(x)
 }
 
 #' @export

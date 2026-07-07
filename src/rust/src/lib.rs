@@ -1,6 +1,7 @@
 mod agent;
 mod async_job;
 mod backend;
+mod cancel;
 mod chatml;
 mod events;
 mod generation;

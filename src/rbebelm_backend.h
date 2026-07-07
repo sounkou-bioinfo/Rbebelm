@@ -41,6 +41,7 @@ SEXP Rbebelm_BebelAgent_info_ffi(SEXP self__);
 SEXP Rbebelm_BebelAgent_new_ffi(SEXP c_arg__model, SEXP c_arg__greedy, SEXP c_arg__max_gen, SEXP c_arg__max_context, SEXP c_arg__max_think, SEXP c_arg__temperature, SEXP c_arg__top_k, SEXP c_arg__repeat_penalty);
 SEXP Rbebelm_BebelAgent_prefill_ffi(SEXP self__, SEXP c_arg__check_interrupt);
 SEXP Rbebelm_BebelAgent_transcript_ffi(SEXP self__);
+SEXP Rbebelm_BebelAsyncJob_cancel_ffi(SEXP self__);
 SEXP Rbebelm_BebelAsyncJob_events_ffi(SEXP self__, SEXP c_arg__max);
 SEXP Rbebelm_BebelAsyncJob_ready_ffi(SEXP self__);
 SEXP Rbebelm_BebelAsyncJob_result_ffi(SEXP self__, SEXP c_arg__wait);

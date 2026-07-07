@@ -113,6 +113,32 @@ expect_true("text_delta" %in% event_types)
 expect_true("done" %in% event_types)
 expect_equal(length(bebel_async_events(job)), 0L)
 
+wait_events <- character()
+wait_job <- bebel_generate_async(
+  model,
+  "The capital of Germany is",
+  greedy = TRUE,
+  max_gen = 6,
+  max_think = 0
+)
+waited <- bebel_async_wait(
+  wait_job,
+  on_event = function(event) wait_events <<- c(wait_events, event$type),
+  poll_interval = 0
+)
+expect_true(inherits(waited, "bebelGeneration"))
+expect_true("done" %in% wait_events)
+
+cancel_job <- bebel_generate_async(
+  model,
+  "Count upward forever: one, two, three,",
+  greedy = TRUE,
+  max_gen = 256,
+  max_think = 0
+)
+expect_true(isTRUE(bebel_async_cancel(cancel_job)))
+expect_error(bebel_async_collect(cancel_job, wait = TRUE), "cancelled")
+
 agent_job <- bebel_assistant_turn_async(agent)
 agent_async <- bebel_async_collect(agent_job, wait = TRUE)
 expect_true(inherits(agent_async, "bebelGeneration"))
@@ -130,3 +156,19 @@ expect_true(all(vapply(jobs, function(job) bebel_async_poll(job) %in% c("pending
 many_async <- lapply(jobs, bebel_async_collect, wait = TRUE)
 expect_true(all(vapply(many_async, function(out) inherits(out, "bebelGeneration"), logical(1))))
 expect_true(all(vapply(many_async, function(out) nzchar(out$text), logical(1))))
+
+bench <- bebel_benchmark_generation(
+  model,
+  c("The capital of Mali is", "The capital of Italy is"),
+  concurrency = 2L,
+  repeats = 1L,
+  greedy = TRUE,
+  max_gen = 4L,
+  max_think = 0L,
+  poll_interval = 0
+)
+expect_true(inherits(bench, "bebelGenerationBenchmark"))
+expect_equal(nrow(bench$jobs), 2L)
+expect_equal(bench$aggregate$job_count, 2L)
+expect_true(bench$aggregate$total_generated_tokens > 0)
+expect_true(all(bench$jobs$event_count > 0))

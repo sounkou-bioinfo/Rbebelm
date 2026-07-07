@@ -54,10 +54,17 @@ reference:
       - bebel_assistant_turn_tool_stop_async
       - bebel_async_poll
       - bebel_async_events
+      - bebel_async_wait
       - bebel_async_collect
+      - bebel_async_cancel
       - BebelAsyncJob
       - BebelAsyncJobRef
       - BebelAsyncEventDrainOptions
+      - BebelAsyncWaitOptions
+  - title: Benchmarks
+    contents:
+      - bebel_benchmark_generation
+      - BebelGenerationBenchmarkOptions
   - title: Tools and events
     contents:
       - bebel_tool

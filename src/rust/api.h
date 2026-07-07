@@ -27,6 +27,7 @@ SEXP savvy_BebelAgent_prefill__ffi(SEXP self__, SEXP c_arg__check_interrupt);
 SEXP savvy_BebelAgent_transcript__ffi(SEXP self__);
 
 // methods and associated functions for BebelAsyncJob
+SEXP savvy_BebelAsyncJob_cancel__ffi(SEXP self__);
 SEXP savvy_BebelAsyncJob_events__ffi(SEXP self__, SEXP c_arg__max);
 SEXP savvy_BebelAsyncJob_ready__ffi(SEXP self__);
 SEXP savvy_BebelAsyncJob_result__ffi(SEXP self__, SEXP c_arg__wait);

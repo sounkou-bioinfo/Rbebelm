@@ -80,6 +80,70 @@ BebelAsyncEventDrainOptions <- S7::new_class(
   }
 )
 
+#' Async wait options
+#'
+#' @param poll_interval Seconds to sleep between polls while a job is pending.
+#' @param cancel_on_interrupt Whether an interrupted wait should request Rust-side
+#'   job cancellation.
+#' @export
+BebelAsyncWaitOptions <- S7::new_class(
+  "BebelAsyncWaitOptions",
+  properties = list(poll_interval = S7::class_numeric, cancel_on_interrupt = S7::class_logical),
+  validator = function(self) {
+    errors <- character()
+    poll_interval <- S7::prop(self, "poll_interval")
+    if (length(poll_interval) != 1L ||
+        is.na(poll_interval) ||
+        !is.finite(poll_interval) ||
+        poll_interval < 0) {
+      errors <- c(errors, "`poll_interval` must be a finite non-negative numeric scalar.")
+    }
+    cancel_on_interrupt <- S7::prop(self, "cancel_on_interrupt")
+    if (length(cancel_on_interrupt) != 1L || is.na(cancel_on_interrupt)) {
+      errors <- c(errors, "`cancel_on_interrupt` must be TRUE or FALSE.")
+    }
+    if (length(errors)) errors else NULL
+  }
+)
+
+#' Generation benchmark options
+#'
+#' @param prompts Character vector of prompts.
+#' @param concurrency Maximum number of async jobs in flight.
+#' @param repeats Number of times to repeat the prompt set.
+#' @param poll_interval Seconds to sleep between monitor polls.
+#' @export
+BebelGenerationBenchmarkOptions <- S7::new_class(
+  "BebelGenerationBenchmarkOptions",
+  properties = list(
+    prompts = S7::class_character,
+    concurrency = S7::class_numeric,
+    repeats = S7::class_numeric,
+    poll_interval = S7::class_numeric
+  ),
+  validator = function(self) {
+    errors <- character()
+    prompts <- S7::prop(self, "prompts")
+    if (!length(prompts) || anyNA(prompts) || any(!nzchar(prompts))) {
+      errors <- c(errors, "`prompts` must be a non-empty character vector without missing or empty values.")
+    }
+    for (name in c("concurrency", "repeats")) {
+      value <- S7::prop(self, name)
+      if (length(value) != 1L || is.na(value) || !is.finite(value) || value < 1 || value != floor(value)) {
+        errors <- c(errors, paste0("`", name, "` must be a positive whole number."))
+      }
+    }
+    poll_interval <- S7::prop(self, "poll_interval")
+    if (length(poll_interval) != 1L ||
+        is.na(poll_interval) ||
+        !is.finite(poll_interval) ||
+        poll_interval < 0) {
+      errors <- c(errors, "`poll_interval` must be a finite non-negative numeric scalar.")
+    }
+    if (length(errors)) errors else NULL
+  }
+)
+
 #' BebeLM tool reference
 #'
 #' @param value A one-element list containing a `BebelToolSpec`.

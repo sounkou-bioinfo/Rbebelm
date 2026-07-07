@@ -15,7 +15,8 @@ bebel_generate(
   max_think = NULL,
   temperature = NULL,
   top_k = NULL,
-  repeat_penalty = NULL
+  repeat_penalty = NULL,
+  poll_interval = 0.005
 )
 }
 \arguments{
@@ -29,11 +30,13 @@ bebel_generate(
 \code{NULL}. Event types are \code{bebel_event_types()}. Delta events contain \code{delta},
 \code{id}, and \code{index}; final events contain accumulated \code{content} or \code{text}.}
 
-\item{check_interrupt}{Check for Ctrl-C during prefill and before every decoded token.}
+\item{check_interrupt}{Cancel the underlying async job when the R wait is interrupted.}
 
 \item{max_gen, max_context, max_think}{Optional generation limits.}
 
 \item{temperature, top_k, repeat_penalty}{Optional sampling settings.}
+
+\item{poll_interval}{Seconds to sleep between async-job polls.}
 }
 \value{
 A classed list with generated text, token ids, stop reason, and timing statistics.

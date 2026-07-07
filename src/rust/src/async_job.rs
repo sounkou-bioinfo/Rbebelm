@@ -7,6 +7,7 @@ use savvy::{savvy, NullSexp};
 
 use crate::agent::BebelAgent;
 use crate::chatml::{user_turn, ASSISTANT_OPEN};
+use crate::cancel::{cancel, new_cancel_flag, CancelFlag};
 use crate::events::{drain_event_queue, new_event_queue, EventQueue};
 use crate::generation::{run_generation_with_events, turn_to_list};
 use crate::options::GenerationOptions;
@@ -21,6 +22,7 @@ pub struct BebelAsyncJob {
     handle: Option<JoinHandle<AsyncResult>>,
     result: Option<AsyncResult>,
     events: EventQueue,
+    cancelled: CancelFlag,
     consumed: bool,
 }
 
@@ -36,6 +38,12 @@ impl BebelAsyncJob {
     /// @export
     fn events(&self, max: Option<f64>) -> savvy::Result<savvy::Sexp> {
         drain_event_queue(&self.events, max)
+    }
+
+    /// Request cancellation of the background job.
+    /// @export
+    fn cancel(&self) -> savvy::Result<savvy::Sexp> {
+        bool_scalar(cancel(&self.cancelled))?.into()
     }
 
     /// Collect the result. Returns NULL when wait = FALSE and the job is still running.
@@ -63,13 +71,18 @@ impl BebelAsyncJob {
 }
 
 impl BebelAsyncJob {
-    fn spawn(f: impl FnOnce(EventQueue) -> savvy::Result<Turn> + Send + 'static) -> Self {
+    fn spawn(f: impl FnOnce(EventQueue, CancelFlag) -> savvy::Result<Turn> + Send + 'static) -> Self {
         let events = new_event_queue();
         let worker_events = Arc::clone(&events);
+        let cancelled = new_cancel_flag();
+        let worker_cancelled = Arc::clone(&cancelled);
         Self {
-            handle: Some(thread::spawn(move || f(worker_events).map_err(|e| e.to_string()))),
+            handle: Some(thread::spawn(move || {
+                f(worker_events, worker_cancelled).map_err(|e| e.to_string())
+            })),
             result: None,
             events,
+            cancelled,
             consumed: false,
         }
     }
@@ -93,7 +106,7 @@ pub(crate) fn spawn_model_generate(
     top_k: Option<f64>,
     repeat_penalty: Option<f64>,
 ) -> savvy::Result<BebelAsyncJob> {
-    Ok(BebelAsyncJob::spawn(move |events| {
+    Ok(BebelAsyncJob::spawn(move |events, cancelled| {
         let mut opts = GenerationOptions::new(
             greedy,
             false,
@@ -106,7 +119,7 @@ pub(crate) fn spawn_model_generate(
             repeat_penalty,
         )?;
         let history = model.tokenizer().encode(&prompt, true);
-        run_generation_with_events(model.as_ref(), history, &mut opts, Some(&events))
+        run_generation_with_events(model.as_ref(), history, &mut opts, Some(&events), Some(&cancelled))
     }))
 }
 
@@ -122,7 +135,7 @@ pub(crate) fn spawn_model_chat(
     top_k: Option<f64>,
     repeat_penalty: Option<f64>,
 ) -> savvy::Result<BebelAsyncJob> {
-    Ok(BebelAsyncJob::spawn(move |events| {
+    Ok(BebelAsyncJob::spawn(move |events, cancelled| {
         let mut opts = GenerationOptions::new(
             greedy,
             false,
@@ -136,16 +149,18 @@ pub(crate) fn spawn_model_chat(
         )?;
         let mut history = model.tokenizer().encode(&user_turn(&message), true);
         history.extend(model.tokenizer().encode(ASSISTANT_OPEN, false));
-        run_generation_with_events(model.as_ref(), history, &mut opts, Some(&events))
+        run_generation_with_events(model.as_ref(), history, &mut opts, Some(&events), Some(&cancelled))
     }))
 }
 
 pub(crate) fn spawn_agent_generate(mut agent: BebelAgent) -> BebelAsyncJob {
-    BebelAsyncJob::spawn(move |events| agent.generate_turn_with_events(false, None, Some(&events)))
+    BebelAsyncJob::spawn(move |events, cancelled| {
+        agent.generate_turn_with_events(false, None, Some(&events), Some(&cancelled))
+    })
 }
 
 pub(crate) fn spawn_agent_assistant_turn(mut agent: BebelAgent, stop_on_tool_call: bool) -> BebelAsyncJob {
-    BebelAsyncJob::spawn(move |events| {
-        agent.assistant_turn_impl_with_events(false, None, stop_on_tool_call, Some(&events))
+    BebelAsyncJob::spawn(move |events, cancelled| {
+        agent.assistant_turn_impl_with_events(false, None, stop_on_tool_call, Some(&events), Some(&cancelled))
     })
 }

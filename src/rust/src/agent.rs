@@ -8,6 +8,7 @@ use bebelm::tokenizer::TOKEN_IM_END;
 use savvy::{savvy, FunctionSexp, IntegerSexp, OwnedListSexp, StringSexp};
 
 use crate::chatml::{tool_turn, user_turn, ASSISTANT_OPEN};
+use crate::cancel::CancelFlag;
 use crate::events::EventQueue;
 use crate::generation::{absorb_tokens, run_state, turn_to_list};
 use crate::model::BebelModel;
@@ -166,6 +167,7 @@ impl BebelAgent {
                 &self.history[start..end],
                 self.max_context,
                 check_interrupt,
+                None,
             )?;
         }
         self.info()
@@ -231,7 +233,7 @@ impl BebelAgent {
     }
 
     pub(crate) fn generate_turn(&mut self, check_interrupt: bool, on_event: Option<FunctionSexp>) -> savvy::Result<Turn> {
-        self.generate_turn_with_events(check_interrupt, on_event, None)
+        self.generate_turn_with_events(check_interrupt, on_event, None, None)
     }
 
     pub(crate) fn generate_turn_with_events(
@@ -239,6 +241,7 @@ impl BebelAgent {
         check_interrupt: bool,
         on_event: Option<FunctionSexp>,
         event_queue: Option<&EventQueue>,
+        cancel_flag: Option<&CancelFlag>,
     ) -> savvy::Result<Turn> {
         run_state(
             self.model.as_ref(),
@@ -248,6 +251,7 @@ impl BebelAgent {
             check_interrupt,
             &on_event,
             event_queue,
+            cancel_flag,
             self.max_gen,
             self.max_context,
             self.max_think,
@@ -256,7 +260,7 @@ impl BebelAgent {
     }
 
     pub(crate) fn assistant_turn_impl(&mut self, check_interrupt: bool, on_event: Option<FunctionSexp>, stop_on_tool_call: bool) -> savvy::Result<Turn> {
-        self.assistant_turn_impl_with_events(check_interrupt, on_event, stop_on_tool_call, None)
+        self.assistant_turn_impl_with_events(check_interrupt, on_event, stop_on_tool_call, None, None)
     }
 
     pub(crate) fn assistant_turn_impl_with_events(
@@ -265,6 +269,7 @@ impl BebelAgent {
         on_event: Option<FunctionSexp>,
         stop_on_tool_call: bool,
         event_queue: Option<&EventQueue>,
+        cancel_flag: Option<&CancelFlag>,
     ) -> savvy::Result<Turn> {
         self.append_text(ASSISTANT_OPEN);
         let turn = run_state(
@@ -275,6 +280,7 @@ impl BebelAgent {
             check_interrupt,
             &on_event,
             event_queue,
+            cancel_flag,
             self.max_gen,
             self.max_context,
             self.max_think,

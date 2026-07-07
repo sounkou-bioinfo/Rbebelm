@@ -10,6 +10,7 @@ use bebelm::tokenizer::{
 };
 use savvy::{FunctionSexp, OwnedListSexp};
 
+use crate::cancel::{check_cancelled, CancelFlag};
 use crate::events::{EventQueue, StreamState};
 use crate::options::GenerationOptions;
 use crate::util::{check_user_interrupt, err, ids_to_sexp, int_scalar, real_scalar, str_scalar};
@@ -25,7 +26,7 @@ pub fn trim_context(cache: &mut Cache, max_context: usize) {
 }
 
 pub fn run_generation(model: &Model, history: Vec<u32>, opts: &mut GenerationOptions) -> savvy::Result<Turn> {
-    run_generation_with_events(model, history, opts, None)
+    run_generation_with_events(model, history, opts, None, None)
 }
 
 pub fn run_generation_with_events(
@@ -33,6 +34,7 @@ pub fn run_generation_with_events(
     history: Vec<u32>,
     opts: &mut GenerationOptions,
     event_queue: Option<&EventQueue>,
+    cancel_flag: Option<&CancelFlag>,
 ) -> savvy::Result<Turn> {
     let mut cache = Cache::new();
     let mut history = history;
@@ -44,6 +46,7 @@ pub fn run_generation_with_events(
         opts.check_interrupt,
         &opts.on_event,
         event_queue,
+        cancel_flag,
         opts.max_gen,
         opts.max_context,
         opts.max_think,
@@ -60,6 +63,7 @@ pub fn run_state(
     check_interrupt: bool,
     on_event: &Option<FunctionSexp>,
     event_queue: Option<&EventQueue>,
+    cancel_flag: Option<&CancelFlag>,
     max_gen: usize,
     max_context: usize,
     max_think: usize,
@@ -77,13 +81,15 @@ pub fn run_state(
     if pending == 0 {
         return Err(err("no pending tokens to generate from; append text or tokens first"));
     }
+    check_cancelled(cancel_flag)?;
     let (&last, rest) = history[cache.pos..]
         .split_last()
         .expect("non-empty pending history checked above");
-    absorb_tokens(model, cache, rest, max_context, check_interrupt)?;
+    absorb_tokens(model, cache, rest, max_context, check_interrupt, cancel_flag)?;
     if check_interrupt {
         check_user_interrupt()?;
     }
+    check_cancelled(cancel_flag)?;
     let mut logits = model.forward_step(last, cache);
     trim_context(cache, max_context);
     let prefill = t_prefill.elapsed();
@@ -101,6 +107,7 @@ pub fn run_state(
         if check_interrupt {
             check_user_interrupt()?;
         }
+        check_cancelled(cancel_flag)?;
         if think_capped {
             logits[TOKEN_THINK as usize] = f32::NEG_INFINITY;
         }
@@ -145,6 +152,7 @@ pub fn run_state(
         if ids.len() >= max_gen {
             break StopReason::MaxNew;
         }
+        check_cancelled(cancel_flag)?;
         logits = model.forward_step(next, cache);
         trim_context(cache, max_context);
     };
@@ -166,18 +174,29 @@ pub fn run_state(
     })
 }
 
-pub fn absorb_tokens(model: &Model, cache: &mut Cache, tokens: &[u32], max_context: usize, check_interrupt: bool) -> savvy::Result<()> {
+pub fn absorb_tokens(
+    model: &Model,
+    cache: &mut Cache,
+    tokens: &[u32],
+    max_context: usize,
+    check_interrupt: bool,
+    cancel_flag: Option<&CancelFlag>,
+) -> savvy::Result<()> {
     if cache.kv_len() + tokens.len() <= max_context {
         for chunk in tokens.chunks(PREFILL_CHUNK) {
             if check_interrupt {
                 check_user_interrupt()?;
             }
+            check_cancelled(cancel_flag)?;
             let _ = model.hidden_batch(chunk, cache);
         }
     } else {
         for (i, &token) in tokens.iter().enumerate() {
             if check_interrupt && i % 16 == 0 {
                 check_user_interrupt()?;
+            }
+            if i % 16 == 0 {
+                check_cancelled(cancel_flag)?;
             }
             let _ = model.hidden_step(token, cache);
             trim_context(cache, max_context);

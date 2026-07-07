@@ -13,7 +13,7 @@ bebel_agent_generate(agent, on_event = NULL, check_interrupt = TRUE)
 \code{NULL}. Event types are \code{bebel_event_types()}. Delta events contain \code{delta},
 \code{id}, and \code{index}; final events contain accumulated \code{content} or \code{text}.}
 
-\item{check_interrupt}{Check for Ctrl-C during prefill and before every decoded token.}
+\item{check_interrupt}{Check for R interrupts during synchronous agent generation.}
 }
 \value{
 A classed generation result.

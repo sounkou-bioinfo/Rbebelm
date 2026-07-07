@@ -232,6 +232,12 @@ class(`BebelAgent`) <- c("Rbebelm::BebelAgent__bundle", "savvy_Rbebelm__sealed")
 
 ### wrapper functions for BebelAsyncJob
 
+`BebelAsyncJob_cancel` <- function(self) {
+  function() {
+    .Call(savvy_BebelAsyncJob_cancel__impl, `self`)
+  }
+}
+
 `BebelAsyncJob_events` <- function(self) {
   function(`max` = NULL) {
     .Call(savvy_BebelAsyncJob_events__impl, `self`, `max`)
@@ -253,6 +259,7 @@ class(`BebelAgent`) <- c("Rbebelm::BebelAgent__bundle", "savvy_Rbebelm__sealed")
 `.savvy_wrap_BebelAsyncJob` <- function(ptr) {
   e <- new.env(parent = emptyenv())
   e$.ptr <- ptr
+  e$`cancel` <- `BebelAsyncJob_cancel`(ptr)
   e$`events` <- `BebelAsyncJob_events`(ptr)
   e$`ready` <- `BebelAsyncJob_ready`(ptr)
   e$`result` <- `BebelAsyncJob_result`(ptr)
