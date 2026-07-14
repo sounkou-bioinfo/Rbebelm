@@ -40,7 +40,9 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.3.6-0.1.0" id="rbebelm-036-010">Rbebelm 0.3.6-0.1.0<a class="anchor" aria-label="anchor" href="#rbebelm-036-010"></a></h2>
-<ul><li>Refocused the package on native BebeLM model loading, tokenization, embeddings, generation, persistent agents, R tool calls, and async jobs.</li>
+<ul><li>Fixed AArch64 scalar and NEON artifacts to avoid dot-product instructions; the dot-product artifact alone is compiled with that CPU feature. Added an AArch64 cross-build check for all runtime-dispatch variants.</li>
+<li>Exposed the existing <code>"dotprod"</code> backend as an explicit R selection.</li>
+<li>Refocused the package on native BebeLM model loading, tokenization, embeddings, generation, persistent agents, R tool calls, and async jobs.</li>
 <li>Removed the R-side agent framework, interactive frontend, session tree, extension layer, provider registry, and fuzzy-file-search code.</li>
 <li>Added S7 classes with property validators for model options, agent options, generation options, embedding options, tool specs, and native pointer refs.</li>
 <li>Added async model and agent generation through Rust worker threads. Jobs are represented as <code>BebelAsyncJob</code> objects and collected from R with <code><a href="../reference/bebel_async_collect.html">bebel_async_collect()</a></code>.</li>
@@ -64,7 +66,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

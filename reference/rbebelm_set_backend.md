@@ -12,8 +12,8 @@ rbebelm_set_backend(backend = "auto")
 
 - backend:
 
-  One of `"auto"`, `"scalar"`, `"avx2"`, `"avx512"`, `"neon"`, or
-  `"wasm_simd128"`.
+  One of `"auto"`, `"scalar"`, `"avx2"`, `"avx512"`, `"neon"`,
+  `"dotprod"`, or `"wasm_simd128"`.
 
 ## Value
 

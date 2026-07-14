@@ -2,6 +2,11 @@
 
 ## Rbebelm 0.3.6-0.1.0
 
+- Fixed AArch64 scalar and NEON artifacts to avoid dot-product
+  instructions; the dot-product artifact alone is compiled with that CPU
+  feature. Added an AArch64 cross-build check for all runtime-dispatch
+  variants.
+- Exposed the existing `"dotprod"` backend as an explicit R selection.
 - Refocused the package on native BebeLM model loading, tokenization,
   embeddings, generation, persistent agents, R tool calls, and async
   jobs.

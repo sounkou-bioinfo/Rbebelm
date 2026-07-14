@@ -79,20 +79,20 @@ embedding primitives, and runs bounded CPU generation from R.</p>
 <pre><code><span><span class="co">## &lt;Rbebelm backend dispatch&gt;</span></span>
 <span><span class="co">##   mode: dynamic</span></span>
 <span><span class="co">##   requested: auto</span></span>
-<span><span class="co">##   selected: avx2</span></span>
+<span><span class="co">##   selected: avx512</span></span>
 <span><span class="co">##   loaded: yes</span></span>
 <span><span class="co">##   installed: scalar,avx2,avx512</span></span>
-<span><span class="co">##   supported: scalar,avx2</span></span></code></pre>
+<span><span class="co">##   supported: scalar,avx2,avx512</span></span></code></pre>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rbebelm_backend_features.html">rbebelm_backend_features</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## &lt;Rbebelm backend features&gt;</span></span>
-<span><span class="co">##   backend: avx2</span></span>
+<span><span class="co">##   backend: avx512</span></span>
 <span><span class="co">##   target: x86_64-linux</span></span>
 <span><span class="co">##   Rust crate: rbebelm_backend 0.1.0</span></span>
 <span><span class="co">##   native SIMD feature: yes</span></span>
 <span><span class="co">##   compiled features:</span></span>
 <span><span class="co">##     AVX2: yes</span></span>
-<span><span class="co">##     AVX-512F: no</span></span>
+<span><span class="co">##     AVX-512F: yes</span></span>
 <span><span class="co">##     NEON: no</span></span>
 <span><span class="co">##     ARM dotprod: no</span></span>
 <span><span class="co">##     wasm simd128: no</span></span>
@@ -124,8 +124,8 @@ statistics.</p>
 <pre><code><span><span class="co">## &lt;BebeLM generation result&gt;</span></span>
 <span><span class="co">##   stop: max_new</span></span>
 <span><span class="co">##   tokens: 8 generated; 6 prompt</span></span>
-<span><span class="co">##   prefill: 10.5 tok/s</span></span>
-<span><span class="co">##   decode: 11.22 tok/s</span></span>
+<span><span class="co">##   prefill: 8.9 tok/s</span></span>
+<span><span class="co">##   decode: 9.69 tok/s</span></span>
 <span><span class="co">##   text:</span></span>
 <span><span class="co">##  the city of Paris. city of Paris</span></span></code></pre>
 <p>A persistent agent keeps transcript and decode caches across turns
@@ -138,8 +138,8 @@ while sharing model weights with every other agent created from the same
 <pre><code><span><span class="co">## &lt;BebeLM assistant turn&gt;</span></span>
 <span><span class="co">##   stop: eos</span></span>
 <span><span class="co">##   tokens: 10 generated; 15 prompt</span></span>
-<span><span class="co">##   prefill: 13.4 tok/s</span></span>
-<span><span class="co">##   decode: 9.81 tok/s</span></span>
+<span><span class="co">##   prefill: 9.9 tok/s</span></span>
+<span><span class="co">##   decode: 8.57 tok/s</span></span>
 <span><span class="co">##   text:</span></span>
 <span><span class="co">## &lt;</span></span>
 <span><span class="co">## &lt;/think&gt;</span></span>
@@ -151,8 +151,8 @@ while sharing model weights with every other agent created from the same
 <pre><code><span><span class="co">## &lt;BebeLM assistant turn&gt;</span></span>
 <span><span class="co">##   stop: eos</span></span>
 <span><span class="co">##   tokens: 11 generated; 17 prompt</span></span>
-<span><span class="co">##   prefill: 13.6 tok/s</span></span>
-<span><span class="co">##   decode: 9.95 tok/s</span></span>
+<span><span class="co">##   prefill: 11.4 tok/s</span></span>
+<span><span class="co">##   decode: 8.65 tok/s</span></span>
 <span><span class="co">##   text:</span></span>
 <span><span class="co">## &lt;</span></span>
 <span><span class="co">## &lt;/Answer&gt;  </span></span>
@@ -177,7 +177,7 @@ while sharing model weights with every other agent created from the same
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>
