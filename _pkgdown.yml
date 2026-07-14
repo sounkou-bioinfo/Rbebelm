@@ -18,12 +18,13 @@ reference:
       - BebelModelRef
       - BebelModelLoadOptions
       - BebelScalarText
-  - title: Embeddings
+      - BebelTokenizeOptions
+  - title: Contextual states
     contents:
-      - bebel_embed
-      - bebel_token_embed
-      - BebelEmbeddingOptions
-      - BebelTokenEmbeddingOptions
+      - bebel_pooled_states
+      - bebel_token_states
+      - BebelPooledStateOptions
+      - BebelTokenStateOptions
   - title: Generation and agents
     contents:
       - bebel_generate

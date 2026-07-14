@@ -12,51 +12,90 @@ tokens <- bebel_tokenize(model, "Bamako", add_bos = FALSE)
 expect_true(length(tokens) > 0L)
 expect_true(nzchar(bebel_detokenize(model, tokens)))
 
-emb <- bebel_embed(model, c(mali = "Mali capital", italy = "Italy capital"))
-expect_equal(nrow(emb), 2L)
-expect_true(ncol(emb) > 0L)
-expect_true(all(is.finite(emb)))
+states <- bebel_pooled_states(model, c(mali = "Mali capital", italy = "Italy capital"))
+expect_true(inherits(states, "bebelPooledStates"))
+expect_equal(nrow(states), 2L)
+expect_true(ncol(states) > 0L)
+expect_true(all(is.finite(states)))
+expect_equal(attr(states, "state_info")$pooling, "weighted_mean")
+expect_true(isTRUE(attr(states, "state_info")$final_norm))
+expect_false(isTRUE(attr(states, "state_info")$retrieval_trained))
+expect_true(max(abs(sqrt(rowSums(states ^ 2)) - 1)) < 1e-5)
 
-token_emb <- bebel_token_embed(model, "Mali capital", add_bos = FALSE)
-expect_true(inherits(token_emb, "bebelTokenEmbeddings"))
-expect_equal(nrow(token_emb$embeddings), length(token_emb$ids))
-expect_equal(length(token_emb$tokens), length(token_emb$ids))
-expect_equal(token_emb$token_index, seq_along(token_emb$ids) - 1L)
-expect_equal(ncol(token_emb$embeddings), ncol(emb))
-expect_true(all(is.finite(token_emb$embeddings)))
-expect_true(abs(sqrt(sum(token_emb$embeddings[1L, ] ^ 2)) - 1) < 1e-5)
+token_states <- bebel_token_states(model, "Mali capital")
+expect_true(inherits(token_states, "bebelTokenStates"))
+expect_equal(nrow(token_states$states), length(token_states$ids))
+expect_equal(length(token_states$tokens), length(token_states$ids))
+expect_equal(token_states$token_index, seq_along(token_states$ids) - 1L)
+expect_equal(ncol(token_states$states), ncol(states))
+expect_true(all(is.finite(token_states$states)))
+expect_true(abs(sqrt(sum(token_states$states[1L, ] ^ 2)) - 1) < 1e-5)
+expect_true(isTRUE(token_states$state_info$final_norm))
+expect_false(isTRUE(token_states$state_info$retrieval_trained))
 
-emb_chunk1 <- bebel_embed(model, c("Mali capital", "Italy capital"), token_batch_size = 1L)
-emb_chunk8 <- bebel_embed(model, c("Mali capital", "Italy capital"), token_batch_size = 8L)
-expect_equal(dim(emb_chunk1), dim(emb_chunk8))
-expect_true(max(abs(emb_chunk1 - emb_chunk8)) < 1e-6)
+raw_token_states <- bebel_token_states(
+  model,
+  "Mali capital",
+  add_bos = TRUE,
+  normalize = FALSE
+)$states
+position_weights <- seq_len(nrow(raw_token_states))
+manual_weighted <- colSums(raw_token_states * position_weights) / sum(position_weights)
+manual_weighted <- manual_weighted / sqrt(sum(manual_weighted ^ 2))
+pooled_one <- bebel_pooled_states(model, "Mali capital")
+expect_true(max(abs(as.numeric(pooled_one[1L, ]) - manual_weighted)) < 1e-6)
 
-emb_seq1 <- bebel_embed(
+manual_last <- raw_token_states[nrow(raw_token_states), ]
+manual_last <- manual_last / sqrt(sum(manual_last ^ 2))
+pooled_last <- bebel_pooled_states(model, "Mali capital", pooling = "last")
+expect_true(max(abs(as.numeric(pooled_last[1L, ]) - manual_last)) < 1e-6)
+
+states_chunk1 <- bebel_pooled_states(
+  model,
+  c("Mali capital", "Italy capital"),
+  token_batch_size = 1L
+)
+states_chunk8 <- bebel_pooled_states(
+  model,
+  c("Mali capital", "Italy capital"),
+  token_batch_size = 8L
+)
+expect_equal(dim(states_chunk1), dim(states_chunk8))
+expect_true(max(abs(states_chunk1 - states_chunk8)) < 1e-6)
+
+states_seq1 <- bebel_pooled_states(
   model,
   c("Mali capital", "Italy capital", "Japan capital"),
   token_batch_size = 1L,
   sequence_batch_size = 1L
 )
-emb_seq8 <- bebel_embed(
+states_seq8 <- bebel_pooled_states(
   model,
   c("Mali capital", "Italy capital", "Japan capital"),
   token_batch_size = 1L,
   sequence_batch_size = 8L
 )
-expect_equal(dim(emb_seq1), dim(emb_seq8))
-expect_true(max(abs(emb_seq1 - emb_seq8)) < 1e-6)
+expect_equal(dim(states_seq1), dim(states_seq8))
+expect_true(max(abs(states_seq1 - states_seq8)) < 1e-6)
 
-direct_batch <- model$embed_batch(
+direct_batch <- model$pooled_states_batch(
   c("Mali capital", "Italy capital"),
   add_bos = TRUE,
   normalize = TRUE,
-  pooling = "mean",
+  pooling = "weighted_mean",
   check_interrupt = TRUE,
   token_batch_size = 8,
   sequence_batch_size = 8
 )
-expect_equal(dim(direct_batch), dim(emb_chunk8))
-expect_true(max(abs(direct_batch - emb_chunk8)) < 1e-6)
+expect_equal(dim(direct_batch), dim(states_chunk8))
+expect_true(max(abs(direct_batch - states_chunk8)) < 1e-6)
+
+mean_states <- bebel_pooled_states(
+  model,
+  c("Mali capital", "Italy capital"),
+  pooling = "mean"
+)
+expect_true(max(abs(mean_states - states)) > 1e-6)
 
 events <- character()
 out <- bebel_generate(

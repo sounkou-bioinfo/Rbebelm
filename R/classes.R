@@ -349,19 +349,36 @@ BebelAgentConfigureOptions <- S7::new_class(
   }
 )
 
-#' Embedding options
+#' Tokenizer options
 #'
-#' @param add_bos Whether to prepend the BOS token before embedding.
-#' @param normalize Whether to L2-normalize each embedding row.
-#' @param pooling Hidden-state pooling mode, `"mean"` or `"last"`.
+#' @param add_bos Whether to prepend the model's beginning-of-sequence token.
+#' @export
+BebelTokenizeOptions <- S7::new_class(
+  "BebelTokenizeOptions",
+  properties = list(add_bos = S7::class_logical),
+  validator = function(self) {
+    add_bos <- S7::prop(self, "add_bos")
+    if (length(add_bos) != 1L || is.na(add_bos)) {
+      "`add_bos` must be TRUE or FALSE."
+    }
+  }
+)
+
+#' Pooled contextual-state options
+#'
+#' @param add_bos Whether to prepend the model's beginning-of-sequence token.
+#' @param normalize Whether to L2-normalize each pooled row.
+#' @param pooling Pooling mode: `"weighted_mean"` gives later causal states
+#'   linearly increasing weight, `"mean"` uses equal weights, and `"last"`
+#'   selects the final state.
 #' @param token_batch_size Number of tokens per Rust batched prefill/matmul call.
-#' @param sequence_batch_size Number of texts per independent-sequence embedding
+#' @param sequence_batch_size Number of texts per independent-sequence state
 #'   batch.
-#' @param check_interrupt Whether long embedding runs should poll R interrupts
+#' @param check_interrupt Whether long extraction runs should poll R interrupts
 #'   between texts and token batches.
 #' @export
-BebelEmbeddingOptions <- S7::new_class(
-  "BebelEmbeddingOptions",
+BebelPooledStateOptions <- S7::new_class(
+  "BebelPooledStateOptions",
   properties = list(
     add_bos = S7::class_logical,
     normalize = S7::class_logical,
@@ -379,32 +396,34 @@ BebelEmbeddingOptions <- S7::new_class(
       }
     }
     pooling <- S7::prop(self, "pooling")
-    if (length(pooling) != 1L || is.na(pooling) || !pooling %in% c("mean", "last")) {
-      errors <- c(errors, "`pooling` must be \"mean\" or \"last\".")
+    pooling_modes <- c("weighted_mean", "mean", "last")
+    if (length(pooling) != 1L || is.na(pooling) || !pooling %in% pooling_modes) {
+      errors <- c(errors, "`pooling` must be \"weighted_mean\", \"mean\", or \"last\".")
     }
     for (name in c("token_batch_size", "sequence_batch_size")) {
       value <- S7::prop(self, name)
       if (length(value) != 1L ||
           is.na(value) ||
+          !is.finite(value) ||
           value < 1 ||
-          value != as.integer(value)) {
-        errors <- c(errors, paste0("`", name, "` must be a positive integer scalar."))
+          value != floor(value)) {
+        errors <- c(errors, paste0("`", name, "` must be a positive whole number."))
       }
     }
     if (length(errors)) errors else NULL
   }
 )
 
-#' Token embedding options
+#' Token contextual-state options
 #'
-#' @param add_bos Whether to prepend the BOS token before embedding.
-#' @param normalize Whether to L2-normalize each token row.
+#' @param add_bos Whether to prepend the model's beginning-of-sequence token.
+#' @param normalize Whether to L2-normalize each token-state row.
 #' @param token_batch_size Number of tokens per Rust batched prefill/matmul call.
-#' @param check_interrupt Whether long embedding runs should poll R interrupts
+#' @param check_interrupt Whether long extraction runs should poll R interrupts
 #'   between token batches.
 #' @export
-BebelTokenEmbeddingOptions <- S7::new_class(
-  "BebelTokenEmbeddingOptions",
+BebelTokenStateOptions <- S7::new_class(
+  "BebelTokenStateOptions",
   properties = list(
     add_bos = S7::class_logical,
     normalize = S7::class_logical,

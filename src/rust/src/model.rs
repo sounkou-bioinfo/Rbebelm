@@ -10,8 +10,8 @@ use crate::generation::{run_generation, turn_to_list};
 use crate::options::GenerationOptions;
 use crate::util::{check_user_interrupt, checked_positive_usize, err, ids_from_integer, ids_to_sexp, init_rayon, str_scalar};
 
-const DEFAULT_EMBED_TOKEN_BATCH: usize = 512;
-const DEFAULT_EMBED_SEQUENCE_BATCH: usize = 64;
+const DEFAULT_STATE_TOKEN_BATCH: usize = 512;
+const DEFAULT_STATE_SEQUENCE_BATCH: usize = 64;
 
 /// Loaded BebeLM GGUF model.
 /// @export
@@ -58,10 +58,10 @@ impl BebelModel {
         str_scalar(&self.inner.tokenizer().decode(&ids))?.into()
     }
 
-    /// Embed text by pooling final hidden states.
+    /// Pool post-final-norm contextual states for one text.
     /// @export
-    fn embed(&self, text: &str, add_bos: bool, normalize: bool, pooling: &str) -> savvy::Result<savvy::Sexp> {
-        let pooled = pooled_embedding(self.inner.as_ref(), text, add_bos, normalize, pooling, DEFAULT_EMBED_TOKEN_BATCH, false)?;
+    fn pooled_states(&self, text: &str, add_bos: bool, normalize: bool, pooling: &str) -> savvy::Result<savvy::Sexp> {
+        let pooled = pooled_states(self.inner.as_ref(), text, add_bos, normalize, pooling, DEFAULT_STATE_TOKEN_BATCH, false)?;
         let mut out = OwnedRealSexp::new(HIDDEN)?;
         for (i, value) in pooled.iter().enumerate() {
             out.set_elt(i, *value as f64)?;
@@ -69,9 +69,9 @@ impl BebelModel {
         out.into()
     }
 
-    /// Embed a character vector by pooling final hidden states.
+    /// Pool post-final-norm contextual states for a character vector.
     /// @export
-    fn embed_batch(
+    fn pooled_states_batch(
         &self,
         text: StringSexp,
         add_bos: bool,
@@ -82,10 +82,10 @@ impl BebelModel {
         sequence_batch_size: Option<f64>,
     ) -> savvy::Result<savvy::Sexp> {
         let texts = text.to_vec();
-        let token_batch_size = checked_positive_usize(token_batch_size, "token_batch_size")?.unwrap_or(DEFAULT_EMBED_TOKEN_BATCH);
-        let sequence_batch_size = checked_positive_usize(sequence_batch_size, "sequence_batch_size")?.unwrap_or(DEFAULT_EMBED_SEQUENCE_BATCH);
+        let token_batch_size = checked_positive_usize(token_batch_size, "token_batch_size")?.unwrap_or(DEFAULT_STATE_TOKEN_BATCH);
+        let sequence_batch_size = checked_positive_usize(sequence_batch_size, "sequence_batch_size")?.unwrap_or(DEFAULT_STATE_SEQUENCE_BATCH);
         let n = texts.len();
-        let rows = pooled_embeddings(
+        let rows = pooled_states_batch(
             self.inner.as_ref(),
             &texts,
             add_bos,
@@ -109,9 +109,9 @@ impl BebelModel {
         out.into()
     }
 
-    /// Embed each token with final hidden states.
+    /// Return each token's post-final-norm contextual state.
     /// @export
-    fn token_embeddings(
+    fn token_states(
         &self,
         text: &str,
         add_bos: bool,
@@ -119,8 +119,8 @@ impl BebelModel {
         check_interrupt: bool,
         token_batch_size: Option<f64>,
     ) -> savvy::Result<savvy::Sexp> {
-        let token_batch_size = checked_positive_usize(token_batch_size, "token_batch_size")?.unwrap_or(DEFAULT_EMBED_TOKEN_BATCH);
-        token_embeddings_to_list(self.inner.as_ref(), text, add_bos, normalize, token_batch_size, check_interrupt)
+        let token_batch_size = checked_positive_usize(token_batch_size, "token_batch_size")?.unwrap_or(DEFAULT_STATE_TOKEN_BATCH);
+        token_states_to_list(self.inner.as_ref(), text, add_bos, normalize, token_batch_size, check_interrupt)
     }
 
     /// Generate a raw continuation from a prompt.
@@ -219,7 +219,7 @@ impl BebelModel {
     }
 }
 
-fn pooled_embedding(
+fn pooled_states(
     model: &Model,
     text: &str,
     add_bos: bool,
@@ -234,20 +234,28 @@ fn pooled_embedding(
     }
     let mut cache = Cache::new();
     let mut pooled = vec![0.0f32; HIDDEN];
+    let mut position = 0usize;
     match pooling {
-        "mean" => {
+        "weighted_mean" | "mean" => {
             for chunk in ids.chunks(token_batch_size) {
                 if check_interrupt {
                     check_user_interrupt()?;
                 }
                 let hidden = model.hidden_batch(chunk, &mut cache);
+                let hidden = model.final_norm_hidden_batch(&hidden);
                 for row in hidden.chunks_exact(HIDDEN) {
+                    position += 1;
+                    let weight = if pooling == "weighted_mean" { position as f32 } else { 1.0 };
                     for (acc, v) in pooled.iter_mut().zip(row.iter()) {
-                        *acc += *v;
+                        *acc += weight * *v;
                     }
                 }
             }
-            let denom = ids.len() as f32;
+            let denom = if pooling == "weighted_mean" {
+                (ids.len() * (ids.len() + 1) / 2) as f32
+            } else {
+                ids.len() as f32
+            };
             for v in pooled.iter_mut() {
                 *v /= denom;
             }
@@ -258,21 +266,24 @@ fn pooled_embedding(
                     check_user_interrupt()?;
                 }
                 let hidden = model.hidden_batch(chunk, &mut cache);
+                let hidden = model.final_norm_hidden_batch(&hidden);
                 let last = &hidden[hidden.len() - HIDDEN..];
                 pooled.copy_from_slice(last);
             }
         }
         other => {
-            return Err(err(format!("unsupported pooling mode {other:?}; use \"mean\" or \"last\"")));
+            return Err(err(format!(
+                "unsupported pooling mode {other:?}; use \"weighted_mean\", \"mean\", or \"last\""
+            )));
         }
     }
     if normalize {
-        normalize_embedding(&mut pooled);
+        l2_normalize(&mut pooled);
     }
     Ok(pooled)
 }
 
-fn pooled_embeddings(
+fn pooled_states_batch(
     model: &Model,
     texts: &[&str],
     add_bos: bool,
@@ -286,10 +297,12 @@ fn pooled_embeddings(
         return Ok(Vec::new());
     }
     if texts.len() == 1 {
-        return pooled_embedding(model, texts[0], add_bos, normalize, pooling, token_batch_size, check_interrupt);
+        return pooled_states(model, texts[0], add_bos, normalize, pooling, token_batch_size, check_interrupt);
     }
-    if !matches!(pooling, "mean" | "last") {
-        return Err(err(format!("unsupported pooling mode {pooling:?}; use \"mean\" or \"last\"")));
+    if !matches!(pooling, "weighted_mean" | "mean" | "last") {
+        return Err(err(format!(
+            "unsupported pooling mode {pooling:?}; use \"weighted_mean\", \"mean\", or \"last\""
+        )));
     }
 
     let n = texts.len();
@@ -334,14 +347,16 @@ fn pooled_embeddings(
             let mut cache_refs: Vec<&mut Cache> = active_caches.iter_mut().collect();
             let hidden = model.hidden_independent_batch(&tokens, &mut cache_refs);
             drop(cache_refs);
+            let hidden = model.final_norm_hidden_batch(&hidden);
 
             for (j, &local_row) in active.iter().enumerate() {
                 let src = &hidden[j * HIDDEN..(j + 1) * HIDDEN];
                 let row = start + local_row;
                 let dst = &mut pooled[row * HIDDEN..(row + 1) * HIDDEN];
-                if pooling == "mean" {
+                if matches!(pooling, "weighted_mean" | "mean") {
+                    let weight = if pooling == "weighted_mean" { (depth + 1) as f32 } else { 1.0 };
                     for (d, s) in dst.iter_mut().zip(src.iter()) {
-                        *d += *s;
+                        *d += weight * *s;
                     }
                 } else {
                     dst.copy_from_slice(src);
@@ -352,9 +367,13 @@ fn pooled_embeddings(
             }
         }
 
-        if pooling == "mean" {
+        if matches!(pooling, "weighted_mean" | "mean") {
             for (local_row, one) in ids.iter().enumerate() {
-                let denom = one.len() as f32;
+                let denom = if pooling == "weighted_mean" {
+                    (one.len() * (one.len() + 1) / 2) as f32
+                } else {
+                    one.len() as f32
+                };
                 let row = start + local_row;
                 for v in &mut pooled[row * HIDDEN..(row + 1) * HIDDEN] {
                     *v /= denom;
@@ -364,14 +383,14 @@ fn pooled_embeddings(
         if normalize {
             for local_row in 0..local_n {
                 let row = start + local_row;
-                normalize_embedding(&mut pooled[row * HIDDEN..(row + 1) * HIDDEN]);
+                l2_normalize(&mut pooled[row * HIDDEN..(row + 1) * HIDDEN]);
             }
         }
     }
     Ok(pooled)
 }
 
-fn token_embeddings_to_list(
+fn token_states_to_list(
     model: &Model,
     text: &str,
     add_bos: bool,
@@ -385,19 +404,20 @@ fn token_embeddings_to_list(
     }
     let n = ids.len();
     let mut cache = Cache::new();
-    let mut embeddings = vec![0.0f32; n * HIDDEN];
+    let mut states = vec![0.0f32; n * HIDDEN];
     let mut row = 0usize;
     for chunk in ids.chunks(token_batch_size) {
         if check_interrupt {
             check_user_interrupt()?;
         }
         let hidden = model.hidden_batch(chunk, &mut cache);
+        let hidden = model.final_norm_hidden_batch(&hidden);
         for chunk_row in 0..chunk.len() {
             let src = &hidden[chunk_row * HIDDEN..(chunk_row + 1) * HIDDEN];
-            let dst = &mut embeddings[row * HIDDEN..(row + 1) * HIDDEN];
+            let dst = &mut states[row * HIDDEN..(row + 1) * HIDDEN];
             dst.copy_from_slice(src);
             if normalize {
-                normalize_embedding(dst);
+                l2_normalize(dst);
             }
             row += 1;
         }
@@ -408,7 +428,7 @@ fn token_embeddings_to_list(
         let values = matrix.as_mut_slice();
         for r in 0..n {
             for col in 0..HIDDEN {
-                values[r + col * n] = embeddings[r * HIDDEN + col] as f64;
+                values[r + col * n] = states[r * HIDDEN + col] as f64;
             }
         }
     }
@@ -430,12 +450,12 @@ fn token_embeddings_to_list(
     out.set_name_and_value(1, "ids", ids_to_sexp(&ids)?)?;
     out.set_name_and_value(2, "tokens", tokens)?;
     out.set_name_and_value(3, "token_index", token_index)?;
-    out.set_name_and_value(4, "embeddings", matrix)?;
+    out.set_name_and_value(4, "states", matrix)?;
     out.set_name_and_value(5, "normalized", crate::util::bool_scalar(normalize)?)?;
     out.into()
 }
 
-fn normalize_embedding(values: &mut [f32]) {
+fn l2_normalize(values: &mut [f32]) {
     let norm = values.iter().map(|v| (*v as f64) * (*v as f64)).sum::<f64>().sqrt();
     if norm > 0.0 && norm.is_finite() {
         for v in values.iter_mut() {

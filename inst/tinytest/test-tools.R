@@ -69,20 +69,35 @@ expect_error(BebelGenerationOptions(
   top_k = NULL,
   repeat_penalty = NULL
 ))
-expect_error(BebelEmbeddingOptions(
+expect_error(BebelTokenizeOptions(add_bos = NA))
+expect_error(BebelPooledStateOptions(
   add_bos = TRUE,
   normalize = TRUE,
-  pooling = "mean",
+  pooling = "weighted_mean",
   token_batch_size = 0,
   sequence_batch_size = 1,
   check_interrupt = TRUE
 ))
-expect_error(BebelEmbeddingOptions(
+expect_error(BebelPooledStateOptions(
   add_bos = TRUE,
   normalize = TRUE,
-  pooling = "mean",
+  pooling = "weighted_mean",
   token_batch_size = 1,
   sequence_batch_size = 0,
+  check_interrupt = TRUE
+))
+expect_error(BebelPooledStateOptions(
+  add_bos = TRUE,
+  normalize = TRUE,
+  pooling = "unsupported",
+  token_batch_size = 1,
+  sequence_batch_size = 1,
+  check_interrupt = TRUE
+))
+expect_error(BebelTokenStateOptions(
+  add_bos = FALSE,
+  normalize = TRUE,
+  token_batch_size = 0,
   check_interrupt = TRUE
 ))
 expect_error(BebelAsyncEventDrainOptions(max = -1))

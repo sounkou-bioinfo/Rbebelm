@@ -11,8 +11,9 @@ Authors@R: c(
   )
 Description: Provides a focused R interface to the pure-Rust 'BebeLM'
     CPU inference library <https://github.com/maximecb/bebelm>. The package
-    exposes GGUF model loading, tokenizer access, pooled embeddings, streaming
-    generation events, persistent conversation agents, BebeLM tool-call parsing,
+    exposes GGUF model loading, tokenizer access, post-normalization contextual
+    states, streaming generation events, persistent conversation agents, BebeLM
+    tool-call parsing,
     R tool dispatch, and Rust-thread async generation jobs. Loaded agents share
     model weights in process through Rust reference-counted handles, and GGUF
     files are mapped read-only so repeated loads of the same file can share

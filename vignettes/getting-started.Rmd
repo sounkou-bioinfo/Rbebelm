@@ -14,24 +14,29 @@ stopifnot(file.exists(weights_file))
 model <- bebel_model_load(weights_file, num_threads = 2)
 ```
 
-`Rbebelm` loads a local BebeLM GGUF, exposes tokenizer and embedding primitives,
-and runs bounded CPU generation from R.
+`Rbebelm` loads a local BebeLM GGUF, exposes tokenizer and contextual-state
+primitives, and runs bounded CPU generation from R.
 
 ```{r diagnostics}
 rbebelm_backend_info()
 rbebelm_backend_features()
 ```
 
-Tokenization and embeddings are direct model operations.
+Tokenization and contextual-state extraction are direct model operations.
 
-```{r embeddings}
+```{r contextual-states}
 ids <- bebel_tokenize(model, "Bamako", add_bos = FALSE)
 ids
 bebel_detokenize(model, ids)
 
-emb <- bebel_embed(model, c("Mali capital", "Italy capital"))
-dim(emb)
+states <- bebel_pooled_states(model, c("Mali capital", "Italy capital"))
+states
 ```
+
+`bebel_pooled_states()` applies the model's final output norm before pooling;
+`bebel_token_states()` returns those post-norm states token by token. These are
+causal language-model features, not retrieval-trained semantic embeddings.
+Their cosine or late-interaction behavior must be validated for each task.
 
 Generation returns text, token ids, stop reason, and timing statistics.
 

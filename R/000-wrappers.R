@@ -304,18 +304,6 @@ class(`BebelAsyncJob`) <- c("Rbebelm::BebelAsyncJob__bundle", "savvy_Rbebelm__se
   }
 }
 
-`BebelModel_embed` <- function(self) {
-  function(`text`, `add_bos`, `normalize`, `pooling`) {
-    .Call(savvy_BebelModel_embed__impl, `self`, `text`, `add_bos`, `normalize`, `pooling`)
-  }
-}
-
-`BebelModel_embed_batch` <- function(self) {
-  function(`text`, `add_bos`, `normalize`, `pooling`, `check_interrupt`, `token_batch_size` = NULL, `sequence_batch_size` = NULL) {
-    .Call(savvy_BebelModel_embed_batch__impl, `self`, `text`, `add_bos`, `normalize`, `pooling`, `check_interrupt`, `token_batch_size`, `sequence_batch_size`)
-  }
-}
-
 `BebelModel_encode` <- function(self) {
   function(`text`, `add_bos`) {
     .Call(savvy_BebelModel_encode__impl, `self`, `text`, `add_bos`)
@@ -340,9 +328,21 @@ class(`BebelAsyncJob`) <- c("Rbebelm::BebelAsyncJob__bundle", "savvy_Rbebelm__se
   }
 }
 
-`BebelModel_token_embeddings` <- function(self) {
+`BebelModel_pooled_states` <- function(self) {
+  function(`text`, `add_bos`, `normalize`, `pooling`) {
+    .Call(savvy_BebelModel_pooled_states__impl, `self`, `text`, `add_bos`, `normalize`, `pooling`)
+  }
+}
+
+`BebelModel_pooled_states_batch` <- function(self) {
+  function(`text`, `add_bos`, `normalize`, `pooling`, `check_interrupt`, `token_batch_size` = NULL, `sequence_batch_size` = NULL) {
+    .Call(savvy_BebelModel_pooled_states_batch__impl, `self`, `text`, `add_bos`, `normalize`, `pooling`, `check_interrupt`, `token_batch_size`, `sequence_batch_size`)
+  }
+}
+
+`BebelModel_token_states` <- function(self) {
   function(`text`, `add_bos`, `normalize`, `check_interrupt`, `token_batch_size` = NULL) {
-    .Call(savvy_BebelModel_token_embeddings__impl, `self`, `text`, `add_bos`, `normalize`, `check_interrupt`, `token_batch_size`)
+    .Call(savvy_BebelModel_token_states__impl, `self`, `text`, `add_bos`, `normalize`, `check_interrupt`, `token_batch_size`)
   }
 }
 
@@ -352,13 +352,13 @@ class(`BebelAsyncJob`) <- c("Rbebelm::BebelAsyncJob__bundle", "savvy_Rbebelm__se
   e$`chat` <- `BebelModel_chat`(ptr)
   e$`chat_async` <- `BebelModel_chat_async`(ptr)
   e$`decode` <- `BebelModel_decode`(ptr)
-  e$`embed` <- `BebelModel_embed`(ptr)
-  e$`embed_batch` <- `BebelModel_embed_batch`(ptr)
   e$`encode` <- `BebelModel_encode`(ptr)
   e$`generate` <- `BebelModel_generate`(ptr)
   e$`generate_async` <- `BebelModel_generate_async`(ptr)
   e$`info` <- `BebelModel_info`(ptr)
-  e$`token_embeddings` <- `BebelModel_token_embeddings`(ptr)
+  e$`pooled_states` <- `BebelModel_pooled_states`(ptr)
+  e$`pooled_states_batch` <- `BebelModel_pooled_states_batch`(ptr)
+  e$`token_states` <- `BebelModel_token_states`(ptr)
 
   class(e) <- c("Rbebelm::BebelModel", "BebelModel", "savvy_Rbebelm__sealed")
   e

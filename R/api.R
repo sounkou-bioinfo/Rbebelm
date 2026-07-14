@@ -109,14 +109,7 @@ bebel_model_load <- function(path, num_threads = NULL) {
 bebel_tokenize <- function(model, text, add_bos = TRUE) {
   model <- S7::prop(BebelModelRef(value = list(model)), "value")[[1L]]
   text <- S7::prop(BebelScalarText(value = text), "value")
-  options <- BebelEmbeddingOptions(
-    add_bos = isTRUE(add_bos),
-    normalize = TRUE,
-    pooling = "mean",
-    token_batch_size = 1L,
-    sequence_batch_size = 1L,
-    check_interrupt = FALSE
-  )
+  options <- BebelTokenizeOptions(add_bos = isTRUE(add_bos))
   model$encode(text, add_bos = S7::prop(options, "add_bos"))
 }
 
@@ -131,33 +124,57 @@ bebel_detokenize <- function(model, ids) {
   model$decode(as.integer(ids))
 }
 
-#' Embed text with pooled BebeLM hidden states
+bebel_state_info <- function(add_bos, normalize, pooling = NULL) {
+  list(
+    source_task = "causal language modeling",
+    final_norm = TRUE,
+    l2_normalized = normalize,
+    add_bos = add_bos,
+    pooling = pooling,
+    retrieval_trained = FALSE
+  )
+}
+
+#' Extract pooled BebeLM contextual states
+#'
+#' Runs the causal LFM2.5 model over each input, applies the model's final output
+#' RMSNorm to every token state, and pools those states. `"weighted_mean"`
+#' implements the position-weighted pooling baseline introduced for GPT sentence
+#' representations by Muennighoff (2022) <https://arxiv.org/abs/2202.08904>.
+#'
+#' These are features from a text-generation model, not embeddings from a model
+#' trained for semantic similarity or retrieval. Cosine similarity is therefore
+#' uncalibrated and must be evaluated for the intended task. The same limitation
+#' applies if these vectors are used in a dense index.
 #'
 #' @param model A `BebelModel` object.
 #' @param text Character vector.
-#' @param add_bos Whether to prepend the BOS token before embedding.
-#' @param normalize L2-normalize each embedding row.
-#' @param pooling Hidden-state pooling strategy: `mean` or `last`.
+#' @param add_bos Whether to prepend the model's beginning-of-sequence token.
+#' @param normalize L2-normalize each pooled row.
+#' @param pooling Pooling strategy. `"weighted_mean"` weights token positions
+#'   `1, ..., n`, `"mean"` uses equal weights, and `"last"` selects the final
+#'   contextual state.
 #' @param token_batch_size Number of tokens per Rust batched prefill/matmul call.
-#' @param sequence_batch_size Number of texts per independent-sequence embedding
+#' @param sequence_batch_size Number of texts per independent-sequence state
 #'   batch.
-#' @param check_interrupt Whether long embedding runs should poll R interrupts
+#' @param check_interrupt Whether long extraction runs should poll R interrupts
 #'   between texts and token batches.
-#' @return A numeric matrix with one row per input text.
+#' @return A `bebelPooledStates` numeric matrix with one row per input text and a
+#'   `state_info` attribute describing the extraction contract.
 #' @export
-bebel_embed <- function(model,
-                        text,
-                        add_bos = TRUE,
-                        normalize = TRUE,
-                        pooling = c("mean", "last"),
-                        token_batch_size = 512L,
-                        sequence_batch_size = 64L,
-                        check_interrupt = TRUE) {
+bebel_pooled_states <- function(model,
+                                text,
+                                add_bos = TRUE,
+                                normalize = TRUE,
+                                pooling = c("weighted_mean", "mean", "last"),
+                                token_batch_size = 512L,
+                                sequence_batch_size = 64L,
+                                check_interrupt = TRUE) {
   model <- S7::prop(BebelModelRef(value = list(model)), "value")[[1L]]
   if (!is.character(text) || anyNA(text)) {
     stop("`text` must be a character vector without NA.", call. = FALSE)
   }
-  options <- BebelEmbeddingOptions(
+  options <- BebelPooledStateOptions(
     add_bos = isTRUE(add_bos),
     normalize = isTRUE(normalize),
     pooling = match.arg(pooling),
@@ -165,7 +182,7 @@ bebel_embed <- function(model,
     sequence_batch_size = sequence_batch_size,
     check_interrupt = isTRUE(check_interrupt)
   )
-  out <- model$embed_batch(
+  out <- model$pooled_states_batch(
     text,
     add_bos = S7::prop(options, "add_bos"),
     normalize = S7::prop(options, "normalize"),
@@ -175,44 +192,62 @@ bebel_embed <- function(model,
     check_interrupt = S7::prop(options, "check_interrupt")
   )
   rownames(out) <- names(text)
+  attr(out, "state_info") <- bebel_state_info(
+    add_bos = S7::prop(options, "add_bos"),
+    normalize = S7::prop(options, "normalize"),
+    pooling = S7::prop(options, "pooling")
+  )
+  class(out) <- c("bebelPooledStates", class(out))
   out
 }
 
-#' Embed each token with BebeLM hidden states
+#' Extract per-token BebeLM contextual states
+#'
+#' Returns the post-final-RMSNorm state for each token in one causal forward
+#' pass. Each state sees only that token and its left context. These states are
+#' useful for inspection and representation-learning experiments, but the
+#' underlying LFM2.5 model has no late-interaction retrieval objective or
+#' trained projection head. Raw MaxSim scores must not be treated as calibrated
+#' relevance scores without task-specific training and evaluation.
 #'
 #' @param model A `BebelModel` object.
 #' @param text Character scalar.
-#' @param add_bos Whether to prepend the BOS token before embedding.
-#' @param normalize L2-normalize each token row.
+#' @param add_bos Whether to prepend the model's beginning-of-sequence token.
+#' @param normalize L2-normalize each token-state row.
 #' @param token_batch_size Number of tokens per Rust batched prefill/matmul call.
-#' @param check_interrupt Whether long embedding runs should poll R interrupts
+#' @param check_interrupt Whether long extraction runs should poll R interrupts
 #'   between token batches.
-#' @return A `bebelTokenEmbeddings` list with token ids, decoded token strings,
-#'   zero-based token indices, and an `n_token x hidden_dim` numeric matrix.
+#' @return A `bebelTokenStates` list with token ids, decoded token strings,
+#'   zero-based token indices, an `n_token x hidden_dim` numeric `states` matrix,
+#'   and extraction metadata in `state_info`.
 #' @export
-bebel_token_embed <- function(model,
-                              text,
-                              add_bos = TRUE,
-                              normalize = TRUE,
-                              token_batch_size = 512L,
-                              check_interrupt = TRUE) {
+bebel_token_states <- function(model,
+                               text,
+                               add_bos = FALSE,
+                               normalize = TRUE,
+                               token_batch_size = 512L,
+                               check_interrupt = TRUE) {
   model <- S7::prop(BebelModelRef(value = list(model)), "value")[[1L]]
   text <- S7::prop(BebelScalarText(value = text), "value")
-  options <- BebelTokenEmbeddingOptions(
+  options <- BebelTokenStateOptions(
     add_bos = isTRUE(add_bos),
     normalize = isTRUE(normalize),
     token_batch_size = token_batch_size,
     check_interrupt = isTRUE(check_interrupt)
   )
-  out <- model$token_embeddings(
+  out <- model$token_states(
     text,
     add_bos = S7::prop(options, "add_bos"),
     normalize = S7::prop(options, "normalize"),
     check_interrupt = S7::prop(options, "check_interrupt"),
     token_batch_size = as.numeric(S7::prop(options, "token_batch_size"))
   )
-  rownames(out$embeddings) <- paste0("token_", out$token_index)
-  class(out) <- c("bebelTokenEmbeddings", class(out))
+  rownames(out$states) <- paste0("token_", out$token_index)
+  out$state_info <- bebel_state_info(
+    add_bos = S7::prop(options, "add_bos"),
+    normalize = S7::prop(options, "normalize")
+  )
+  class(out) <- c("bebelTokenStates", class(out))
   out
 }
 
@@ -1424,11 +1459,26 @@ print.bebelGenerationBenchmark <- function(x, ...) {
 }
 
 #' @export
-print.bebelTokenEmbeddings <- function(x, ...) {
-  cat("<BebeLM token embeddings>\n")
-  cat("  tokens: ", nrow(x$embeddings), "\n", sep = "")
-  cat("  dimensions: ", ncol(x$embeddings), "\n", sep = "")
-  cat("  normalized: ", isTRUE(x$normalized), "\n", sep = "")
+print.bebelPooledStates <- function(x, ...) {
+  info <- attr(x, "state_info")
+  cat("<BebeLM pooled contextual states>\n")
+  cat("  rows: ", nrow(x), "\n", sep = "")
+  cat("  dimensions: ", ncol(x), "\n", sep = "")
+  cat("  pooling: ", info$pooling, "\n", sep = "")
+  cat("  final model norm: yes\n")
+  cat("  L2 normalized: ", if (isTRUE(info$l2_normalized)) "yes" else "no", "\n", sep = "")
+  cat("  retrieval trained: no\n")
+  invisible(x)
+}
+
+#' @export
+print.bebelTokenStates <- function(x, ...) {
+  cat("<BebeLM token contextual states>\n")
+  cat("  tokens: ", nrow(x$states), "\n", sep = "")
+  cat("  dimensions: ", ncol(x$states), "\n", sep = "")
+  cat("  final model norm: yes\n")
+  cat("  L2 normalized: ", if (isTRUE(x$normalized)) "yes" else "no", "\n", sep = "")
+  cat("  retrieval trained: no\n")
   invisible(x)
 }
 

@@ -24,9 +24,10 @@ if (is.na(bebel_threads) || bebel_threads < 1L) bebel_threads <- 8L
 [`maximecb/bebelm`](https://github.com/maximecb/bebelm): local CPU inference for
 Liquid AI LFM2.5-8B-A1B GGUF weights, exposed through a small R/Rust API.
 
-The package provides model loading, tokenizer access, pooled embeddings, bounded
-generation, persistent agents, BebeLM tool-call parsing, R tool dispatch, stream
-events, and Rust-thread async jobs. It does not ship weights. Set
+The package provides model loading, tokenizer access, contextual-state
+extraction, bounded generation, persistent agents, BebeLM tool-call parsing, R
+tool dispatch, stream events, and Rust-thread async jobs. It does not ship
+weights. Set
 `BEBELM_WEIGHTS_FILE` to a local GGUF path or use the path directly.
 
 ## Install
@@ -59,34 +60,42 @@ Separate processes that load the same GGUF can share physical pages through the
 operating-system page cache.
 
 Threading is set when the model is loaded. `num_threads` initializes the
-process-global Rayon pool once; generation and embedding calls use that pool.
+process-global Rayon pool once; generation and state-extraction calls use that pool.
 Async calls add one Rust worker per job and can execute concurrently, so total
 CPU demand is controlled by the model-load thread count and by how many jobs the
 caller launches.
 
-## Tokenizer and embeddings
+## Tokenizer and contextual states
 
-```{r tokenize-embed}
+```{r tokenize-states}
 ids <- bebel_tokenize(model, "Bamako", add_bos = FALSE)
 ids
 bebel_detokenize(model, ids)
 
-emb <- bebel_embed(model, c(
+states <- bebel_pooled_states(model, c(
   mali = "Bamako is the capital of Mali",
   italy = "Rome is the capital of Italy",
   france = "Paris is the capital of France"
 ))
-dim(emb)
-round(emb[1:2, 1:6], 3)
+states
 
-token_emb <- bebel_token_embed(model, "short stature", add_bos = FALSE)
-token_emb
+token_states <- bebel_token_states(model, "short stature")
+token_states
 data.frame(
-  token_index = token_emb$token_index,
-  token_id = token_emb$ids,
-  token = token_emb$tokens
+  token_index = token_states$token_index,
+  token_id = token_states$ids,
+  token = token_states$tokens
 )
 ```
+
+These vectors are post-final-RMSNorm contextual states from a causal language
+model. The default pooled representation uses SGPT-style position-weighted mean
+pooling, which gives later states more weight because they have observed more of
+the sequence. LFM2.5-8B-A1B was not trained as a semantic embedding or
+late-interaction retrieval model, so `Rbebelm` labels these outputs as contextual
+states and records `retrieval_trained = FALSE`. Do not use raw cosine or MaxSim
+scores as production relevance scores without task-specific training and
+evaluation.
 
 ## Generation
 

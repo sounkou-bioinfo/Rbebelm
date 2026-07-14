@@ -227,6 +227,18 @@ impl Model {
         h
     }
 
+    /// Apply the model's final output RMSNorm to token-major hidden-state rows.
+    ///
+    /// [`hidden_step`](Self::hidden_step), [`hidden_batch`](Self::hidden_batch), and
+    /// [`hidden_independent_batch`](Self::hidden_independent_batch) deliberately return the
+    /// residual stream before this norm because generation can skip it for prefill tokens.
+    /// Feature-extraction callers should apply this method to match the hidden state consumed
+    /// by the tied output projection.
+    pub fn final_norm_hidden_batch(&self, hidden: &[f32]) -> Vec<f32> {
+        assert_eq!(hidden.len() % HIDDEN, 0, "final_norm_hidden_batch: partial hidden row");
+        self.norm_batch(hidden, "token_embd_norm.weight", hidden.len() / HIDDEN)
+    }
+
     /// RMSNorm each of the `t` token rows of `h` (token-major `t × HIDDEN`) with the named gain.
     fn norm_batch(&self, h: &[f32], gain_name: &str, t: usize) -> Vec<f32> {
         let gain = self.f32(gain_name);
