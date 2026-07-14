@@ -44,6 +44,16 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      - name: Verify AArch64 backend artifacts
+        if: runner.os == 'Linux' && matrix.config.r == 'release'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends gcc-aarch64-linux-gnu
+          rustup target add aarch64-unknown-linux-gnu
+          make cargo-build-aarch64
+
       - name: Use GNU Rust toolchain on Windows
         if: runner.os == 'Windows'
         shell: bash

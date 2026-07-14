@@ -99,5 +99,10 @@ wrappers <- vapply(seq_along(ffis), function(i) {
   call <- if (length(f$arg_names)) paste(f$arg_names, collapse = ", ") else ""
   sprintf("SEXP %s(%s) { Rbebelm_init_backend(); return p_%03d(%s); }", f$dispatch, f$args_decl, i, call)
 }, character(1))
-c <- c(c[seq_len(wrap_start - 1L)], wrappers, "", c[(wrap_end + 1L):length(c)])
+after_wrappers <- wrap_end + 1L
+while (after_wrappers <= length(c) && !nzchar(c[[after_wrappers]])) {
+  after_wrappers <- after_wrappers + 1L
+}
+remaining <- if (after_wrappers <= length(c)) c[after_wrappers:length(c)] else character()
+c <- c(c[seq_len(wrap_start - 1L)], wrappers, "", remaining)
 writeLines(c, "src/rbebelm_backend.c")

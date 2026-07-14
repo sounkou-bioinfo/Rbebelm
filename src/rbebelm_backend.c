@@ -665,46 +665,6 @@ SEXP Rbebelm_BebelModel_info_ffi(SEXP self__) { Rbebelm_init_backend(); return p
 SEXP Rbebelm_BebelModel_load_ffi(SEXP c_arg__path, SEXP c_arg__num_threads) { Rbebelm_init_backend(); return p_039(c_arg__path, c_arg__num_threads); }
 SEXP Rbebelm_BebelModel_token_embeddings_ffi(SEXP self__, SEXP c_arg__text, SEXP c_arg__add_bos, SEXP c_arg__normalize, SEXP c_arg__check_interrupt, SEXP c_arg__token_batch_size) { Rbebelm_init_backend(); return p_040(self__, c_arg__text, c_arg__add_bos, c_arg__normalize, c_arg__check_interrupt, c_arg__token_batch_size); }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 SEXP Rbebelm_set_backend_impl(SEXP backend_s) {
     if (TYPEOF(backend_s) != STRSXP || XLENGTH(backend_s) != 1 || STRING_ELT(backend_s, 0) == NA_STRING) {
         Rf_error("backend must be a single non-NA string");

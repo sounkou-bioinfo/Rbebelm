@@ -14,6 +14,7 @@ help:
 	  '  make rdm         render README.md from README.Rmd (evaluated chunks)' \
 	  '  make dev-install install current source with preclean' \
 	  '  make test        run tinytest package tests' \
+	  '  make cargo-build-aarch64 compile all AArch64 backend variants' \
 	  '  make build       build source tarball' \
 	  '  make check       run R CMD check --no-manual' \
 	  '  make site        build pkgdown site' \
@@ -51,6 +52,9 @@ test: dev-install
 cargo-check:
 	cd src/rust && cargo check --features portable
 
+cargo-build-aarch64:
+	tools/check-aarch64-backends.sh
+
 site:
 	R -e 'if (requireNamespace("pkgdown", quietly = TRUE)) { pkgdown::build_site() } else { stop("pkgdown is required") }'
 
@@ -58,4 +62,4 @@ clean:
 	@rm -rf $(PKGNAME)_$(PKGVERS).tar.gz $(PKGNAME).Rcheck
 	@rm -rf src/rust/target src/rbebelm-backends src/backends src/vendor src/.cargo
 
-.PHONY: all help rd rdm build check install_deps dev-install install test cargo-check site clean
+.PHONY: all help rd rdm build check install_deps dev-install install test cargo-check cargo-build-aarch64 site clean

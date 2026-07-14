@@ -22,6 +22,9 @@
 
 # R/RStudio
 .Rproj.user/
+
+# Local agent state
+/.pi/
 *.Rproj
 
 # OS/editor

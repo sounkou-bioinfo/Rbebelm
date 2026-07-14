@@ -6,11 +6,12 @@
 #'
 #' Must be called before loading a model or querying backend features.
 #'
-#' @param backend One of `"auto"`, `"scalar"`, `"avx2"`, `"avx512"`, `"neon"`, or `"wasm_simd128"`.
+#' @param backend One of `"auto"`, `"scalar"`, `"avx2"`, `"avx512"`, `"neon"`,
+#'   `"dotprod"`, or `"wasm_simd128"`.
 #' @return The requested backend name.
 #' @export
 rbebelm_set_backend <- function(backend = "auto") {
-  backend <- match.arg(backend, c("auto", "scalar", "avx2", "avx512", "neon", "wasm_simd128"))
+  backend <- match.arg(backend, c("auto", "scalar", "avx2", "avx512", "neon", "dotprod", "wasm_simd128"))
   .Call(Rbebelm_set_backend_impl, backend)
 }
 

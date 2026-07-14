@@ -160,17 +160,17 @@ pub fn quantize_q8(x: &[f32]) -> Q8Vec {
 }
 
 /// `Σ_{i=0..32} nib_i · qx_i`, where `nib` are the low (or high) nibbles of the 32 bytes `q`
-/// and `qx` are 32 int8 activations. The only arch-specific kernel: aarch64 uses the `sdot`
-/// int8 dot-product instruction; elsewhere `wide` widens to i16 and uses `i16x16::dot`
-/// (`pmaddwd` on x86/AVX2). `#[inline(always)]` so it folds into the per-block loop.
-#[cfg(target_arch = "aarch64")]
+/// and `qx` are 32 int8 activations. Aarch64 builds explicitly compiled with `dotprod` use
+/// the `sdot` int8 dot-product instruction; every other target uses `wide` to widen to i16 and
+/// uses `i16x16::dot` (`pmaddwd` on x86/AVX2). `#[inline(always)]` folds it into the per-block loop.
+#[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
 #[inline(always)]
 fn nibble_idot32(q: &[u8], qx: &[i8], high: bool) -> i32 {
     use core::arch::aarch64::*;
     use core::arch::asm;
-    // SAFETY: aarch64 implies NEON; `dotprod` is in this target's features (default on Apple
-    // Silicon) so `sdot` is valid. Callers always pass ≥ 32 bytes of `q` and `qx`. The `sdot`
-    // *intrinsic* (`vdotq_s32`) is still nightly-gated (`stdarch_neon_dotprod`), so we emit the
+    // SAFETY: this function is compiled only for an aarch64 target with `dotprod`, so `sdot` is
+    // valid. Callers always pass ≥ 32 bytes of `q` and `qx`. The `sdot` *intrinsic*
+    // (`vdotq_s32`) is still nightly-gated (`stdarch_neon_dotprod`), so we emit the
     // instruction with stable inline asm; the load/mask use stable NEON intrinsics.
     unsafe {
         let mut acc = vdupq_n_s32(0);
@@ -191,7 +191,7 @@ fn nibble_idot32(q: &[u8], qx: &[i8], high: bool) -> i32 {
     }
 }
 
-#[cfg(not(target_arch = "aarch64"))]
+#[cfg(not(all(target_arch = "aarch64", target_feature = "dotprod")))]
 #[inline(always)]
 fn nibble_idot32(q: &[u8], qx: &[i8], high: bool) -> i32 {
     use wide::{i16x16, i32x8, i8x16, u8x16};
@@ -303,14 +303,14 @@ fn dot_q4k_row_q8(row: &[u8], a: &Q8Vec) -> f32 {
 /// by `sc[s]` (one `vmlaq`/lane-multiply), and the horizontal reduction runs **once** at the end —
 /// not once per sub-block as a naive `Σ sc·idot` would — which is what the [tiled
 /// kernel](dot_q4k_rowtile_q8_batch) needs to expose ILP. The total is an exact integer, so the
-/// result equals the per-sub-block form bit-for-bit. aarch64 emits `sdot`; elsewhere `wide` widens
-/// to i16 and uses `i16x16::dot`.
-#[cfg(target_arch = "aarch64")]
+/// result equals the per-sub-block form bit-for-bit. Aarch64 targets with `dotprod` emit `sdot`;
+/// elsewhere `wide` widens to i16 and uses `i16x16::dot`.
+#[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
 #[inline(always)]
 fn wsd_q4k(nib: &[i8], qx: &[i8], sc: &[i32]) -> i32 {
     use core::arch::aarch64::*;
     use core::arch::asm;
-    // SAFETY: aarch64 implies NEON + `dotprod` (Apple Silicon default), so `sdot` is valid; see
+    // SAFETY: this function is compiled only with the aarch64 `dotprod` feature; see
     // `nibble_idot32`. The intrinsic is still nightly-gated, so emit `sdot` via stable inline asm.
     unsafe {
         let mut vacc = vdupq_n_s32(0);
@@ -361,7 +361,7 @@ fn wsd_q4k(nib: &[i8], qx: &[i8], sc: &[i32]) -> i32 {
     }
 }
 
-#[cfg(all(not(target_arch = "aarch64"), not(all(target_arch = "x86_64", target_feature = "avx512vnni", target_feature = "avx512bw", target_feature = "avx512vl"))))]
+#[cfg(all(not(all(target_arch = "aarch64", target_feature = "dotprod")), not(all(target_arch = "x86_64", target_feature = "avx512vnni", target_feature = "avx512bw", target_feature = "avx512vl"))))]
 #[inline(always)]
 fn wsd_q4k(nib: &[i8], qx: &[i8], sc: &[i32]) -> i32 {
     use wide::{i16x16, i32x8, i8x16};
@@ -529,13 +529,14 @@ fn unpack_q6k_block(block: &[u8]) -> ([i8; 256], [i32; 16]) {
 /// the 16 sub-block scales. Like [`wsd_q4k`], the per-sub-block dot accumulates into a **vector**
 /// accumulator scaled by `sc[s]` (one `vmlaq`/lane-multiply) and the horizontal reduction runs
 /// **once** at the end. The total is an exact integer, so the value is independent of the lane
-/// reduction order. aarch64 emits `sdot`; elsewhere `wide` widens to i16 and uses `i16x16::dot`.
-#[cfg(target_arch = "aarch64")]
+/// reduction order. Aarch64 targets with `dotprod` emit `sdot`; elsewhere `wide` widens to i16
+/// and uses `i16x16::dot`.
+#[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
 #[inline(always)]
 fn wsd_q6k(wq: &[i8], qx: &[i8], sc: &[i32]) -> i32 {
     use core::arch::aarch64::*;
     use core::arch::asm;
-    // SAFETY: aarch64 implies NEON + `dotprod` (Apple Silicon default), so `sdot` is valid; see
+    // SAFETY: this function is compiled only with the aarch64 `dotprod` feature; see
     // `nibble_idot32`. The intrinsic is still nightly-gated, so emit `sdot` via stable inline asm.
     unsafe {
         let mut vacc = vdupq_n_s32(0);
@@ -556,7 +557,7 @@ fn wsd_q6k(wq: &[i8], qx: &[i8], sc: &[i32]) -> i32 {
     }
 }
 
-#[cfg(not(target_arch = "aarch64"))]
+#[cfg(not(all(target_arch = "aarch64", target_feature = "dotprod")))]
 #[inline(always)]
 fn wsd_q6k(wq: &[i8], qx: &[i8], sc: &[i32]) -> i32 {
     use wide::{i16x16, i32x8, i8x16};
@@ -575,12 +576,13 @@ fn wsd_q6k(wq: &[i8], qx: &[i8], sc: &[i32]) -> i32 {
 /// (`qx` = 256 int8, `sx` = block scale): `Σ w·x = sx · d · Σ_s sc_s·⟨wq_s, qx_s⟩`. The
 /// `⟨·,·⟩` are exact integer dots; only the activations carry Q8 rounding error.
 ///
-/// aarch64 **fuses** the 6-bit unpack into the dot: each 16-weight sub-block is unpacked into a
-/// NEON register with vector ops and `sdot`'d immediately — no `[i8; 256]` scratch and no second
-/// pass (the unpack-to-buffer of [`unpack_q6k_block`] only pays off when amortized across a batch,
-/// as in [`dot_q6k_row_q8_batch`]; for single-row decode it's pure overhead). Other targets fall
-/// back to that buffered unpack. Both compute the identical exact integer `s`.
-#[cfg(target_arch = "aarch64")]
+/// Aarch64 targets with `dotprod` **fuse** the 6-bit unpack into the dot: each 16-weight
+/// sub-block is unpacked into a NEON register with vector ops and `sdot`'d immediately — no
+/// `[i8; 256]` scratch and no second pass (the unpack-to-buffer of [`unpack_q6k_block`] only pays
+/// off when amortized across a batch, as in [`dot_q6k_row_q8_batch`]; for single-row decode it is
+/// pure overhead). Other targets use that buffered unpack. Both compute the identical exact
+/// integer `s`.
+#[cfg(all(target_arch = "aarch64", target_feature = "dotprod"))]
 #[inline(always)]
 fn dot_q6k_block_q8(block: &[u8], qx: &[i8], sx: f32) -> f32 {
     use core::arch::aarch64::*;
@@ -591,8 +593,8 @@ fn dot_q6k_block_q8(block: &[u8], qx: &[i8], sx: f32) -> f32 {
     let ql_all = &block[0..128];
     let qh_all = &block[128..192];
     let sc_all = &block[192..208]; // i8 scales as raw bytes
-    // SAFETY: aarch64 implies NEON + `dotprod` (Apple Silicon default). All 16-byte loads stay in
-    // bounds (block is 210 B; `qx` is 256 i8). `sdot` is emitted via stable inline asm since the
+    // SAFETY: this function is compiled only with the aarch64 `dotprod` feature. All 16-byte
+    // loads stay in bounds (block is 210 B; `qx` is 256 i8). `sdot` is emitted via stable inline asm since the
     // intrinsic is still nightly-gated; the unpack uses stable NEON intrinsics.
     unsafe {
         let lo_nib = vdupq_n_u8(0x0f);
@@ -628,7 +630,7 @@ fn dot_q6k_block_q8(block: &[u8], qx: &[i8], sx: f32) -> f32 {
     }
 }
 
-#[cfg(not(target_arch = "aarch64"))]
+#[cfg(not(all(target_arch = "aarch64", target_feature = "dotprod")))]
 #[inline(always)]
 fn dot_q6k_block_q8(block: &[u8], qx: &[i8], sx: f32) -> f32 {
     let d = dequant::f16_to_f32(u16::from_le_bytes([block[208], block[209]]));

@@ -1,5 +1,6 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^\.pi(/|$)
 ^target(/|$)
 ^src/rust/target(/|$)
 ^src/rbebelm-backends(/|$)
