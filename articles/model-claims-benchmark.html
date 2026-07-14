@@ -34,6 +34,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/getting-started.html">Getting started</a></li>
+    <li><a class="dropdown-item" href="../articles/contextual-states.html">Contextual states and retrieval boundaries</a></li>
     <li><a class="dropdown-item" href="../articles/agents-and-tools.html">Agents and tools</a></li>
     <li><a class="dropdown-item" href="../articles/backend-and-webr.html">Backends and webR</a></li>
     <li><a class="dropdown-item" href="../articles/model-claims-benchmark.html">Benchmark harness</a></li>
@@ -114,13 +115,13 @@ reuse the same shape with real ontology prompts and expected labels.</p>
 <span><span class="co">## 2 capital-italy The capital of Italy is     Rome</span></span>
 <span><span class="co">## 3 capital-japan The capital of Japan is    Tokyo</span></span>
 <span><span class="co">##                                text prompt_tokens generated_tokens prefill_tps</span></span>
-<span><span class="co">## 1       the city of Bamako. city of             6                8    8.444023</span></span>
-<span><span class="co">## 2      Rome. city of... ... ... ...             6                8    9.006162</span></span>
-<span><span class="co">## 3 Tokyo. city. The capital of Japan             6                8    9.140734</span></span>
+<span><span class="co">## 1       the city of Bamako. city of             6                8    11.58159</span></span>
+<span><span class="co">## 2      Rome. city of... ... ... ...             6                8    13.66749</span></span>
+<span><span class="co">## 3 Tokyo. city. The capital of Japan             6                8    13.70738</span></span>
 <span><span class="co">##   decode_tps matched</span></span>
-<span><span class="co">## 1   9.486965    TRUE</span></span>
-<span><span class="co">## 2   9.701039   FALSE</span></span>
-<span><span class="co">## 3   9.732398   FALSE</span></span></code></pre>
+<span><span class="co">## 1   13.64849    TRUE</span></span>
+<span><span class="co">## 2   14.34259   FALSE</span></span>
+<span><span class="co">## 3   14.25041   FALSE</span></span></code></pre>
 <p>Async jobs let several bounded runs share one loaded model in the
 same R process.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
@@ -137,9 +138,9 @@ same R process.</p>
 <span>  stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">##              id                              text generated_tokens decode_tps</span></span>
-<span><span class="co">## 1  capital-mali       the city of Bamako. city of                8   3.180896</span></span>
-<span><span class="co">## 2 capital-italy      Rome. city of... ... ... ...                8   3.185494</span></span>
-<span><span class="co">## 3 capital-japan Tokyo. city. The capital of Japan                8   3.168729</span></span></code></pre>
+<span><span class="co">## 1  capital-mali       the city of Bamako. city of                8   5.153286</span></span>
+<span><span class="co">## 2 capital-italy      Rome. city of... ... ... ...                8   5.272951</span></span>
+<span><span class="co">## 3 capital-japan Tokyo. city. The capital of Japan                8   5.336735</span></span></code></pre>
   </main>
 </div>
 

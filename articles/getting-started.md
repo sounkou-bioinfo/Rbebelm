@@ -8,8 +8,8 @@ stopifnot(file.exists(weights_file))
 model <- bebel_model_load(weights_file, num_threads = 2)
 ```
 
-`Rbebelm` loads a local BebeLM GGUF, exposes tokenizer and embedding
-primitives, and runs bounded CPU generation from R.
+`Rbebelm` loads a local BebeLM GGUF, exposes tokenizer and
+contextual-state primitives, and runs bounded CPU generation from R.
 
 ``` r
 
@@ -42,7 +42,8 @@ rbebelm_backend_features()
     ##     wasm simd128: no
     ##   model storage: read-only GGUF mmap; repeated loads of the same file share physical pages through the OS page cache
 
-Tokenization and embeddings are direct model operations.
+Tokenization and contextual-state extraction are direct model
+operations.
 
 ``` r
 
@@ -61,11 +62,25 @@ bebel_detokenize(model, ids)
 
 ``` r
 
-emb <- bebel_embed(model, c("Mali capital", "Italy capital"))
-dim(emb)
+states <- bebel_pooled_states(model, c("Mali capital", "Italy capital"))
+states
 ```
 
-    ## [1]    2 2048
+    ## <BebeLM pooled contextual states>
+    ##   rows: 2
+    ##   dimensions: 2048
+    ##   pooling: weighted_mean
+    ##   final model norm: yes
+    ##   L2 normalized: yes
+    ##   retrieval trained: no
+
+[`bebel_pooled_states()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_pooled_states.md)
+applies the model’s final output norm before pooling;
+[`bebel_token_states()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_token_states.md)
+returns those post-norm states token by token. These are causal
+language-model features, not retrieval-trained semantic embeddings.
+Their cosine or late-interaction behavior must be validated for each
+task.
 
 Generation returns text, token ids, stop reason, and timing statistics.
 
@@ -85,8 +100,8 @@ out
     ## <BebeLM generation result>
     ##   stop: max_new
     ##   tokens: 8 generated; 6 prompt
-    ##   prefill: 8.9 tok/s
-    ##   decode: 9.69 tok/s
+    ##   prefill: 12.8 tok/s
+    ##   decode: 14.35 tok/s
     ##   text:
     ##  the city of Paris. city of Paris
 
@@ -104,8 +119,8 @@ bebel_assistant_turn(agent, on_event = NULL)
     ## <BebeLM assistant turn>
     ##   stop: eos
     ##   tokens: 10 generated; 15 prompt
-    ##   prefill: 9.9 tok/s
-    ##   decode: 8.57 tok/s
+    ##   prefill: 16.5 tok/s
+    ##   decode: 12.77 tok/s
     ##   text:
     ## <
     ## </think>
@@ -121,8 +136,8 @@ bebel_assistant_turn(agent, on_event = NULL)
     ## <BebeLM assistant turn>
     ##   stop: eos
     ##   tokens: 11 generated; 17 prompt
-    ##   prefill: 11.4 tok/s
-    ##   decode: 8.65 tok/s
+    ##   prefill: 17.0 tok/s
+    ##   decode: 12.94 tok/s
     ##   text:
     ## <
     ## </Answer>  

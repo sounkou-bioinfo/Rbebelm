@@ -4,6 +4,7 @@
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/LICENSE.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/articles/agents-and-tools.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/articles/backend-and-webr.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/articles/contextual-states.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/articles/getting-started.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/articles/index.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/articles/model-claims-benchmark.html</loc></url>
@@ -19,14 +20,15 @@
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelAsyncJob.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelAsyncJobRef.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelAsyncWaitOptions.html</loc></url>
-<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelEmbeddingOptions.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelGenerationBenchmarkOptions.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelGenerationOptions.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelModel.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelModelLoadOptions.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelModelRef.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelPooledStateOptions.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelScalarText.html</loc></url>
-<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelTokenEmbeddingOptions.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelTokenStateOptions.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelTokenizeOptions.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelToolRef.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelToolSpec.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent.html</loc></url>
@@ -54,7 +56,6 @@
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_chat_async.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_clear.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_detokenize.html</loc></url>
-<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_embed.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_event_handler.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_event_types.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_generate.html</loc></url>
@@ -63,8 +64,9 @@
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_model_load.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_parse_tool_call.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_parse_tool_calls.html</loc></url>
-<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_token_embed.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_pooled_states.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_token_ids.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_token_states.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_tokenize.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_tool.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_tool_schema_json.html</loc></url>

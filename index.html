@@ -11,8 +11,8 @@
 <script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Native BebeLM CPU Backend for R">
-<meta name="description" content="Provides a focused R interface to the pure-Rust BebeLM CPU inference library &lt;https://github.com/maximecb/bebelm&gt;. The package exposes GGUF model loading, tokenizer access, pooled embeddings, streaming generation events, persistent conversation agents, BebeLM tool-call parsing, R tool dispatch, and Rust-thread async generation jobs. Loaded agents share model weights in process through Rust reference-counted handles, and GGUF files are mapped read-only so repeated loads of the same file can share physical pages through the operating-system page cache. Native libraries are built as runtime-selected CPU backends so portable R binaries can use scalar code by default and optimized SIMD backends when available.">
-<meta property="og:description" content="Provides a focused R interface to the pure-Rust BebeLM CPU inference library &lt;https://github.com/maximecb/bebelm&gt;. The package exposes GGUF model loading, tokenizer access, pooled embeddings, streaming generation events, persistent conversation agents, BebeLM tool-call parsing, R tool dispatch, and Rust-thread async generation jobs. Loaded agents share model weights in process through Rust reference-counted handles, and GGUF files are mapped read-only so repeated loads of the same file can share physical pages through the operating-system page cache. Native libraries are built as runtime-selected CPU backends so portable R binaries can use scalar code by default and optimized SIMD backends when available.">
+<meta name="description" content="Provides a focused R interface to the pure-Rust BebeLM CPU inference library &lt;https://github.com/maximecb/bebelm&gt;. The package exposes GGUF model loading, tokenizer access, post-normalization contextual states, streaming generation events, persistent conversation agents, BebeLM tool-call parsing, R tool dispatch, and Rust-thread async generation jobs. Loaded agents share model weights in process through Rust reference-counted handles, and GGUF files are mapped read-only so repeated loads of the same file can share physical pages through the operating-system page cache. Native libraries are built as runtime-selected CPU backends so portable R binaries can use scalar code by default and optimized SIMD backends when available.">
+<meta property="og:description" content="Provides a focused R interface to the pure-Rust BebeLM CPU inference library &lt;https://github.com/maximecb/bebelm&gt;. The package exposes GGUF model loading, tokenizer access, post-normalization contextual states, streaming generation events, persistent conversation agents, BebeLM tool-call parsing, R tool dispatch, and Rust-thread async generation jobs. Loaded agents share model weights in process through Rust reference-counted handles, and GGUF files are mapped read-only so repeated loads of the same file can share physical pages through the operating-system page cache. Native libraries are built as runtime-selected CPU backends so portable R binaries can use scalar code by default and optimized SIMD backends when available.">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -36,6 +36,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="articles/getting-started.html">Getting started</a></li>
+    <li><a class="dropdown-item" href="articles/contextual-states.html">Contextual states and retrieval boundaries</a></li>
     <li><a class="dropdown-item" href="articles/agents-and-tools.html">Agents and tools</a></li>
     <li><a class="dropdown-item" href="articles/backend-and-webr.html">Backends and webR</a></li>
     <li><a class="dropdown-item" href="articles/model-claims-benchmark.html">Benchmark harness</a></li>
@@ -60,7 +61,7 @@
 <!-- badges: start -->
 
 <p><code>Rbebelm</code> is a focused R interface to <a href="https://github.com/maximecb/bebelm" class="external-link"><code>maximecb/bebelm</code></a>: local CPU inference for Liquid AI LFM2.5-8B-A1B GGUF weights, exposed through a small R/Rust API.</p>
-<p>The package provides model loading, tokenizer access, pooled embeddings, bounded generation, persistent agents, BebeLM tool-call parsing, R tool dispatch, stream events, and Rust-thread async jobs. It does not ship weights. Set <code>BEBELM_WEIGHTS_FILE</code> to a local GGUF path or use the path directly.</p>
+<p>The package provides model loading, tokenizer access, contextual-state extraction, bounded generation, persistent agents, BebeLM tool-call parsing, R tool dispatch, stream events, and Rust-thread async jobs. It does not ship weights. Set <code>BEBELM_WEIGHTS_FILE</code> to a local GGUF path or use the path directly.</p>
 <div class="section level2">
 <h2 id="install">Install<a class="anchor" aria-label="anchor" href="#install"></a>
 </h2>
@@ -96,10 +97,10 @@
 <span><span class="co">#&gt;     wasm simd128: no</span></span>
 <span><span class="co">#&gt;   model storage: read-only GGUF mmap; repeated loads of the same file share physical pages through the OS page cache</span></span></code></pre></div>
 <p>The GGUF is memory-mapped read-only by upstream BebeLM. Multiple agents created from one <code>BebelModel</code> share the same in-process <code>Arc&lt;Model&gt;</code>. Async jobs created from that model also share those weights while keeping independent caches. Separate processes that load the same GGUF can share physical pages through the operating-system page cache.</p>
-<p>Threading is set when the model is loaded. <code>num_threads</code> initializes the process-global Rayon pool once; generation and embedding calls use that pool. Async calls add one Rust worker per job and can execute concurrently, so total CPU demand is controlled by the model-load thread count and by how many jobs the caller launches.</p>
+<p>Threading is set when the model is loaded. <code>num_threads</code> initializes the process-global Rayon pool once; generation and state-extraction calls use that pool. Async calls add one Rust worker per job and can execute concurrently, so total CPU demand is controlled by the model-load thread count and by how many jobs the caller launches.</p>
 </div>
 <div class="section level2">
-<h2 id="tokenizer-and-embeddings">Tokenizer and embeddings<a class="anchor" aria-label="anchor" href="#tokenizer-and-embeddings"></a>
+<h2 id="tokenizer-and-contextual-states">Tokenizer and contextual states<a class="anchor" aria-label="anchor" href="#tokenizer-and-contextual-states"></a>
 </h2>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ids</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bebel_tokenize.html">bebel_tokenize</a></span><span class="op">(</span><span class="va">model</span>, <span class="st">"Bamako"</span>, add_bos <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
@@ -108,33 +109,38 @@
 <span><span class="fu"><a href="reference/bebel_detokenize.html">bebel_detokenize</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">ids</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "Bamako"</span></span>
 <span></span>
-<span><span class="va">emb</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bebel_embed.html">bebel_embed</a></span><span class="op">(</span><span class="va">model</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span><span class="va">states</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bebel_pooled_states.html">bebel_pooled_states</a></span><span class="op">(</span><span class="va">model</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
 <span>  mali <span class="op">=</span> <span class="st">"Bamako is the capital of Mali"</span>,</span>
 <span>  italy <span class="op">=</span> <span class="st">"Rome is the capital of Italy"</span>,</span>
 <span>  france <span class="op">=</span> <span class="st">"Paris is the capital of France"</span></span>
 <span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">emb</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1]    3 2048</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">emb</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">6</span><span class="op">]</span>, <span class="fl">3</span><span class="op">)</span></span>
-<span><span class="co">#&gt;        [,1]   [,2]   [,3]   [,4]  [,5]  [,6]</span></span>
-<span><span class="co">#&gt; mali  0.005  0.000 -0.018 -0.007 0.012 0.013</span></span>
-<span><span class="co">#&gt; italy 0.006 -0.004 -0.018 -0.008 0.015 0.014</span></span>
+<span><span class="va">states</span></span>
+<span><span class="co">#&gt; &lt;BebeLM pooled contextual states&gt;</span></span>
+<span><span class="co">#&gt;   rows: 3</span></span>
+<span><span class="co">#&gt;   dimensions: 2048</span></span>
+<span><span class="co">#&gt;   pooling: weighted_mean</span></span>
+<span><span class="co">#&gt;   final model norm: yes</span></span>
+<span><span class="co">#&gt;   L2 normalized: yes</span></span>
+<span><span class="co">#&gt;   retrieval trained: no</span></span>
 <span></span>
-<span><span class="va">token_emb</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bebel_token_embed.html">bebel_token_embed</a></span><span class="op">(</span><span class="va">model</span>, <span class="st">"short stature"</span>, add_bos <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span><span class="va">token_emb</span></span>
-<span><span class="co">#&gt; &lt;BebeLM token embeddings&gt;</span></span>
+<span><span class="va">token_states</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bebel_token_states.html">bebel_token_states</a></span><span class="op">(</span><span class="va">model</span>, <span class="st">"short stature"</span><span class="op">)</span></span>
+<span><span class="va">token_states</span></span>
+<span><span class="co">#&gt; &lt;BebeLM token contextual states&gt;</span></span>
 <span><span class="co">#&gt;   tokens: 3</span></span>
 <span><span class="co">#&gt;   dimensions: 2048</span></span>
-<span><span class="co">#&gt;   normalized: TRUE</span></span>
+<span><span class="co">#&gt;   final model norm: yes</span></span>
+<span><span class="co">#&gt;   L2 normalized: yes</span></span>
+<span><span class="co">#&gt;   retrieval trained: no</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  token_index <span class="op">=</span> <span class="va">token_emb</span><span class="op">$</span><span class="va">token_index</span>,</span>
-<span>  token_id <span class="op">=</span> <span class="va">token_emb</span><span class="op">$</span><span class="va">ids</span>,</span>
-<span>  token <span class="op">=</span> <span class="va">token_emb</span><span class="op">$</span><span class="va">tokens</span></span>
+<span>  token_index <span class="op">=</span> <span class="va">token_states</span><span class="op">$</span><span class="va">token_index</span>,</span>
+<span>  token_id <span class="op">=</span> <span class="va">token_states</span><span class="op">$</span><span class="va">ids</span>,</span>
+<span>  token <span class="op">=</span> <span class="va">token_states</span><span class="op">$</span><span class="va">tokens</span></span>
 <span><span class="op">)</span></span>
 <span><span class="co">#&gt;   token_index token_id token</span></span>
 <span><span class="co">#&gt; 1           0    24629 short</span></span>
 <span><span class="co">#&gt; 2           1      377    st</span></span>
 <span><span class="co">#&gt; 3           2     1239 ature</span></span></code></pre></div>
+<p>These vectors are post-final-RMSNorm contextual states from a causal language model. The default pooled representation uses SGPT-style position-weighted mean pooling, which gives later states more weight because they have observed more of the sequence. LFM2.5-8B-A1B was not trained as a semantic embedding or late-interaction retrieval model, so <code>Rbebelm</code> labels these outputs as contextual states and records <code>retrieval_trained = FALSE</code>. Do not use raw cosine or MaxSim scores as production relevance scores without task-specific training and evaluation.</p>
 </div>
 <div class="section level2">
 <h2 id="generation">Generation<a class="anchor" aria-label="anchor" href="#generation"></a>
@@ -154,8 +160,8 @@
 <span><span class="co">#&gt; &lt;BebeLM generation result&gt;</span></span>
 <span><span class="co">#&gt;   stop: max_new</span></span>
 <span><span class="co">#&gt;   tokens: 8 generated; 6 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 29.5 tok/s</span></span>
-<span><span class="co">#&gt;   decode: 31.65 tok/s</span></span>
+<span><span class="co">#&gt;   prefill: 14.0 tok/s</span></span>
+<span><span class="co">#&gt;   decode: 12.39 tok/s</span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt;  the city of Paris. city of Paris</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">events</span><span class="op">)</span></span>
@@ -174,8 +180,8 @@
 <span><span class="co">#&gt; &lt;BebeLM generation result&gt;</span></span>
 <span><span class="co">#&gt;   stop: eos</span></span>
 <span><span class="co">#&gt;   tokens: 20 generated; 21 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 34.8 tok/s</span></span>
-<span><span class="co">#&gt;   decode: 27.39 tok/s</span></span>
+<span><span class="co">#&gt;   prefill: 16.1 tok/s</span></span>
+<span><span class="co">#&gt;   decode: 13.74 tok/s</span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; &lt;|tool_call_start|&gt;[constraints(word_count=5, question="what does mmap help with?")]&lt;|tool_call_end|&gt;</span></span></code></pre></div>
 </div>
@@ -195,8 +201,8 @@
 <span><span class="co">#&gt; &lt;BebeLM assistant turn&gt;</span></span>
 <span><span class="co">#&gt;   stop: eos</span></span>
 <span><span class="co">#&gt;   tokens: 10 generated; 15 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 34.3 tok/s</span></span>
-<span><span class="co">#&gt;   decode: 29.77 tok/s</span></span>
+<span><span class="co">#&gt;   prefill: 17.1 tok/s</span></span>
+<span><span class="co">#&gt;   decode: 13.40 tok/s</span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; &lt;</span></span>
 <span><span class="co">#&gt; &lt;/think&gt;</span></span>
@@ -206,8 +212,8 @@
 <span><span class="co">#&gt; &lt;BebeLM assistant turn&gt;</span></span>
 <span><span class="co">#&gt;   stop: eos</span></span>
 <span><span class="co">#&gt;   tokens: 11 generated; 17 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 35.3 tok/s</span></span>
-<span><span class="co">#&gt;   decode: 27.06 tok/s</span></span>
+<span><span class="co">#&gt;   prefill: 16.6 tok/s</span></span>
+<span><span class="co">#&gt;   decode: 13.80 tok/s</span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt; &lt;</span></span>
 <span><span class="co">#&gt; &lt;/Answer&gt;</span></span>
@@ -301,16 +307,16 @@
 <span><span class="co">#&gt; &lt;BebeLM generation result&gt;</span></span>
 <span><span class="co">#&gt;   stop: max_new</span></span>
 <span><span class="co">#&gt;   tokens: 8 generated; 6 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 17.9 tok/s</span></span>
-<span><span class="co">#&gt;   decode: 17.56 tok/s</span></span>
+<span><span class="co">#&gt;   prefill: 7.8 tok/s</span></span>
+<span><span class="co">#&gt;   decode: 7.71 tok/s</span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt;  Rome. city of... ... ... ...</span></span>
 <span><span class="va">async_b</span></span>
 <span><span class="co">#&gt; &lt;BebeLM generation result&gt;</span></span>
 <span><span class="co">#&gt;   stop: max_new</span></span>
 <span><span class="co">#&gt;   tokens: 8 generated; 6 prompt</span></span>
-<span><span class="co">#&gt;   prefill: 16.9 tok/s</span></span>
-<span><span class="co">#&gt;   decode: 17.82 tok/s</span></span>
+<span><span class="co">#&gt;   prefill: 7.1 tok/s</span></span>
+<span><span class="co">#&gt;   decode: 7.98 tok/s</span></span>
 <span><span class="co">#&gt;   text:</span></span>
 <span><span class="co">#&gt;  the city of Bamako. city of</span></span>
 <span><span class="fu"><a href="reference/bebel_agent_info.html">bebel_agent_info</a></span><span class="op">(</span><span class="va">job_b_agent</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"history_tokens"</span>, <span class="st">"processed_tokens"</span><span class="op">)</span><span class="op">]</span></span>
@@ -345,20 +351,20 @@
 <span><span class="co">#&gt; &lt;BebeLM generation benchmark&gt;</span></span>
 <span><span class="co">#&gt;   jobs: 3</span></span>
 <span><span class="co">#&gt;   concurrency: 2</span></span>
-<span><span class="co">#&gt;   elapsed: 1.313 s</span></span>
-<span><span class="co">#&gt;   generated throughput: 18.28 tok/s</span></span>
+<span><span class="co">#&gt;   elapsed: 2.835 s</span></span>
+<span><span class="co">#&gt;   generated throughput: 8.47 tok/s</span></span>
 <span><span class="va">bench</span><span class="op">$</span><span class="va">aggregate</span></span>
 <span><span class="co">#&gt;   job_count prompt_count repeats concurrency elapsed_seconds</span></span>
-<span><span class="co">#&gt; 1         3            3       1           2           1.313</span></span>
+<span><span class="co">#&gt; 1         3            3       1           2           2.835</span></span>
 <span><span class="co">#&gt;   total_prompt_tokens total_generated_tokens generated_tps_wall</span></span>
-<span><span class="co">#&gt; 1                  18                     24           18.27875</span></span>
+<span><span class="co">#&gt; 1                  18                     24           8.465608</span></span>
 <span><span class="co">#&gt;   generated_tps_decode mean_job_wall_seconds mean_decode_tps</span></span>
-<span><span class="co">#&gt; 1             20.11324             0.7123333         21.7817</span></span>
+<span><span class="co">#&gt; 1             9.602887                 1.531        10.40844</span></span>
 <span><span class="va">bench</span><span class="op">$</span><span class="va">jobs</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"prompt"</span>, <span class="st">"generated_tokens"</span>, <span class="st">"wall_seconds"</span>, <span class="st">"decode_tps"</span>, <span class="st">"event_count"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt;                    prompt generated_tokens wall_seconds decode_tps event_count</span></span>
-<span><span class="co">#&gt; 1  The capital of Mali is                8        0.838   17.07711          12</span></span>
-<span><span class="co">#&gt; 2 The capital of Italy is                8        0.828   17.08585          12</span></span>
-<span><span class="co">#&gt; 3 The capital of Japan is                8        0.471   31.18214          12</span></span></code></pre></div>
+<span><span class="co">#&gt; 1  The capital of Mali is                8        1.861   7.975000          12</span></span>
+<span><span class="co">#&gt; 2 The capital of Italy is                8        1.762   8.335703          12</span></span>
+<span><span class="co">#&gt; 3 The capital of Japan is                8        0.970  14.914619          12</span></span></code></pre></div>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">

@@ -5,11 +5,11 @@
 inference for Liquid AI LFM2.5-8B-A1B GGUF weights, exposed through a
 small R/Rust API.
 
-The package provides model loading, tokenizer access, pooled embeddings,
-bounded generation, persistent agents, BebeLM tool-call parsing, R tool
-dispatch, stream events, and Rust-thread async jobs. It does not ship
-weights. Set `BEBELM_WEIGHTS_FILE` to a local GGUF path or use the path
-directly.
+The package provides model loading, tokenizer access, contextual-state
+extraction, bounded generation, persistent agents, BebeLM tool-call
+parsing, R tool dispatch, stream events, and Rust-thread async jobs. It
+does not ship weights. Set `BEBELM_WEIGHTS_FILE` to a local GGUF path or
+use the path directly.
 
 ## Install
 
@@ -58,12 +58,12 @@ keeping independent caches. Separate processes that load the same GGUF
 can share physical pages through the operating-system page cache.
 
 Threading is set when the model is loaded. `num_threads` initializes the
-process-global Rayon pool once; generation and embedding calls use that
-pool. Async calls add one Rust worker per job and can execute
+process-global Rayon pool once; generation and state-extraction calls
+use that pool. Async calls add one Rust worker per job and can execute
 concurrently, so total CPU demand is controlled by the model-load thread
 count and by how many jobs the caller launches.
 
-## Tokenizer and embeddings
+## Tokenizer and contextual states
 
 ``` r
 
@@ -73,34 +73,48 @@ ids
 bebel_detokenize(model, ids)
 #> [1] "Bamako"
 
-emb <- bebel_embed(model, c(
+states <- bebel_pooled_states(model, c(
   mali = "Bamako is the capital of Mali",
   italy = "Rome is the capital of Italy",
   france = "Paris is the capital of France"
 ))
-dim(emb)
-#> [1]    3 2048
-round(emb[1:2, 1:6], 3)
-#>        [,1]   [,2]   [,3]   [,4]  [,5]  [,6]
-#> mali  0.005  0.000 -0.018 -0.007 0.012 0.013
-#> italy 0.006 -0.004 -0.018 -0.008 0.015 0.014
+states
+#> <BebeLM pooled contextual states>
+#>   rows: 3
+#>   dimensions: 2048
+#>   pooling: weighted_mean
+#>   final model norm: yes
+#>   L2 normalized: yes
+#>   retrieval trained: no
 
-token_emb <- bebel_token_embed(model, "short stature", add_bos = FALSE)
-token_emb
-#> <BebeLM token embeddings>
+token_states <- bebel_token_states(model, "short stature")
+token_states
+#> <BebeLM token contextual states>
 #>   tokens: 3
 #>   dimensions: 2048
-#>   normalized: TRUE
+#>   final model norm: yes
+#>   L2 normalized: yes
+#>   retrieval trained: no
 data.frame(
-  token_index = token_emb$token_index,
-  token_id = token_emb$ids,
-  token = token_emb$tokens
+  token_index = token_states$token_index,
+  token_id = token_states$ids,
+  token = token_states$tokens
 )
 #>   token_index token_id token
 #> 1           0    24629 short
 #> 2           1      377    st
 #> 3           2     1239 ature
 ```
+
+These vectors are post-final-RMSNorm contextual states from a causal
+language model. The default pooled representation uses SGPT-style
+position-weighted mean pooling, which gives later states more weight
+because they have observed more of the sequence. LFM2.5-8B-A1B was not
+trained as a semantic embedding or late-interaction retrieval model, so
+`Rbebelm` labels these outputs as contextual states and records
+`retrieval_trained = FALSE`. Do not use raw cosine or MaxSim scores as
+production relevance scores without task-specific training and
+evaluation.
 
 ## Generation
 
@@ -120,8 +134,8 @@ answer
 #> <BebeLM generation result>
 #>   stop: max_new
 #>   tokens: 8 generated; 6 prompt
-#>   prefill: 29.5 tok/s
-#>   decode: 31.65 tok/s
+#>   prefill: 14.0 tok/s
+#>   decode: 12.39 tok/s
 #>   text:
 #>  the city of Paris. city of Paris
 unique(events)
@@ -146,8 +160,8 @@ chat
 #> <BebeLM generation result>
 #>   stop: eos
 #>   tokens: 20 generated; 21 prompt
-#>   prefill: 34.8 tok/s
-#>   decode: 27.39 tok/s
+#>   prefill: 16.1 tok/s
+#>   decode: 13.74 tok/s
 #>   text:
 #> <|tool_call_start|>[constraints(word_count=5, question="what does mmap help with?")]<|tool_call_end|>
 ```
@@ -170,8 +184,8 @@ turn1
 #> <BebeLM assistant turn>
 #>   stop: eos
 #>   tokens: 10 generated; 15 prompt
-#>   prefill: 34.3 tok/s
-#>   decode: 29.77 tok/s
+#>   prefill: 17.1 tok/s
+#>   decode: 13.40 tok/s
 #>   text:
 #> <
 #> </think>
@@ -181,8 +195,8 @@ turn2
 #> <BebeLM assistant turn>
 #>   stop: eos
 #>   tokens: 11 generated; 17 prompt
-#>   prefill: 35.3 tok/s
-#>   decode: 27.06 tok/s
+#>   prefill: 16.6 tok/s
+#>   decode: 13.80 tok/s
 #>   text:
 #> <
 #> </Answer>
@@ -292,16 +306,16 @@ async_a
 #> <BebeLM generation result>
 #>   stop: max_new
 #>   tokens: 8 generated; 6 prompt
-#>   prefill: 17.9 tok/s
-#>   decode: 17.56 tok/s
+#>   prefill: 7.8 tok/s
+#>   decode: 7.71 tok/s
 #>   text:
 #>  Rome. city of... ... ... ...
 async_b
 #> <BebeLM generation result>
 #>   stop: max_new
 #>   tokens: 8 generated; 6 prompt
-#>   prefill: 16.9 tok/s
-#>   decode: 17.82 tok/s
+#>   prefill: 7.1 tok/s
+#>   decode: 7.98 tok/s
 #>   text:
 #>  the city of Bamako. city of
 bebel_agent_info(job_b_agent)[c("history_tokens", "processed_tokens")]
@@ -340,18 +354,18 @@ bench
 #> <BebeLM generation benchmark>
 #>   jobs: 3
 #>   concurrency: 2
-#>   elapsed: 1.313 s
-#>   generated throughput: 18.28 tok/s
+#>   elapsed: 2.835 s
+#>   generated throughput: 8.47 tok/s
 bench$aggregate
 #>   job_count prompt_count repeats concurrency elapsed_seconds
-#> 1         3            3       1           2           1.313
+#> 1         3            3       1           2           2.835
 #>   total_prompt_tokens total_generated_tokens generated_tps_wall
-#> 1                  18                     24           18.27875
+#> 1                  18                     24           8.465608
 #>   generated_tps_decode mean_job_wall_seconds mean_decode_tps
-#> 1             20.11324             0.7123333         21.7817
+#> 1             9.602887                 1.531        10.40844
 bench$jobs[, c("prompt", "generated_tokens", "wall_seconds", "decode_tps", "event_count")]
 #>                    prompt generated_tokens wall_seconds decode_tps event_count
-#> 1  The capital of Mali is                8        0.838   17.07711          12
-#> 2 The capital of Italy is                8        0.828   17.08585          12
-#> 3 The capital of Japan is                8        0.471   31.18214          12
+#> 1  The capital of Mali is                8        1.861   7.975000          12
+#> 2 The capital of Italy is                8        1.762   8.335703          12
+#> 3 The capital of Japan is                8        0.970  14.914619          12
 ```

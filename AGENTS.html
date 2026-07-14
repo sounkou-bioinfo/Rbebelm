@@ -19,6 +19,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="articles/getting-started.html">Getting started</a></li>
+    <li><a class="dropdown-item" href="articles/contextual-states.html">Contextual states and retrieval boundaries</a></li>
     <li><a class="dropdown-item" href="articles/agents-and-tools.html">Agents and tools</a></li>
     <li><a class="dropdown-item" href="articles/backend-and-webr.html">Backends and webR</a></li>
     <li><a class="dropdown-item" href="articles/model-claims-benchmark.html">Benchmark harness</a></li>
@@ -40,7 +41,7 @@
 
 <div id="agentsmd" class="section level1">
 
-<p>This package is a thin R/savvy surface over upstream <a href="https://github.com/maximecb/bebelm" class="external-link"><code>maximecb/bebelm</code></a>. Keep it small: native model loading, tokenization, embeddings, generation, persistent agents, R tool calls, async jobs, and backend diagnostics.</p>
+<p>This package is a thin R/savvy surface over upstream <a href="https://github.com/maximecb/bebelm" class="external-link"><code>maximecb/bebelm</code></a>. Keep it small: native model loading, tokenization, contextual-state extraction, generation, persistent agents, R tool calls, async jobs, and backend diagnostics.</p>
 <div class="section level2">
 <h2 id="architecture-rules">Architecture Rules<a class="anchor" aria-label="anchor" href="#architecture-rules"></a></h2>
 <ul><li>The Rust backend owns BebeLM integration. R should expose typed calls and printers, not a second agent framework.</li>

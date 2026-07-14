@@ -19,6 +19,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/getting-started.html">Getting started</a></li>
+    <li><a class="dropdown-item" href="../articles/contextual-states.html">Contextual states and retrieval boundaries</a></li>
     <li><a class="dropdown-item" href="../articles/agents-and-tools.html">Agents and tools</a></li>
     <li><a class="dropdown-item" href="../articles/backend-and-webr.html">Backends and webR</a></li>
     <li><a class="dropdown-item" href="../articles/model-claims-benchmark.html">Benchmark harness</a></li>
@@ -40,18 +41,20 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.3.6-0.1.0" id="rbebelm-036-010">Rbebelm 0.3.6-0.1.0<a class="anchor" aria-label="anchor" href="#rbebelm-036-010"></a></h2>
-<ul><li>Fixed AArch64 scalar and NEON artifacts to avoid dot-product instructions; the dot-product artifact alone is compiled with that CPU feature. Added an AArch64 cross-build check for all runtime-dispatch variants.</li>
+<ul><li>Replaced the misleading embedding API with <code><a href="../reference/bebel_pooled_states.html">bebel_pooled_states()</a></code> and <code><a href="../reference/bebel_token_states.html">bebel_token_states()</a></code>. Extracted states now receive the model’s final output RMSNorm, pooled states default to SGPT-style position-weighted means, and result metadata explicitly records that the causal LFM weights are not retrieval-trained.</li>
+<li>Renamed the corresponding option classes and native methods around contextual states; the experimental package does not retain the former embedding names.</li>
+<li>Fixed AArch64 scalar and NEON artifacts to avoid dot-product instructions; the dot-product artifact alone is compiled with that CPU feature. Added an AArch64 cross-build check for all runtime-dispatch variants.</li>
 <li>Exposed the existing <code>"dotprod"</code> backend as an explicit R selection.</li>
-<li>Refocused the package on native BebeLM model loading, tokenization, embeddings, generation, persistent agents, R tool calls, and async jobs.</li>
+<li>Refocused the package on native BebeLM model loading, tokenization, contextual states, generation, persistent agents, R tool calls, and async jobs.</li>
 <li>Removed the R-side agent framework, interactive frontend, session tree, extension layer, provider registry, and fuzzy-file-search code.</li>
-<li>Added S7 classes with property validators for model options, agent options, generation options, embedding options, tool specs, and native pointer refs.</li>
+<li>Added S7 classes with property validators for model options, agent options, generation options, contextual-state options, tool specs, and native pointer refs.</li>
 <li>Added async model and agent generation through Rust worker threads. Jobs are represented as <code>BebelAsyncJob</code> objects and collected from R with <code><a href="../reference/bebel_async_collect.html">bebel_async_collect()</a></code>.</li>
 <li>Removed the model execution mutex so async jobs can run concurrently while sharing immutable memory-mapped weights and keeping independent caches.</li>
 <li>Surfaced the shared-weight model design: agents own transcript/decode state while sharing loaded GGUF weights through the Rust backend.</li>
 <li>Updated README, vignettes, pkgdown metadata, tinytests, and the webR package-load check around real BebeLM runs and the lean public API.</li>
 <li>Hardened native SIMD dispatch: scalar builds use a baseline target and optimized dylibs are selected by runtime CPU checks.</li>
-<li>Moved pooled embeddings onto Rust batched paths: long texts use token-chunk prefill batching, and text vectors use independent sequence batching so short ontology labels can share batched matmul work. <code><a href="../reference/bebel_embed.html">bebel_embed()</a></code> exposes <code>token_batch_size</code> and <code>sequence_batch_size</code>.</li>
-<li>Kept batched embeddings memory-bounded by processing text chunks to completion with at most <code>sequence_batch_size</code> live sequence caches.</li>
+<li>Moved pooled states onto Rust batched paths: long texts use token-chunk prefill batching, and text vectors use independent sequence batching so short inputs can share batched matmul work. <code><a href="../reference/bebel_pooled_states.html">bebel_pooled_states()</a></code> exposes <code>token_batch_size</code> and <code>sequence_batch_size</code>.</li>
+<li>Kept batched state extraction memory-bounded by processing text chunks to completion with at most <code>sequence_batch_size</code> live sequence caches.</li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.0.0.9000" id="rbebelm-0009000">Rbebelm 0.0.0.9000<a class="anchor" aria-label="anchor" href="#rbebelm-0009000"></a></h2>

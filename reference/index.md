@@ -18,17 +18,19 @@
   : Model loading options
 - [`BebelScalarText()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelScalarText.md)
   : Scalar non-empty text
+- [`BebelTokenizeOptions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelTokenizeOptions.md)
+  : Tokenizer options
 
-## Embeddings
+## Contextual states
 
-- [`bebel_embed()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_embed.md)
-  : Embed text with pooled BebeLM hidden states
-- [`bebel_token_embed()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_token_embed.md)
-  : Embed each token with BebeLM hidden states
-- [`BebelEmbeddingOptions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelEmbeddingOptions.md)
-  : Embedding options
-- [`BebelTokenEmbeddingOptions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelTokenEmbeddingOptions.md)
-  : Token embedding options
+- [`bebel_pooled_states()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_pooled_states.md)
+  : Extract pooled BebeLM contextual states
+- [`bebel_token_states()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_token_states.md)
+  : Extract per-token BebeLM contextual states
+- [`BebelPooledStateOptions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelPooledStateOptions.md)
+  : Pooled contextual-state options
+- [`BebelTokenStateOptions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelTokenStateOptions.md)
+  : Token contextual-state options
 
 ## Generation and agents
 

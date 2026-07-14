@@ -2,8 +2,9 @@
 
 This package is a thin R/savvy surface over upstream
 [`maximecb/bebelm`](https://github.com/maximecb/bebelm). Keep it small:
-native model loading, tokenization, embeddings, generation, persistent
-agents, R tool calls, async jobs, and backend diagnostics.
+native model loading, tokenization, contextual-state extraction,
+generation, persistent agents, R tool calls, async jobs, and backend
+diagnostics.
 
 ## Architecture Rules
 

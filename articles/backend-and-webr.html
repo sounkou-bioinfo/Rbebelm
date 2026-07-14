@@ -34,6 +34,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/getting-started.html">Getting started</a></li>
+    <li><a class="dropdown-item" href="../articles/contextual-states.html">Contextual states and retrieval boundaries</a></li>
     <li><a class="dropdown-item" href="../articles/agents-and-tools.html">Agents and tools</a></li>
     <li><a class="dropdown-item" href="../articles/backend-and-webr.html">Backends and webR</a></li>
     <li><a class="dropdown-item" href="../articles/model-claims-benchmark.html">Benchmark harness</a></li>
@@ -132,8 +133,8 @@ agents from one model share weights through Rust
 <pre><code><span><span class="co">## &lt;BebeLM agent generation&gt;</span></span>
 <span><span class="co">##   stop: max_new</span></span>
 <span><span class="co">##   tokens: 8 generated; 6 prompt</span></span>
-<span><span class="co">##   prefill: 8.5 tok/s</span></span>
-<span><span class="co">##   decode: 9.74 tok/s</span></span>
+<span><span class="co">##   prefill: 11.3 tok/s</span></span>
+<span><span class="co">##   decode: 14.37 tok/s</span></span>
 <span><span class="co">##   text:</span></span>
 <span><span class="co">##  the city of Bamako. city of</span></span></code></pre>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
@@ -141,8 +142,8 @@ agents from one model share weights through Rust
 <pre><code><span><span class="co">## &lt;BebeLM agent generation&gt;</span></span>
 <span><span class="co">##   stop: max_new</span></span>
 <span><span class="co">##   tokens: 8 generated; 6 prompt</span></span>
-<span><span class="co">##   prefill: 9.1 tok/s</span></span>
-<span><span class="co">##   decode: 9.82 tok/s</span></span>
+<span><span class="co">##   prefill: 14.0 tok/s</span></span>
+<span><span class="co">##   decode: 14.45 tok/s</span></span>
 <span><span class="co">##   text:</span></span>
 <span><span class="co">##  Rome. city of... ... ... ...</span></span></code></pre>
 <p>For webR, the same R API is the target. The browser runtime must

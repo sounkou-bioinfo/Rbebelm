@@ -34,6 +34,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/getting-started.html">Getting started</a></li>
+    <li><a class="dropdown-item" href="../articles/contextual-states.html">Contextual states and retrieval boundaries</a></li>
     <li><a class="dropdown-item" href="../articles/agents-and-tools.html">Agents and tools</a></li>
     <li><a class="dropdown-item" href="../articles/backend-and-webr.html">Backends and webR</a></li>
     <li><a class="dropdown-item" href="../articles/model-claims-benchmark.html">Benchmark harness</a></li>
@@ -73,7 +74,7 @@
 <span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/files.html" class="external-link">file.exists</a></span><span class="op">(</span><span class="va">weights_file</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bebel_model_load.html">bebel_model_load</a></span><span class="op">(</span><span class="va">weights_file</span>, num_threads <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
 <p><code>Rbebelm</code> loads a local BebeLM GGUF, exposes tokenizer and
-embedding primitives, and runs bounded CPU generation from R.</p>
+contextual-state primitives, and runs bounded CPU generation from R.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rbebelm_backend_info.html">rbebelm_backend_info</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## &lt;Rbebelm backend dispatch&gt;</span></span>
@@ -97,7 +98,8 @@ embedding primitives, and runs bounded CPU generation from R.</p>
 <span><span class="co">##     ARM dotprod: no</span></span>
 <span><span class="co">##     wasm simd128: no</span></span>
 <span><span class="co">##   model storage: read-only GGUF mmap; repeated loads of the same file share physical pages through the OS page cache</span></span></code></pre>
-<p>Tokenization and embeddings are direct model operations.</p>
+<p>Tokenization and contextual-state extraction are direct model
+operations.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ids</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bebel_tokenize.html">bebel_tokenize</a></span><span class="op">(</span><span class="va">model</span>, <span class="st">"Bamako"</span>, add_bos <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="va">ids</span></span></code></pre></div>
@@ -106,9 +108,20 @@ embedding primitives, and runs bounded CPU generation from R.</p>
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/bebel_detokenize.html">bebel_detokenize</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">ids</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1] "Bamako"</span></span></code></pre>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">emb</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bebel_embed.html">bebel_embed</a></span><span class="op">(</span><span class="va">model</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Mali capital"</span>, <span class="st">"Italy capital"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">emb</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## [1]    2 2048</span></span></code></pre>
+<code class="sourceCode R"><span><span class="va">states</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bebel_pooled_states.html">bebel_pooled_states</a></span><span class="op">(</span><span class="va">model</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Mali capital"</span>, <span class="st">"Italy capital"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">states</span></span></code></pre></div>
+<pre><code><span><span class="co">## &lt;BebeLM pooled contextual states&gt;</span></span>
+<span><span class="co">##   rows: 2</span></span>
+<span><span class="co">##   dimensions: 2048</span></span>
+<span><span class="co">##   pooling: weighted_mean</span></span>
+<span><span class="co">##   final model norm: yes</span></span>
+<span><span class="co">##   L2 normalized: yes</span></span>
+<span><span class="co">##   retrieval trained: no</span></span></code></pre>
+<p><code><a href="../reference/bebel_pooled_states.html">bebel_pooled_states()</a></code> applies the model’s final output
+norm before pooling; <code><a href="../reference/bebel_token_states.html">bebel_token_states()</a></code> returns those
+post-norm states token by token. These are causal language-model
+features, not retrieval-trained semantic embeddings. Their cosine or
+late-interaction behavior must be validated for each task.</p>
 <p>Generation returns text, token ids, stop reason, and timing
 statistics.</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
@@ -124,8 +137,8 @@ statistics.</p>
 <pre><code><span><span class="co">## &lt;BebeLM generation result&gt;</span></span>
 <span><span class="co">##   stop: max_new</span></span>
 <span><span class="co">##   tokens: 8 generated; 6 prompt</span></span>
-<span><span class="co">##   prefill: 8.9 tok/s</span></span>
-<span><span class="co">##   decode: 9.69 tok/s</span></span>
+<span><span class="co">##   prefill: 12.8 tok/s</span></span>
+<span><span class="co">##   decode: 14.35 tok/s</span></span>
 <span><span class="co">##   text:</span></span>
 <span><span class="co">##  the city of Paris. city of Paris</span></span></code></pre>
 <p>A persistent agent keeps transcript and decode caches across turns
@@ -138,8 +151,8 @@ while sharing model weights with every other agent created from the same
 <pre><code><span><span class="co">## &lt;BebeLM assistant turn&gt;</span></span>
 <span><span class="co">##   stop: eos</span></span>
 <span><span class="co">##   tokens: 10 generated; 15 prompt</span></span>
-<span><span class="co">##   prefill: 9.9 tok/s</span></span>
-<span><span class="co">##   decode: 8.57 tok/s</span></span>
+<span><span class="co">##   prefill: 16.5 tok/s</span></span>
+<span><span class="co">##   decode: 12.77 tok/s</span></span>
 <span><span class="co">##   text:</span></span>
 <span><span class="co">## &lt;</span></span>
 <span><span class="co">## &lt;/think&gt;</span></span>
@@ -151,8 +164,8 @@ while sharing model weights with every other agent created from the same
 <pre><code><span><span class="co">## &lt;BebeLM assistant turn&gt;</span></span>
 <span><span class="co">##   stop: eos</span></span>
 <span><span class="co">##   tokens: 11 generated; 17 prompt</span></span>
-<span><span class="co">##   prefill: 11.4 tok/s</span></span>
-<span><span class="co">##   decode: 8.65 tok/s</span></span>
+<span><span class="co">##   prefill: 17.0 tok/s</span></span>
+<span><span class="co">##   decode: 12.94 tok/s</span></span>
 <span><span class="co">##   text:</span></span>
 <span><span class="co">## &lt;</span></span>
 <span><span class="co">## &lt;/Answer&gt;  </span></span>

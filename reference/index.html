@@ -19,6 +19,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/getting-started.html">Getting started</a></li>
+    <li><a class="dropdown-item" href="../articles/contextual-states.html">Contextual states and retrieval boundaries</a></li>
     <li><a class="dropdown-item" href="../articles/agents-and-tools.html">Agents and tools</a></li>
     <li><a class="dropdown-item" href="../articles/backend-and-webr.html">Backends and webR</a></li>
     <li><a class="dropdown-item" href="../articles/model-claims-benchmark.html">Benchmark harness</a></li>
@@ -102,8 +103,15 @@
 
         </dt>
         <dd>Scalar non-empty text</dd>
+
+        <dt>
+
+          <code><a href="BebelTokenizeOptions.html">BebelTokenizeOptions()</a></code>
+
+        </dt>
+        <dd>Tokenizer options</dd>
       </dl></div><div class="section level2">
-      <h2 id="embeddings">Embeddings<a class="anchor" aria-label="anchor" href="#embeddings"></a></h2>
+      <h2 id="contextual-states">Contextual states<a class="anchor" aria-label="anchor" href="#contextual-states"></a></h2>
 
 
 
@@ -114,31 +122,31 @@
 
       <dl><dt>
 
-          <code><a href="bebel_embed.html">bebel_embed()</a></code>
+          <code><a href="bebel_pooled_states.html">bebel_pooled_states()</a></code>
 
         </dt>
-        <dd>Embed text with pooled BebeLM hidden states</dd>
+        <dd>Extract pooled BebeLM contextual states</dd>
 
         <dt>
 
-          <code><a href="bebel_token_embed.html">bebel_token_embed()</a></code>
+          <code><a href="bebel_token_states.html">bebel_token_states()</a></code>
 
         </dt>
-        <dd>Embed each token with BebeLM hidden states</dd>
+        <dd>Extract per-token BebeLM contextual states</dd>
 
         <dt>
 
-          <code><a href="BebelEmbeddingOptions.html">BebelEmbeddingOptions()</a></code>
+          <code><a href="BebelPooledStateOptions.html">BebelPooledStateOptions()</a></code>
 
         </dt>
-        <dd>Embedding options</dd>
+        <dd>Pooled contextual-state options</dd>
 
         <dt>
 
-          <code><a href="BebelTokenEmbeddingOptions.html">BebelTokenEmbeddingOptions()</a></code>
+          <code><a href="BebelTokenStateOptions.html">BebelTokenStateOptions()</a></code>
 
         </dt>
-        <dd>Token embedding options</dd>
+        <dd>Token contextual-state options</dd>
       </dl></div><div class="section level2">
       <h2 id="generation-and-agents">Generation and agents<a class="anchor" aria-label="anchor" href="#generation-and-agents"></a></h2>
 
