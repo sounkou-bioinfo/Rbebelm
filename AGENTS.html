@@ -20,6 +20,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="articles/getting-started.html">Getting started</a></li>
     <li><a class="dropdown-item" href="articles/contextual-states.html">Contextual states and retrieval boundaries</a></li>
+    <li><a class="dropdown-item" href="articles/embeddinggemma.html">Retrieval embeddings with EmbeddingGemma</a></li>
     <li><a class="dropdown-item" href="articles/agents-and-tools.html">Agents and tools</a></li>
     <li><a class="dropdown-item" href="articles/backend-and-webr.html">Backends and webR</a></li>
     <li><a class="dropdown-item" href="articles/model-claims-benchmark.html">Benchmark harness</a></li>
@@ -41,10 +42,11 @@
 
 <div id="agentsmd" class="section level1">
 
-<p>This package is a thin R/savvy surface over upstream <a href="https://github.com/maximecb/bebelm" class="external-link"><code>maximecb/bebelm</code></a>. Keep it small: native model loading, tokenization, contextual-state extraction, generation, persistent agents, R tool calls, async jobs, and backend diagnostics.</p>
+<p>This package is a thin R/savvy surface over upstream <a href="https://github.com/maximecb/bebelm" class="external-link"><code>maximecb/bebelm</code></a>, plus a small dedicated pure-Rust EmbeddingGemma encoder. Keep it focused: native model loading, tokenization, retrieval embeddings, contextual-state extraction, generation, persistent agents, R tool calls, async jobs, and backend diagnostics.</p>
 <div class="section level2">
 <h2 id="architecture-rules">Architecture Rules<a class="anchor" aria-label="anchor" href="#architecture-rules"></a></h2>
-<ul><li>The Rust backend owns BebeLM integration. R should expose typed calls and printers, not a second agent framework.</li>
+<ul><li>The Rust backend owns model integration. R should expose typed calls and printers, not a second agent or inference framework.</li>
+<li>Keep EmbeddingGemma stateless and separate from <code>BebelModel</code>: its Rust crate owns GGUF validation, SentencePiece tokenization, bidirectional attention, mean pooling, learned projections, and Matryoshka truncation. Validate it against a pinned external oracle without linking that oracle into the package.</li>
 <li>
 <code>BebelModel</code> instances load GGUF weights once. <code>BebelAgent</code> instances keep independent transcript/decode state and share the model weights through the Rust backend.</li>
 <li>Async APIs return <code>BebelAsyncJob</code> objects. Rust workers may enqueue plain generation events; R drains them from the main thread with <code><a href="reference/bebel_async_events.html">bebel_async_events()</a></code>. R tool execution also belongs on the R main thread.</li>
@@ -57,7 +59,7 @@
 <h2 id="documentation-rules">Documentation Rules<a class="anchor" aria-label="anchor" href="#documentation-rules"></a></h2>
 <ul><li>
 <code>README.md</code> is generated from <code>README.Rmd</code>; never hand-edit it.</li>
-<li>README and vignettes are executable examples. They should run real BebeLM calls when <code>BEBELM_WEIGHTS_FILE</code> points to a local GGUF file.</li>
+<li>README and vignettes are executable examples. They should run real BebeLM calls when <code>BEBELM_WEIGHTS_FILE</code> points to a local GGUF file and real EmbeddingGemma calls when <code>EMBEDDING_GEMMA_WEIGHTS_FILE</code> is set.</li>
 <li>Do not add fake examples or guard whole documents into inert prose.</li>
 <li>Keep generated <code>NAMESPACE</code>, <code>man/*.Rd</code>, and <code>README.md</code> in sync with source changes.</li>
 </ul></div>
@@ -66,13 +68,18 @@
 <p>Regenerate wrappers and docs:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">make</span> rd</span></code></pre></div>
 <p>Regenerate README from source:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="va">BEBELM_WEIGHTS_FILE</span><span class="op">=</span>/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf <span class="fu">make</span> rdm</span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="va">BEBELM_WEIGHTS_FILE</span><span class="op">=</span>/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf <span class="dt">\</span></span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="va">EMBEDDING_GEMMA_WEIGHTS_FILE</span><span class="op">=</span>/root/bebelm/embeddinggemma-300M-Q8_0.gguf <span class="dt">\</span></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>  <span class="fu">make</span> rdm</span></code></pre></div>
 <p>Install and test:</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">make</span> dev-install</span>
 <span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="va">BEBELM_WEIGHTS_FILE</span><span class="op">=</span>/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf <span class="dt">\</span></span>
-<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  <span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">'tinytest::test_package("Rbebelm")'</span></span></code></pre></div>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a><span class="va">EMBEDDING_GEMMA_WEIGHTS_FILE</span><span class="op">=</span>/root/bebelm/embeddinggemma-300M-Q8_0.gguf <span class="dt">\</span></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>  <span class="ex">Rscript</span> <span class="at">-e</span> <span class="st">'tinytest::test_package("Rbebelm")'</span></span></code></pre></div>
 <p>Full check:</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="va">BEBELM_WEIGHTS_FILE</span><span class="op">=</span>/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf <span class="fu">make</span> check</span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="va">BEBELM_WEIGHTS_FILE</span><span class="op">=</span>/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf <span class="dt">\</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="va">EMBEDDING_GEMMA_WEIGHTS_FILE</span><span class="op">=</span>/root/bebelm/embeddinggemma-300M-Q8_0.gguf <span class="dt">\</span></span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>  <span class="fu">make</span> check</span></code></pre></div>
 </div>
 </div>
 

@@ -16,7 +16,7 @@ rbebelm_cpuid_info()
 
     ## <Rbebelm CPU features>
     ##   x86_64-v3: yes
-    ##   x86_64-v4: yes
+    ##   x86_64-v4: no
     ##   NEON: no
     ##   ARM dotprod: no
     ##   wasm simd128: no
@@ -32,7 +32,7 @@ rbebelm_backend_info()
     ##   selected: unknown
     ##   loaded: no
     ##   installed: scalar,avx2,avx512
-    ##   supported: scalar,avx2,avx512
+    ##   supported: scalar,avx2
 
 ``` r
 
@@ -40,13 +40,13 @@ rbebelm_backend_features()
 ```
 
     ## <Rbebelm backend features>
-    ##   backend: avx512
+    ##   backend: avx2
     ##   target: x86_64-linux
     ##   Rust crate: rbebelm_backend 0.1.0
     ##   native SIMD feature: yes
     ##   compiled features:
     ##     AVX2: yes
-    ##     AVX-512F: yes
+    ##     AVX-512F: no
     ##     NEON: no
     ##     ARM dotprod: no
     ##     wasm simd128: no
@@ -67,7 +67,7 @@ model$info()
     ## [1] "/home/runner/work/Rbebelm/Rbebelm/.models/LFM2.5-8B-A1B-Q4_K_M.gguf"
     ## 
     ## $backend
-    ## [1] "avx512"
+    ## [1] "avx2"
     ## 
     ## $package
     ## [1] "Rbebelm"
@@ -89,8 +89,8 @@ bebel_agent_generate(a, on_event = NULL)
     ## <BebeLM agent generation>
     ##   stop: max_new
     ##   tokens: 8 generated; 6 prompt
-    ##   prefill: 11.3 tok/s
-    ##   decode: 14.37 tok/s
+    ##   prefill: 9.9 tok/s
+    ##   decode: 11.34 tok/s
     ##   text:
     ##  the city of Bamako. city of
 
@@ -102,8 +102,8 @@ bebel_agent_generate(b, on_event = NULL)
     ## <BebeLM agent generation>
     ##   stop: max_new
     ##   tokens: 8 generated; 6 prompt
-    ##   prefill: 14.0 tok/s
-    ##   decode: 14.45 tok/s
+    ##   prefill: 11.0 tok/s
+    ##   decode: 11.44 tok/s
     ##   text:
     ##  Rome. city of... ... ... ...
 

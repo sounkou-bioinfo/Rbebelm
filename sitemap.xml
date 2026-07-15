@@ -5,6 +5,7 @@
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/articles/agents-and-tools.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/articles/backend-and-webr.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/articles/contextual-states.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/articles/embeddinggemma.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/articles/getting-started.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/articles/index.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/articles/model-claims-benchmark.html</loc></url>
@@ -31,6 +32,10 @@
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelTokenizeOptions.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelToolRef.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelToolSpec.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/EmbeddingGemmaLoadOptions.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/EmbeddingGemmaModel.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/EmbeddingGemmaModelRef.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/EmbeddingGemmaOptions.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_configure.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_agent_generate.html</loc></url>
@@ -71,6 +76,12 @@
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_tool.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_tool_schema_json.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_transcript.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/embeddinggemma_embed.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/embeddinggemma_embed_document.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/embeddinggemma_embed_query.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/embeddinggemma_model_info.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/embeddinggemma_model_load.html</loc></url>
+<url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/embeddinggemma_tokenize.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/index.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/print.bebelGeneration.html</loc></url>
 <url><loc>https://sounkou-bioinfo.github.io/Rbebelm/reference/rbebelm_backend_features.html</loc></url>

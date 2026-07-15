@@ -133,6 +133,12 @@ diagnostic_maxsim
 
 ## A path to a real retriever
 
+For supported dense retrieval, `Rbebelm` now provides a separate
+`EmbeddingGemmaModel` and query/document encoding API. That model has
+bidirectional attention, learned projections, explicit prompts, and a
+contrastive retrieval objective; none of those properties transfer to
+the raw LFM states discussed here.
+
 Turning these primitives into a supported retriever requires a
 separately versioned, retrieval-trained artifact and evidence for its
 contract:

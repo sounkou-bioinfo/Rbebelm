@@ -32,6 +32,29 @@
 - [`BebelTokenStateOptions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelTokenStateOptions.md)
   : Token contextual-state options
 
+## Retrieval embeddings with EmbeddingGemma
+
+- [`embeddinggemma_model_load()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/embeddinggemma_model_load.md)
+  : Load an EmbeddingGemma GGUF model
+- [`embeddinggemma_model_info()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/embeddinggemma_model_info.md)
+  : Inspect an EmbeddingGemma model
+- [`embeddinggemma_tokenize()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/embeddinggemma_tokenize.md)
+  : Tokenize EmbeddingGemma model input
+- [`embeddinggemma_embed()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/embeddinggemma_embed.md)
+  : Generate EmbeddingGemma text embeddings
+- [`embeddinggemma_embed_query()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/embeddinggemma_embed_query.md)
+  : Encode retrieval queries with EmbeddingGemma
+- [`embeddinggemma_embed_document()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/embeddinggemma_embed_document.md)
+  : Encode retrieval documents with EmbeddingGemma
+- [`EmbeddingGemmaModel`](https://sounkou-bioinfo.github.io/Rbebelm/reference/EmbeddingGemmaModel.md)
+  : Loaded EmbeddingGemma GGUF model.
+- [`EmbeddingGemmaModelRef()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/EmbeddingGemmaModelRef.md)
+  : EmbeddingGemma model reference
+- [`EmbeddingGemmaLoadOptions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/EmbeddingGemmaLoadOptions.md)
+  : EmbeddingGemma loading options
+- [`EmbeddingGemmaOptions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/EmbeddingGemmaOptions.md)
+  : EmbeddingGemma encoding options
+
 ## Generation and agents
 
 - [`bebel_generate()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_generate.md)

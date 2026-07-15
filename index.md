@@ -1,15 +1,18 @@
 # Rbebelm
 
-`Rbebelm` is a focused R interface to
-[`maximecb/bebelm`](https://github.com/maximecb/bebelm): local CPU
-inference for Liquid AI LFM2.5-8B-A1B GGUF weights, exposed through a
-small R/Rust API.
+`Rbebelm` provides local pure-Rust CPU inference for two complementary
+GGUF models: Liquid AI LFM2.5-8B-A1B through
+[`maximecb/bebelm`](https://github.com/maximecb/bebelm), and Google’s
+retrieval-trained EmbeddingGemma-300M through a dedicated native
+encoder.
 
-The package provides model loading, tokenizer access, contextual-state
-extraction, bounded generation, persistent agents, BebeLM tool-call
-parsing, R tool dispatch, stream events, and Rust-thread async jobs. It
-does not ship weights. Set `BEBELM_WEIGHTS_FILE` to a local GGUF path or
-use the path directly.
+The package provides model loading, tokenizer access, semantic text
+embeddings, causal contextual-state extraction, bounded generation,
+persistent agents, BebeLM tool-call parsing, R tool dispatch, stream
+events, and Rust-thread async jobs. It does not ship weights. Set
+`BEBELM_WEIGHTS_FILE` and `EMBEDDING_GEMMA_WEIGHTS_FILE` to local GGUF
+paths or pass paths directly. EmbeddingGemma weights are governed by the
+[Gemma Terms of Use](https://ai.google.dev/gemma/terms).
 
 ## Install
 
@@ -116,6 +119,47 @@ trained as a semantic embedding or late-interaction retrieval model, so
 production relevance scores without task-specific training and
 evaluation.
 
+## Retrieval-trained EmbeddingGemma
+
+EmbeddingGemma is a separate stateless model handle. The Rust
+implementation loads the `gemma-embedding` GGUF directly and runs its
+bidirectional encoder, mean pooling, both learned dense projections, and
+L2 normalization without linking to llama.cpp, PyTorch, ONNX Runtime, or
+the SentencePiece C++ library.
+
+``` r
+
+embedding_model <- embeddinggemma_model_load(
+  embedding_weights_file,
+  num_threads = bebel_threads
+)
+
+query_embedding <- embeddinggemma_embed_query(
+  embedding_model,
+  "capital of Mali"
+)
+document_embeddings <- embeddinggemma_embed_document(
+  embedding_model,
+  c(
+    mali = "Bamako is the capital and largest city of Mali.",
+    italy = "Rome is the capital city of Italy.",
+    desert = "The Sahara is a desert in northern Africa."
+  )
+)
+
+sort(drop(document_embeddings %*% as.numeric(query_embedding)), decreasing = TRUE)
+#>      mali     italy    desert
+#> 0.6257073 0.2532762 0.1605835
+```
+
+The query and document helpers apply different prompts because that
+distinction is part of the model’s training contract. Character vectors
+use bounded packed encoder batches while retaining independent positions
+and attention boundaries.
+[`embeddinggemma_embed()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/embeddinggemma_embed.md)
+requires an explicit task for other uses. Set `dimensions` to 512, 256,
+or 128 for Matryoshka truncation and re-normalization.
+
 ## Generation
 
 ``` r
@@ -134,8 +178,8 @@ answer
 #> <BebeLM generation result>
 #>   stop: max_new
 #>   tokens: 8 generated; 6 prompt
-#>   prefill: 14.0 tok/s
-#>   decode: 12.39 tok/s
+#>   prefill: 32.6 tok/s
+#>   decode: 32.99 tok/s
 #>   text:
 #>  the city of Paris. city of Paris
 unique(events)
@@ -160,8 +204,8 @@ chat
 #> <BebeLM generation result>
 #>   stop: eos
 #>   tokens: 20 generated; 21 prompt
-#>   prefill: 16.1 tok/s
-#>   decode: 13.74 tok/s
+#>   prefill: 43.3 tok/s
+#>   decode: 27.51 tok/s
 #>   text:
 #> <|tool_call_start|>[constraints(word_count=5, question="what does mmap help with?")]<|tool_call_end|>
 ```
@@ -184,8 +228,8 @@ turn1
 #> <BebeLM assistant turn>
 #>   stop: eos
 #>   tokens: 10 generated; 15 prompt
-#>   prefill: 17.1 tok/s
-#>   decode: 13.40 tok/s
+#>   prefill: 42.7 tok/s
+#>   decode: 30.10 tok/s
 #>   text:
 #> <
 #> </think>
@@ -195,8 +239,8 @@ turn2
 #> <BebeLM assistant turn>
 #>   stop: eos
 #>   tokens: 11 generated; 17 prompt
-#>   prefill: 16.6 tok/s
-#>   decode: 13.80 tok/s
+#>   prefill: 43.2 tok/s
+#>   decode: 30.90 tok/s
 #>   text:
 #> <
 #> </Answer>
@@ -306,16 +350,16 @@ async_a
 #> <BebeLM generation result>
 #>   stop: max_new
 #>   tokens: 8 generated; 6 prompt
-#>   prefill: 7.8 tok/s
-#>   decode: 7.71 tok/s
+#>   prefill: 18.0 tok/s
+#>   decode: 19.19 tok/s
 #>   text:
 #>  Rome. city of... ... ... ...
 async_b
 #> <BebeLM generation result>
 #>   stop: max_new
 #>   tokens: 8 generated; 6 prompt
-#>   prefill: 7.1 tok/s
-#>   decode: 7.98 tok/s
+#>   prefill: 18.2 tok/s
+#>   decode: 18.89 tok/s
 #>   text:
 #>  the city of Bamako. city of
 bebel_agent_info(job_b_agent)[c("history_tokens", "processed_tokens")]
@@ -354,18 +398,18 @@ bench
 #> <BebeLM generation benchmark>
 #>   jobs: 3
 #>   concurrency: 2
-#>   elapsed: 2.835 s
-#>   generated throughput: 8.47 tok/s
+#>   elapsed: 1.228 s
+#>   generated throughput: 19.54 tok/s
 bench$aggregate
 #>   job_count prompt_count repeats concurrency elapsed_seconds
-#> 1         3            3       1           2           2.835
+#> 1         3            3       1           2           1.228
 #>   total_prompt_tokens total_generated_tokens generated_tps_wall
-#> 1                  18                     24           8.465608
+#> 1                  18                     24           19.54397
 #>   generated_tps_decode mean_job_wall_seconds mean_decode_tps
-#> 1             9.602887                 1.531        10.40844
+#> 1             21.19472             0.6623333        22.76542
 bench$jobs[, c("prompt", "generated_tokens", "wall_seconds", "decode_tps", "event_count")]
 #>                    prompt generated_tokens wall_seconds decode_tps event_count
-#> 1  The capital of Mali is                8        1.861   7.975000          12
-#> 2 The capital of Italy is                8        1.762   8.335703          12
-#> 3 The capital of Japan is                8        0.970  14.914619          12
+#> 1  The capital of Mali is                8        0.785   18.45214          12
+#> 2 The capital of Italy is                8        0.761   17.81666          12
+#> 3 The capital of Japan is                8        0.441   32.02746          12
 ```

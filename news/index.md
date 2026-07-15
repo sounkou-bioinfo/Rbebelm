@@ -2,6 +2,15 @@
 
 ## Rbebelm 0.3.6-0.1.0
 
+- Added a dedicated pure-Rust `gemma-embedding` backend for the 300M
+  EmbeddingGemma GGUF architecture, including its SentencePiece
+  tokenizer, bidirectional global/symmetric-window attention schedule,
+  mean pooling, both learned dense projections, task-specific
+  query/document prompts, L2 normalization, and
+  768/512/256/128-dimensional Matryoshka outputs. Batches use bounded
+  sequence packing without cross-sequence attention and parallel GeGLU
+  evaluation. New `embeddinggemma_*()` APIs keep these retrieval-trained
+  embeddings separate from BebeLM causal contextual states.
 - Replaced the misleading embedding API with
   [`bebel_pooled_states()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_pooled_states.md)
   and

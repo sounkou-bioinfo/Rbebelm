@@ -6,6 +6,8 @@
   started](https://sounkou-bioinfo.github.io/Rbebelm/articles/getting-started.md):
 - [Contextual states and retrieval
   boundaries](https://sounkou-bioinfo.github.io/Rbebelm/articles/contextual-states.md):
+- [Retrieval embeddings with
+  EmbeddingGemma](https://sounkou-bioinfo.github.io/Rbebelm/articles/embeddinggemma.md):
 - [Agents and
   tools](https://sounkou-bioinfo.github.io/Rbebelm/articles/agents-and-tools.md):
 - [Backends and
