@@ -862,7 +862,7 @@ pub fn matvec(dtype: GgmlType, w: &[u8], n_in: usize, n_out: usize, x: &[f32], y
     // One output row. The K-quants (Q4_K/Q6_K — the bulk of the weights) take the Q8-activation
     // integer dot: quantize x to Q8 once, then dot it (read-only, shared across rows) against
     // every weight row in the integer domain — no f32 weight dequant, no scratch. Other dtypes
-    // (F32/F16 — e.g. the MoE router) dequantize the whole row into `scratch`, then dot.
+    // (F32/F16/Q8_0) dequantize the whole row into `scratch`, then dot.
     let fused = matches!(dtype, GgmlType::Q4_K | GgmlType::Q6_K);
     let q8 = fused.then(|| quantize_q8(x));
     let compute_row = |o: usize, scratch: &mut [f32]| -> f32 {
@@ -1215,6 +1215,35 @@ mod tests {
         let mut y = [0.0f32; 3];
         matvec(GgmlType::F16, &w, 2, 3, &x, &mut y);
         assert_eq!(y, [3.0, 7.0, 11.0]);
+    }
+
+    #[test]
+    fn matvec_and_matmul_q8_0_match_dequantized_rows() {
+        // Two Q8_0 rows, one 32-value block each. The generic row path must dequantize the
+        // signed int8 weights with their f16 scale and reuse that row across token columns.
+        let mut w = vec![0u8; 2 * 34];
+        w[0..2].copy_from_slice(&0x3800u16.to_le_bytes()); // row 0 scale = 0.5
+        w[34..36].copy_from_slice(&0x3c00u16.to_le_bytes()); // row 1 scale = 1.0
+        for i in 0..32 {
+            w[2 + i] = (i as i8 - 16) as u8;
+            w[36 + i] = (16 - i as i8) as u8;
+        }
+        let x0: Vec<f32> = (0..32).map(|i| i as f32 * 0.1 - 1.0).collect();
+        let x1: Vec<f32> = x0.iter().rev().copied().collect();
+        let row0 = dequant::dequantize(GgmlType::Q8_0, &w[..34], 32);
+        let row1 = dequant::dequantize(GgmlType::Q8_0, &w[34..], 32);
+        let expected0 = [dot(&row0, &x0), dot(&row1, &x0)];
+        let expected1 = [dot(&row0, &x1), dot(&row1, &x1)];
+
+        let mut one = [0.0f32; 2];
+        matvec(GgmlType::Q8_0, &w, 32, 2, &x0, &mut one);
+        assert_eq!(one, expected0);
+
+        let mut input = x0;
+        input.extend_from_slice(&x1);
+        let mut batch = [0.0f32; 4];
+        matmul(GgmlType::Q8_0, &w, 32, 2, &input, 2, &mut batch);
+        assert_eq!(batch, [expected0[0], expected0[1], expected1[0], expected1[1]]);
     }
 
     #[test]

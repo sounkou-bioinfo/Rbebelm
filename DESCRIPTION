@@ -1,5 +1,5 @@
 Package: Rbebelm
-Title: Native 'BebeLM' CPU Backend for R
+Title: Native 'BebeLM' and 'EmbeddingGemma' CPU Backends for R
 Version: 0.3.6-0.1.0
 Authors@R: c(
     person(given = "Sounkou Mahamane", family = "Toure",
@@ -7,14 +7,18 @@ Authors@R: c(
     person("Maxime", "Chevalier-Boisvert", role = "cph",
            comment = "BebeLM upstream"),
     person("Hiroaki", "Yutani", role = "cph",
-           comment = "savvy R/Rust interface")
+           comment = "savvy R/Rust interface"),
+    person("llama.cpp contributors", role = c("ctb", "cph"),
+           comment = "MIT-licensed tokenizer and EmbeddingGemma reference semantics")
   )
-Description: Provides a focused R interface to the pure-Rust 'BebeLM'
-    CPU inference library <https://github.com/maximecb/bebelm>. The package
-    exposes GGUF model loading, tokenizer access, post-normalization contextual
-    states, streaming generation events, persistent conversation agents, BebeLM
-    tool-call parsing,
-    R tool dispatch, and Rust-thread async generation jobs. Loaded agents share
+Description: Provides focused R interfaces to the pure-Rust 'BebeLM'
+    CPU inference library <https://github.com/maximecb/bebelm> and a native
+    pure-Rust implementation of the retrieval-trained 'EmbeddingGemma' encoder
+    <https://ai.google.dev/gemma/docs/embeddinggemma>. The package exposes GGUF
+    model loading, tokenizer access, semantic text embeddings, post-normalization
+    causal contextual states, streaming generation events, persistent conversation
+    agents, 'BebeLM' tool-call parsing, R tool dispatch, and Rust-thread async
+    generation jobs. Loaded agents share
     model weights in process through Rust reference-counted handles, and GGUF
     files are mapped read-only so repeated loads of the same file can share
     physical pages through the operating-system page cache. Native libraries are

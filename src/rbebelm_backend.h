@@ -56,5 +56,9 @@ SEXP Rbebelm_BebelModel_load_ffi(SEXP c_arg__path, SEXP c_arg__num_threads);
 SEXP Rbebelm_BebelModel_pooled_states_ffi(SEXP self__, SEXP c_arg__text, SEXP c_arg__add_bos, SEXP c_arg__normalize, SEXP c_arg__pooling);
 SEXP Rbebelm_BebelModel_pooled_states_batch_ffi(SEXP self__, SEXP c_arg__text, SEXP c_arg__add_bos, SEXP c_arg__normalize, SEXP c_arg__pooling, SEXP c_arg__check_interrupt, SEXP c_arg__token_batch_size, SEXP c_arg__sequence_batch_size);
 SEXP Rbebelm_BebelModel_token_states_ffi(SEXP self__, SEXP c_arg__text, SEXP c_arg__add_bos, SEXP c_arg__normalize, SEXP c_arg__check_interrupt, SEXP c_arg__token_batch_size);
+SEXP Rbebelm_EmbeddingGemmaModel_embed_batch_ffi(SEXP self__, SEXP c_arg__text, SEXP c_arg__dimensions, SEXP c_arg__normalize, SEXP c_arg__truncate, SEXP c_arg__check_interrupt);
+SEXP Rbebelm_EmbeddingGemmaModel_info_ffi(SEXP self__);
+SEXP Rbebelm_EmbeddingGemmaModel_load_ffi(SEXP c_arg__path, SEXP c_arg__num_threads);
+SEXP Rbebelm_EmbeddingGemmaModel_tokenize_ffi(SEXP self__, SEXP c_arg__text, SEXP c_arg__truncate);
 
 #endif

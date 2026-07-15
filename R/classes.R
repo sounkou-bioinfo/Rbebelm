@@ -28,6 +28,21 @@ BebelModelRef <- S7::new_class(
   }
 )
 
+#' EmbeddingGemma model reference
+#'
+#' @param value A one-element list containing an `EmbeddingGemmaModel`.
+#' @export
+EmbeddingGemmaModelRef <- S7::new_class(
+  "EmbeddingGemmaModelRef",
+  properties = list(value = S7::class_list),
+  validator = function(self) {
+    value <- S7::prop(self, "value")
+    if (length(value) != 1L || !inherits(value[[1L]], "EmbeddingGemmaModel")) {
+      "`value` must contain one EmbeddingGemmaModel."
+    }
+  }
+)
+
 #' BebeLM agent reference
 #'
 #' @param value A one-element list containing a `BebelAgent`.
@@ -184,6 +199,94 @@ BebelModelLoadOptions <- S7::new_class(
       return("`num_threads` must be NULL or a positive whole number.")
     }
     NULL
+  }
+)
+
+#' EmbeddingGemma loading options
+#'
+#' @param path Path to a `gemma-embedding` GGUF weights file.
+#' @param num_threads Optional positive whole-number Rayon thread count.
+#' @export
+EmbeddingGemmaLoadOptions <- S7::new_class(
+  "EmbeddingGemmaLoadOptions",
+  properties = list(path = S7::class_character, num_threads = S7::class_any),
+  validator = function(self) {
+    path <- S7::prop(self, "path")
+    if (length(path) != 1L || is.na(path) || !nzchar(path)) {
+      return("`path` must be a non-empty character scalar.")
+    }
+    num_threads <- S7::prop(self, "num_threads")
+    if (!is.null(num_threads) && (
+      !is.numeric(num_threads) ||
+        length(num_threads) != 1L ||
+        is.na(num_threads) ||
+        !is.finite(num_threads) ||
+        num_threads < 1 ||
+        num_threads != floor(num_threads)
+    )) {
+      return("`num_threads` must be NULL or a positive whole number.")
+    }
+    NULL
+  }
+)
+
+#' EmbeddingGemma encoding options
+#'
+#' @param text Character vector to encode.
+#' @param task Embedding task controlling the required model prompt.
+#' @param title Optional document title, used only for `"retrieval_document"`.
+#' @param dimensions Matryoshka output size: 768, 512, 256, or 128.
+#' @param normalize Whether to L2-normalize each embedding.
+#' @param truncate Whether to truncate inputs exceeding the 2048-token context.
+#' @param check_interrupt Whether to poll R interrupts during tokenization and
+#'   between bounded packed inference batches.
+#' @export
+EmbeddingGemmaOptions <- S7::new_class(
+  "EmbeddingGemmaOptions",
+  properties = list(
+    text = S7::class_character,
+    task = S7::class_character,
+    title = S7::class_any,
+    dimensions = S7::class_numeric,
+    normalize = S7::class_logical,
+    truncate = S7::class_logical,
+    check_interrupt = S7::class_logical
+  ),
+  validator = function(self) {
+    errors <- character()
+    text <- S7::prop(self, "text")
+    if (anyNA(text)) {
+      errors <- c(errors, "`text` must not contain NA values.")
+    }
+    task <- S7::prop(self, "task")
+    tasks <- c(
+      "retrieval_query", "retrieval_document", "question_answering",
+      "fact_verification", "classification", "clustering",
+      "semantic_similarity", "code_retrieval", "summarization", "raw"
+    )
+    if (length(task) != 1L || is.na(task) || !task %in% tasks) {
+      errors <- c(errors, paste0("`task` must be one of ", paste(dQuote(tasks), collapse = ", "), "."))
+    }
+    title <- S7::prop(self, "title")
+    if (!is.null(title)) {
+      if (!identical(task, "retrieval_document")) {
+        errors <- c(errors, "`title` may only be supplied for `task = \"retrieval_document\"`.")
+      }
+      if (!is.character(title) || anyNA(title) || !(length(title) %in% c(1L, length(text)))) {
+        errors <- c(errors, "`title` must be NULL or a non-missing character scalar/vector matching `text`.")
+      }
+    }
+    dimensions <- S7::prop(self, "dimensions")
+    if (length(dimensions) != 1L || is.na(dimensions) || !dimensions %in% c(768, 512, 256, 128)) {
+      errors <- c(errors, "`dimensions` must be 768, 512, 256, or 128.")
+    }
+    for (name in c("normalize", "truncate", "check_interrupt")) {
+      value <- S7::prop(self, name)
+      if (length(value) != 1L || is.na(value)) {
+        errors <- c(errors, paste0("`", name, "` must be TRUE or FALSE."))
+      }
+    }
+    if (length(errors)) errors else NULL
   }
 )
 

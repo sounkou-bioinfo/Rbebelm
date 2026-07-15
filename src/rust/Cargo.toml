@@ -16,6 +16,7 @@ native-simd = []
 [dependencies]
 savvy = "0.10.2"
 bebelm = { path = "bebelm" }
+embeddinggemma = { path = "embeddinggemma" }
 
 [target.'cfg(not(target_os = "emscripten"))'.dependencies]
 rayon = "1"

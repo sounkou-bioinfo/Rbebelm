@@ -7,7 +7,11 @@ output: github_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 weights_file <- Sys.getenv("BEBELM_WEIGHTS_FILE", "/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf")
-stopifnot(file.exists(weights_file))
+embedding_weights_file <- Sys.getenv(
+  "EMBEDDING_GEMMA_WEIGHTS_FILE",
+  "/root/bebelm/embeddinggemma-300M-Q8_0.gguf"
+)
+stopifnot(file.exists(weights_file), file.exists(embedding_weights_file))
 bebel_threads <- as.integer(Sys.getenv("BEBELM_NUM_THREADS", "8"))
 if (is.na(bebel_threads) || bebel_threads < 1L) bebel_threads <- 8L
 ```
@@ -20,15 +24,18 @@ if (is.na(bebel_threads) || bebel_threads < 1L) bebel_threads <- 8L
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
-`Rbebelm` is a focused R interface to
-[`maximecb/bebelm`](https://github.com/maximecb/bebelm): local CPU inference for
-Liquid AI LFM2.5-8B-A1B GGUF weights, exposed through a small R/Rust API.
+`Rbebelm` provides local pure-Rust CPU inference for two complementary GGUF
+models: Liquid AI LFM2.5-8B-A1B through
+[`maximecb/bebelm`](https://github.com/maximecb/bebelm), and Google's
+retrieval-trained EmbeddingGemma-300M through a dedicated native encoder.
 
-The package provides model loading, tokenizer access, contextual-state
-extraction, bounded generation, persistent agents, BebeLM tool-call parsing, R
-tool dispatch, stream events, and Rust-thread async jobs. It does not ship
-weights. Set
-`BEBELM_WEIGHTS_FILE` to a local GGUF path or use the path directly.
+The package provides model loading, tokenizer access, semantic text embeddings,
+causal contextual-state extraction, bounded generation, persistent agents,
+BebeLM tool-call parsing, R tool dispatch, stream events, and Rust-thread async
+jobs. It does not ship weights. Set `BEBELM_WEIGHTS_FILE` and
+`EMBEDDING_GEMMA_WEIGHTS_FILE` to local GGUF paths or pass paths directly.
+EmbeddingGemma weights are governed by the
+[Gemma Terms of Use](https://ai.google.dev/gemma/terms).
 
 ## Install
 
@@ -96,6 +103,42 @@ late-interaction retrieval model, so `Rbebelm` labels these outputs as contextua
 states and records `retrieval_trained = FALSE`. Do not use raw cosine or MaxSim
 scores as production relevance scores without task-specific training and
 evaluation.
+
+## Retrieval-trained EmbeddingGemma
+
+EmbeddingGemma is a separate stateless model handle. The Rust implementation
+loads the `gemma-embedding` GGUF directly and runs its bidirectional encoder,
+mean pooling, both learned dense projections, and L2 normalization without
+linking to llama.cpp, PyTorch, ONNX Runtime, or the SentencePiece C++ library.
+
+```{r embeddinggemma}
+embedding_model <- embeddinggemma_model_load(
+  embedding_weights_file,
+  num_threads = bebel_threads
+)
+
+query_embedding <- embeddinggemma_embed_query(
+  embedding_model,
+  "capital of Mali"
+)
+document_embeddings <- embeddinggemma_embed_document(
+  embedding_model,
+  c(
+    mali = "Bamako is the capital and largest city of Mali.",
+    italy = "Rome is the capital city of Italy.",
+    desert = "The Sahara is a desert in northern Africa."
+  )
+)
+
+sort(drop(document_embeddings %*% as.numeric(query_embedding)), decreasing = TRUE)
+```
+
+The query and document helpers apply different prompts because that distinction
+is part of the model's training contract. Character vectors use bounded packed
+encoder batches while retaining independent positions and attention boundaries.
+`embeddinggemma_embed()` requires an explicit task for other uses. Set
+`dimensions` to 512, 256, or 128 for
+Matryoshka truncation and re-normalization.
 
 ## Generation
 

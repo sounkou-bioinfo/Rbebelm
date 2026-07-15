@@ -11,6 +11,8 @@
 use crate::tensor::GgmlType;
 
 const QK_K: usize = 256; // weights per K-quant super-block
+const QK_Q8_0: usize = 32;
+const Q8_0_BYTES: usize = 34;
 const Q4_K_BYTES: usize = 144;
 const Q6_K_BYTES: usize = 210;
 
@@ -138,9 +140,21 @@ pub fn dequantize_q6_k_block(block: &[u8], out: &mut [f32]) {
     }
 }
 
+/// Dequantize one 34-byte Q8_0 block into 32 `f32`s.
+///
+/// GGML stores one little-endian f16 scale followed by 32 signed int8 quants.
+pub fn dequantize_q8_0_block(block: &[u8], out: &mut [f32]) {
+    debug_assert_eq!(block.len(), Q8_0_BYTES);
+    debug_assert_eq!(out.len(), QK_Q8_0);
+    let d = read_f16(block, 0);
+    for (o, &q) in out.iter_mut().zip(&block[2..]) {
+        *o = d * (q as i8) as f32;
+    }
+}
+
 /// Whether [`dequantize`] can handle this dtype.
 pub fn supports(dtype: GgmlType) -> bool {
-    matches!(dtype, GgmlType::F32 | GgmlType::F16 | GgmlType::Q4_K | GgmlType::Q6_K)
+    matches!(dtype, GgmlType::F32 | GgmlType::F16 | GgmlType::Q8_0 | GgmlType::Q4_K | GgmlType::Q6_K)
 }
 
 /// Dequantize a whole tensor of weights into the caller-provided `out` buffer.
@@ -158,6 +172,11 @@ pub fn dequantize_into(dtype: GgmlType, data: &[u8], out: &mut [f32]) {
         GgmlType::F16 => {
             for (o, c) in out.iter_mut().zip(data.chunks_exact(2)) {
                 *o = f16_to_f32(u16::from_le_bytes(c.try_into().unwrap()));
+            }
+        }
+        GgmlType::Q8_0 => {
+            for (block, dst) in data.chunks_exact(Q8_0_BYTES).zip(out.chunks_mut(QK_Q8_0)) {
+                dequantize_q8_0_block(block, dst);
             }
         }
         GgmlType::Q4_K => {
@@ -239,6 +258,19 @@ mod tests {
         assert_eq!(out[0], -22.0);
         // all-zero quant elsewhere in sub-block 0 -> q = -32, scale[0]=2 -> -64
         assert_eq!(out[1], -64.0);
+    }
+
+    #[test]
+    fn q8_0_block_known() {
+        let mut block = [0u8; Q8_0_BYTES];
+        block[..2].copy_from_slice(&0x3800u16.to_le_bytes()); // d = 0.5
+        block[2] = 4;
+        block[3] = (-6i8) as u8;
+        let mut out = [0.0f32; QK_Q8_0];
+        dequantize_q8_0_block(&block, &mut out);
+        assert_eq!(out[0], 2.0);
+        assert_eq!(out[1], -3.0);
+        assert!(out[2..].iter().all(|&v| v == 0.0));
     }
 
     #[test]

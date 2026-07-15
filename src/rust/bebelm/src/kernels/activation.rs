@@ -1,4 +1,4 @@
-//! Activation functions: SiLU, sigmoid, and the SwiGLU glue.
+//! Activation functions used by the supported transformer families.
 
 /// Logistic sigmoid: `1 / (1 + e^-x)`.
 #[inline]
@@ -12,12 +12,28 @@ pub fn silu(x: f32) -> f32 {
     x / (1.0 + (-x).exp())
 }
 
+/// GELU using the tanh approximation used by Gemma feed-forward layers.
+#[inline]
+pub fn gelu(x: f32) -> f32 {
+    const SQRT_2_OVER_PI: f32 = 0.797_884_6;
+    0.5 * x * (1.0 + (SQRT_2_OVER_PI * x * (1.0 + 0.044_715 * x * x)).tanh())
+}
+
 /// SwiGLU glue: `out[i] = silu(gate[i]) · up[i]` (FFN and experts).
 pub fn swiglu(gate: &[f32], up: &[f32], out: &mut [f32]) {
     debug_assert_eq!(gate.len(), up.len());
     debug_assert_eq!(gate.len(), out.len());
     for ((o, &g), &u) in out.iter_mut().zip(gate).zip(up) {
         *o = silu(g) * u;
+    }
+}
+
+/// GeGLU glue: `out[i] = gelu(gate[i]) · up[i]`.
+pub fn geglu(gate: &[f32], up: &[f32], out: &mut [f32]) {
+    debug_assert_eq!(gate.len(), up.len());
+    debug_assert_eq!(gate.len(), out.len());
+    for ((o, &g), &u) in out.iter_mut().zip(gate).zip(up) {
+        *o = gelu(g) * u;
     }
 }
 
@@ -43,6 +59,13 @@ mod tests {
         assert!((silu(1.0) - 0.731_058_6).abs() < 1e-6);
         // for large positive x, silu(x) ~= x
         assert!((silu(20.0) - 20.0).abs() < 1e-3);
+    }
+
+    #[test]
+    fn gelu_values() {
+        assert_eq!(gelu(0.0), 0.0);
+        assert!((gelu(1.0) - 0.841_192).abs() < 1e-6);
+        assert!((gelu(-1.0) + 0.158_808).abs() < 1e-6);
     }
 
     #[test]

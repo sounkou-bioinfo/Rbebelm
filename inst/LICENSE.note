@@ -1,0 +1,19 @@
+Rbebelm includes or adapts components from the following projects:
+
+- BebeLM, Copyright (c) Maxime Chevalier-Boisvert, MIT License.
+  https://github.com/maximecb/bebelm
+- llama.cpp tokenizer and EmbeddingGemma reference semantics, Copyright (c)
+  llama.cpp contributors, MIT License.
+  https://github.com/ggml-org/llama.cpp
+- savvy-generated R/Rust interface code, Copyright (c) Hiroaki Yutani,
+  MIT License.
+  https://github.com/yutannihilation/savvy
+
+The MIT License permits use, copying, modification, distribution, sublicensing,
+and sale of the software provided that its copyright and permission notice are
+retained. The software is provided "as is", without warranty of any kind.
+
+EmbeddingGemma model weights are not distributed with Rbebelm. They are subject
+to the Gemma Terms of Use and the Gemma Prohibited Use Policy:
+https://ai.google.dev/gemma/terms
+https://ai.google.dev/gemma/prohibited_use_policy

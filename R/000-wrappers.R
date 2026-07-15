@@ -383,3 +383,53 @@ class(`BebelModel`) <- c("Rbebelm::BebelModel__bundle", "savvy_Rbebelm__sealed")
   cat('Rbebelm::BebelModel\n')
 }
 
+### wrapper functions for EmbeddingGemmaModel
+
+`EmbeddingGemmaModel_embed_batch` <- function(self) {
+  function(`text`, `dimensions`, `normalize`, `truncate`, `check_interrupt`) {
+    .Call(savvy_EmbeddingGemmaModel_embed_batch__impl, `self`, `text`, `dimensions`, `normalize`, `truncate`, `check_interrupt`)
+  }
+}
+
+`EmbeddingGemmaModel_info` <- function(self) {
+  function() {
+    .Call(savvy_EmbeddingGemmaModel_info__impl, `self`)
+  }
+}
+
+`EmbeddingGemmaModel_tokenize` <- function(self) {
+  function(`text`, `truncate`) {
+    .Call(savvy_EmbeddingGemmaModel_tokenize__impl, `self`, `text`, `truncate`)
+  }
+}
+
+`.savvy_wrap_EmbeddingGemmaModel` <- function(ptr) {
+  e <- new.env(parent = emptyenv())
+  e$.ptr <- ptr
+  e$`embed_batch` <- `EmbeddingGemmaModel_embed_batch`(ptr)
+  e$`info` <- `EmbeddingGemmaModel_info`(ptr)
+  e$`tokenize` <- `EmbeddingGemmaModel_tokenize`(ptr)
+
+  class(e) <- c("Rbebelm::EmbeddingGemmaModel", "EmbeddingGemmaModel", "savvy_Rbebelm__sealed")
+  e
+}
+
+
+#' Loaded EmbeddingGemma GGUF model.
+#' @export
+`EmbeddingGemmaModel` <- new.env(parent = emptyenv())
+
+### associated functions for EmbeddingGemmaModel
+
+`EmbeddingGemmaModel`$`load` <- function(`path`, `num_threads` = NULL) {
+  .savvy_wrap_EmbeddingGemmaModel(.Call(savvy_EmbeddingGemmaModel_load__impl, `path`, `num_threads`))
+}
+
+
+class(`EmbeddingGemmaModel`) <- c("Rbebelm::EmbeddingGemmaModel__bundle", "savvy_Rbebelm__sealed")
+
+#' @export
+`print.Rbebelm::EmbeddingGemmaModel__bundle` <- function(x, ...) {
+  cat('Rbebelm::EmbeddingGemmaModel\n')
+}
+

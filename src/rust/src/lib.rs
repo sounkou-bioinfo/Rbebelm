@@ -5,6 +5,7 @@ mod cancel;
 mod chatml;
 mod events;
 mod generation;
+mod embedding_gemma;
 mod model;
 mod options;
 mod tokens;

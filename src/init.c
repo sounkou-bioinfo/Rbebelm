@@ -239,6 +239,26 @@ SEXP savvy_BebelModel_token_states__impl(SEXP self__, SEXP c_arg__text, SEXP c_a
     return handle_result(res);
 }
 
+SEXP savvy_EmbeddingGemmaModel_embed_batch__impl(SEXP self__, SEXP c_arg__text, SEXP c_arg__dimensions, SEXP c_arg__normalize, SEXP c_arg__truncate, SEXP c_arg__check_interrupt) {
+    SEXP res = Rbebelm_EmbeddingGemmaModel_embed_batch_ffi(self__, c_arg__text, c_arg__dimensions, c_arg__normalize, c_arg__truncate, c_arg__check_interrupt);
+    return handle_result(res);
+}
+
+SEXP savvy_EmbeddingGemmaModel_info__impl(SEXP self__) {
+    SEXP res = Rbebelm_EmbeddingGemmaModel_info_ffi(self__);
+    return handle_result(res);
+}
+
+SEXP savvy_EmbeddingGemmaModel_load__impl(SEXP c_arg__path, SEXP c_arg__num_threads) {
+    SEXP res = Rbebelm_EmbeddingGemmaModel_load_ffi(c_arg__path, c_arg__num_threads);
+    return handle_result(res);
+}
+
+SEXP savvy_EmbeddingGemmaModel_tokenize__impl(SEXP self__, SEXP c_arg__text, SEXP c_arg__truncate) {
+    SEXP res = Rbebelm_EmbeddingGemmaModel_tokenize_ffi(self__, c_arg__text, c_arg__truncate);
+    return handle_result(res);
+}
+
 
 static const R_CallMethodDef CallEntries[] = {
     {"savvy_bebel_event_types__impl", (DL_FUNC) &savvy_bebel_event_types__impl, 0},
@@ -281,6 +301,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"savvy_BebelModel_pooled_states__impl", (DL_FUNC) &savvy_BebelModel_pooled_states__impl, 5},
     {"savvy_BebelModel_pooled_states_batch__impl", (DL_FUNC) &savvy_BebelModel_pooled_states_batch__impl, 8},
     {"savvy_BebelModel_token_states__impl", (DL_FUNC) &savvy_BebelModel_token_states__impl, 6},
+    {"savvy_EmbeddingGemmaModel_embed_batch__impl", (DL_FUNC) &savvy_EmbeddingGemmaModel_embed_batch__impl, 6},
+    {"savvy_EmbeddingGemmaModel_info__impl", (DL_FUNC) &savvy_EmbeddingGemmaModel_info__impl, 1},
+    {"savvy_EmbeddingGemmaModel_load__impl", (DL_FUNC) &savvy_EmbeddingGemmaModel_load__impl, 2},
+    {"savvy_EmbeddingGemmaModel_tokenize__impl", (DL_FUNC) &savvy_EmbeddingGemmaModel_tokenize__impl, 3},
     {"Rbebelm_set_backend_impl", (DL_FUNC) &Rbebelm_set_backend_impl, 1},
     {"Rbebelm_backend_info_impl", (DL_FUNC) &Rbebelm_backend_info_impl, 0},
     {"Rbebelm_cpuid_info_impl", (DL_FUNC) &Rbebelm_cpuid_info_impl, 0},

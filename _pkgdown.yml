@@ -25,6 +25,18 @@ reference:
       - bebel_token_states
       - BebelPooledStateOptions
       - BebelTokenStateOptions
+  - title: Retrieval embeddings with EmbeddingGemma
+    contents:
+      - embeddinggemma_model_load
+      - embeddinggemma_model_info
+      - embeddinggemma_tokenize
+      - embeddinggemma_embed
+      - embeddinggemma_embed_query
+      - embeddinggemma_embed_document
+      - EmbeddingGemmaModel
+      - EmbeddingGemmaModelRef
+      - EmbeddingGemmaLoadOptions
+      - EmbeddingGemmaOptions
   - title: Generation and agents
     contents:
       - bebel_generate
@@ -96,6 +108,7 @@ articles:
     contents:
       - getting-started
       - contextual-states
+      - embeddinggemma
       - agents-and-tools
       - backend-and-webr
       - model-claims-benchmark

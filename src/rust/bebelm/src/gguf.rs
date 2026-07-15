@@ -256,6 +256,29 @@ impl GgufFile {
         }
     }
 
+    /// Read an array-valued metadata entry as `f32`s.
+    pub fn get_f32_array(&self, key: &str) -> Option<Vec<f32>> {
+        let MetaValue::Array { items, .. } = self.get(key)? else {
+            return None;
+        };
+        let mut out = Vec::with_capacity(items.len());
+        for it in items {
+            out.push(match it {
+                MetaValue::F32(v) => *v,
+                MetaValue::F64(v) => *v as f32,
+                _ => return None,
+            });
+        }
+        Some(out)
+    }
+
+    pub fn get_bool(&self, key: &str) -> Option<bool> {
+        match self.get(key)? {
+            MetaValue::Bool(v) => Some(*v),
+            _ => None,
+        }
+    }
+
     pub fn get_str(&self, key: &str) -> Option<&str> {
         match self.get(key)? {
             MetaValue::String(s) => Some(s.as_str()),
@@ -650,10 +673,24 @@ mod tests {
             body.extend_from_slice(&v.to_le_bytes());
         }
 
-        let g = GgufFile::from_bytes(header(0, 4, &body)).unwrap();
+        push_str(&mut body, "k.f32arr");
+        body.extend_from_slice(&(ValueType::Array as u32).to_le_bytes());
+        body.extend_from_slice(&(ValueType::F32 as u32).to_le_bytes());
+        body.extend_from_slice(&2u64.to_le_bytes());
+        for v in [1.25f32, -3.5] {
+            body.extend_from_slice(&v.to_bits().to_le_bytes());
+        }
+
+        push_str(&mut body, "k.bool");
+        body.extend_from_slice(&(ValueType::Bool as u32).to_le_bytes());
+        body.push(1);
+
+        let g = GgufFile::from_bytes(header(0, 6, &body)).unwrap();
         assert_eq!(g.get_u32("k.u8"), Some(7));
         assert_eq!(g.get_u32("k.i64"), Some(123));
         assert_eq!(g.get_f32("k.f64"), Some(2.5));
         assert_eq!(g.get_u32_array("k.i16arr"), Some(vec![10, 0, 8]));
+        assert_eq!(g.get_f32_array("k.f32arr"), Some(vec![1.25, -3.5]));
+        assert_eq!(g.get_bool("k.bool"), Some(true));
     }
 }

@@ -99,6 +99,232 @@ bebel_model_load <- function(path, num_threads = NULL) {
   )
 }
 
+#' Load an EmbeddingGemma GGUF model
+#'
+#' Loads the dedicated, retrieval-trained `gemma-embedding` architecture through
+#' the package's pure-Rust CPU backend. The implementation does not link to
+#' 'llama.cpp', 'PyTorch', the 'ONNX Runtime', or the 'SentencePiece' C++
+#' library. Model weights remain subject to the Gemma Terms of Use.
+#'
+#' @param path Path to an EmbeddingGemma GGUF file. The supported reference
+#'   artifact is `embeddinggemma-300M-Q8_0.gguf` from
+#'   `ggml-org/embeddinggemma-300M-GGUF`.
+#' @param num_threads Optional Rayon global thread-pool size. This can only be
+#'   set once per R process.
+#' @return An `EmbeddingGemmaModel` object.
+#' @export
+embeddinggemma_model_load <- function(path, num_threads = NULL) {
+  options <- EmbeddingGemmaLoadOptions(
+    path = path,
+    num_threads = if (is.null(num_threads)) NULL else as.numeric(num_threads)
+  )
+  EmbeddingGemmaModel$load(
+    S7::prop(options, "path"),
+    num_threads = S7::prop(options, "num_threads")
+  )
+}
+
+#' Inspect an EmbeddingGemma model
+#'
+#' @param model An `EmbeddingGemmaModel` object.
+#' @return A named list describing the architecture and supported dimensions.
+#' @export
+embeddinggemma_model_info <- function(model) {
+  model <- S7::prop(EmbeddingGemmaModelRef(value = list(model)), "value")[[1L]]
+  model$info()
+}
+
+format_embeddinggemma_input <- function(text, task, title) {
+  if (identical(task, "retrieval_document")) {
+    if (is.null(title)) title <- "none"
+    if (length(title) == 1L && length(text) != 1L) title <- rep(title, length(text))
+    return(paste0("title: ", title, " | text: ", text))
+  }
+  prefix <- switch(
+    task,
+    retrieval_query = "task: search result | query: ",
+    question_answering = "task: question answering | query: ",
+    fact_verification = "task: fact checking | query: ",
+    classification = "task: classification | query: ",
+    clustering = "task: clustering | query: ",
+    semantic_similarity = "task: sentence similarity | query: ",
+    code_retrieval = "task: code retrieval | query: ",
+    summarization = "task: summarization | query: ",
+    raw = ""
+  )
+  paste0(prefix, text)
+}
+
+#' Generate EmbeddingGemma text embeddings
+#'
+#' Runs the retrieval-trained bidirectional Gemma encoder, attention-mask mean
+#' pooling, and both learned dense projection layers. The requested task is
+#' deliberately mandatory: EmbeddingGemma was trained with different prompt
+#' contracts for queries, documents, semantic similarity, and other tasks.
+#'
+#' For retrieval, prefer `embeddinggemma_embed_query()` and
+#' `embeddinggemma_embed_document()` so query and document prompts cannot be
+#' confused. Matryoshka dimensions 512, 256, and 128 select the leading
+#' dimensions of the 768-vector and then re-normalize, as specified by the
+#' model card.
+#'
+#' @param model An `EmbeddingGemmaModel` object.
+#' @param text Character vector to embed.
+#' @param task One of `"retrieval_query"`, `"retrieval_document"`,
+#'   `"question_answering"`, `"fact_verification"`, `"classification"`,
+#'   `"clustering"`, `"semantic_similarity"`, `"code_retrieval"`,
+#'   `"summarization"`, or `"raw"`. `"raw"` adds no task prompt and should
+#'   only be used with already formatted model input.
+#' @param title Optional document-title scalar or vector. It is valid only for
+#'   `task = "retrieval_document"`; `NULL` uses the model's `"none"` title.
+#' @param dimensions Output dimension: 768, 512, 256, or 128.
+#' @param normalize L2-normalize each output row. Keep this `TRUE` for cosine
+#'   similarity and Matryoshka embeddings.
+#' @param truncate Truncate overlong inputs to the model's 2048-token context,
+#'   preserving BOS and EOS. If `FALSE`, overlong inputs fail.
+#' @param check_interrupt Poll for R user interrupts during tokenization and
+#'   between bounded packed inference batches.
+#' @return An `embeddingGemmaEmbeddings` numeric matrix with one row per input.
+#'   Its `embedding_info` attribute records prompts, token counts, truncation,
+#'   dimensions, and normalization.
+#' @export
+embeddinggemma_embed <- function(model,
+                                 text,
+                                 task,
+                                 title = NULL,
+                                 dimensions = 768L,
+                                 normalize = TRUE,
+                                 truncate = TRUE,
+                                 check_interrupt = TRUE) {
+  model <- S7::prop(EmbeddingGemmaModelRef(value = list(model)), "value")[[1L]]
+  options <- EmbeddingGemmaOptions(
+    text = text,
+    task = as.character(task),
+    title = title,
+    dimensions = as.numeric(dimensions),
+    normalize = isTRUE(normalize),
+    truncate = isTRUE(truncate),
+    check_interrupt = isTRUE(check_interrupt)
+  )
+  task <- S7::prop(options, "task")
+  formatted <- format_embeddinggemma_input(
+    S7::prop(options, "text"),
+    task,
+    S7::prop(options, "title")
+  )
+  result <- model$embed_batch(
+    formatted,
+    dimensions = S7::prop(options, "dimensions"),
+    normalize = S7::prop(options, "normalize"),
+    truncate = S7::prop(options, "truncate"),
+    check_interrupt = S7::prop(options, "check_interrupt")
+  )
+  embeddings <- result$embeddings
+  rownames(embeddings) <- names(text)
+  attr(embeddings, "embedding_info") <- list(
+    model = "EmbeddingGemma-300M",
+    architecture = "gemma-embedding",
+    source_task = "contrastive text representation learning",
+    task = task,
+    prompt_applied = !identical(task, "raw"),
+    pooling = "attention-mask mean",
+    projection = c(768L, 3072L, 768L),
+    dimensions = as.integer(S7::prop(options, "dimensions")),
+    l2_normalized = S7::prop(options, "normalize"),
+    retrieval_trained = TRUE,
+    context_length = 2048L,
+    token_count = result$token_count,
+    truncated = result$truncated
+  )
+  class(embeddings) <- c("embeddingGemmaEmbeddings", class(embeddings))
+  embeddings
+}
+
+#' Encode retrieval queries with EmbeddingGemma
+#'
+#' @inheritParams embeddinggemma_embed
+#' @return An `embeddingGemmaEmbeddings` numeric matrix.
+#' @export
+embeddinggemma_embed_query <- function(model,
+                                       text,
+                                       dimensions = 768L,
+                                       normalize = TRUE,
+                                       truncate = TRUE,
+                                       check_interrupt = TRUE) {
+  embeddinggemma_embed(
+    model = model,
+    text = text,
+    task = "retrieval_query",
+    dimensions = dimensions,
+    normalize = normalize,
+    truncate = truncate,
+    check_interrupt = check_interrupt
+  )
+}
+
+#' Encode retrieval documents with EmbeddingGemma
+#'
+#' @inheritParams embeddinggemma_embed
+#' @return An `embeddingGemmaEmbeddings` numeric matrix.
+#' @export
+embeddinggemma_embed_document <- function(model,
+                                          text,
+                                          title = NULL,
+                                          dimensions = 768L,
+                                          normalize = TRUE,
+                                          truncate = TRUE,
+                                          check_interrupt = TRUE) {
+  embeddinggemma_embed(
+    model = model,
+    text = text,
+    task = "retrieval_document",
+    title = title,
+    dimensions = dimensions,
+    normalize = normalize,
+    truncate = truncate,
+    check_interrupt = check_interrupt
+  )
+}
+
+#' Tokenize EmbeddingGemma model input
+#'
+#' Applies the same mandatory task formatting as `embeddinggemma_embed()` and
+#' returns the exact BOS/content/EOS token sequence consumed by the encoder.
+#'
+#' @inheritParams embeddinggemma_embed
+#' @return A named list containing integer `ids`, legible token pieces, the
+#'   task-formatted text, and a truncation flag.
+#' @export
+embeddinggemma_tokenize <- function(model,
+                                    text,
+                                    task,
+                                    title = NULL,
+                                    truncate = TRUE) {
+  model <- S7::prop(EmbeddingGemmaModelRef(value = list(model)), "value")[[1L]]
+  options <- EmbeddingGemmaOptions(
+    text = text,
+    task = as.character(task),
+    title = title,
+    dimensions = 768,
+    normalize = TRUE,
+    truncate = isTRUE(truncate),
+    check_interrupt = TRUE
+  )
+  if (length(S7::prop(options, "text")) != 1L) {
+    stop("`text` must be a character scalar for tokenization.", call. = FALSE)
+  }
+  formatted <- format_embeddinggemma_input(
+    S7::prop(options, "text"),
+    S7::prop(options, "task"),
+    S7::prop(options, "title")
+  )
+  out <- model$tokenize(formatted, truncate = S7::prop(options, "truncate"))
+  out$text <- formatted
+  out$task <- S7::prop(options, "task")
+  class(out) <- c("embeddingGemmaTokens", class(out))
+  out
+}
+
 #' Tokenize text with a BebeLM model tokenizer
 #'
 #' @param model A `BebelModel` object.
@@ -1498,6 +1724,39 @@ print.BebelAsyncJob <- function(x, ...) {
   }
   cat("  kind: ", kind, "\n", sep = "")
   cat("  status: ", bebel_async_poll(x), "\n", sep = "")
+  invisible(x)
+}
+
+#' @export
+print.EmbeddingGemmaModel <- function(x, ...) {
+  info <- x$info()
+  cat("<EmbeddingGemmaModel>\n")
+  cat("  architecture: ", info$architecture, "\n", sep = "")
+  cat("  context: ", info$context_length, " tokens\n", sep = "")
+  cat("  dimensions: ", paste(info$dimensions, collapse = ", "), "\n", sep = "")
+  cat("  path: ", info$path, "\n", sep = "")
+  invisible(x)
+}
+
+#' @export
+print.embeddingGemmaEmbeddings <- function(x, ...) {
+  info <- attr(x, "embedding_info")
+  cat("<EmbeddingGemma embeddings>\n")
+  cat("  shape: ", nrow(x), " x ", ncol(x), "\n", sep = "")
+  cat("  task: ", info$task, "\n", sep = "")
+  cat("  normalized: ", format_bebel_yes_no(info$l2_normalized), "\n", sep = "")
+  if (any(info$truncated)) {
+    cat("  truncated inputs: ", sum(info$truncated), "\n", sep = "")
+  }
+  invisible(x)
+}
+
+#' @export
+print.embeddingGemmaTokens <- function(x, ...) {
+  cat("<EmbeddingGemma tokens>\n")
+  cat("  task: ", x$task, "\n", sep = "")
+  cat("  tokens: ", length(x$ids), "\n", sep = "")
+  cat("  truncated: ", format_bebel_yes_no(x$truncated), "\n", sep = "")
   invisible(x)
 }
 

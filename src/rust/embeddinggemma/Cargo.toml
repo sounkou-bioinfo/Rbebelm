@@ -1,0 +1,12 @@
+[package]
+name = "embeddinggemma"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+publish = false
+description = "Pure-Rust CPU inference for EmbeddingGemma GGUF models"
+license = "MIT"
+
+[dependencies]
+bebelm = { path = "../bebelm" }
+rayon = "1"

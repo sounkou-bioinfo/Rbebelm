@@ -1,0 +1,108 @@
+---
+title: "Retrieval embeddings with EmbeddingGemma"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Retrieval embeddings with EmbeddingGemma}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup}
+library(Rbebelm)
+weights_file <- Sys.getenv(
+  "EMBEDDING_GEMMA_WEIGHTS_FILE",
+  "/root/bebelm/embeddinggemma-300M-Q8_0.gguf"
+)
+stopifnot(file.exists(weights_file))
+model <- embeddinggemma_model_load(weights_file, num_threads = 2)
+```
+
+## A separate retrieval model
+
+`BebelModel` and `EmbeddingGemmaModel` deliberately have different APIs.
+LFM2.5 is a causal generator whose intermediate states are exposed only as
+contextual features. EmbeddingGemma is a retrieval-trained, bidirectional text
+encoder whose final vectors are intended for cosine similarity, retrieval,
+clustering, and related representation tasks.
+
+The package's EmbeddingGemma path is implemented in Rust. It reads the GGUF and
+its tokenizer metadata directly, then runs:
+
+1. BOS/content/EOS SentencePiece tokenization;
+2. 24 bidirectional Gemma layers, using five symmetric-window layers followed
+   by one global-attention layer;
+3. final RMSNorm and attention-mask mean pooling;
+4. the learned 768-to-3072 and 3072-to-768 projections; and
+5. optional Matryoshka truncation followed by L2 normalization.
+
+No llama.cpp, PyTorch, ONNX Runtime, or SentencePiece C++ library is linked into
+the package. Oracle tests use the pinned `ggml-org` Q8_0 artifact at revision
+`0f741b5a6585bd53aeb15cd1372c56f2a0f65e12` (SHA-256
+`b5ce9d77a3fc4b3b39ccb5643c36777911cc4eb46a66962eadfa3f5f60490d63`).
+
+## Query and document prompts
+
+EmbeddingGemma was trained with asymmetric retrieval prompts. Use the dedicated
+helpers rather than embedding unformatted query and document strings.
+
+```{r retrieval}
+query <- embeddinggemma_embed_query(model, "Which city is the capital of Mali?")
+passages <- c(
+  mali = "Bamako is the capital and largest city of Mali.",
+  italy = "Rome is the capital city of Italy.",
+  desert = "The Sahara is a desert in northern Africa."
+)
+documents <- embeddinggemma_embed_document(model, passages)
+
+scores <- drop(documents %*% as.numeric(query))
+sort(scores, decreasing = TRUE)
+```
+
+Character-vector inputs are packed into bounded encoder batches to reuse model
+matrix reads. Position and attention boundaries are reset for every element, so
+a batched result is numerically equivalent to encoding each string separately.
+
+Document titles are optional. `NULL` applies the model's literal `title: none`
+prompt; a title scalar is recycled over the input vector.
+
+```{r titles}
+with_titles <- embeddinggemma_embed_document(
+  model,
+  passages[c("mali", "italy")],
+  title = c("Mali", "Italy")
+)
+with_titles
+```
+
+## Other tasks and Matryoshka dimensions
+
+The generic function requires an explicit task so it cannot silently mix
+retrieval-document, retrieval-query, or semantic-similarity prompts.
+
+```{r semantic-matryoshka}
+similarity_embeddings <- embeddinggemma_embed(
+  model,
+  c("A pleasant day", "Beautiful weather"),
+  task = "semantic_similarity",
+  dimensions = 256L
+)
+
+similarity_embeddings %*% t(similarity_embeddings)
+attr(similarity_embeddings, "embedding_info")
+```
+
+Supported dimensions are 768, 512, 256, and 128. Lower-dimensional outputs are
+the leading dimensions of the learned 768-vector and are re-normalized. Index
+and query vectors must always use the same task contract, model artifact,
+dimension, and normalization setting.
+
+## Truncation and provenance
+
+The model context is 2048 tokens including BOS and EOS. By default, longer
+inputs are truncated while preserving those special tokens; set
+`truncate = FALSE` to fail instead. Every result records per-input token counts
+and truncation flags in `embedding_info`.
+
+The package does not distribute model weights. EmbeddingGemma weights remain
+subject to the [Gemma Terms of Use](https://ai.google.dev/gemma/terms) and
+[Gemma Prohibited Use Policy](https://ai.google.dev/gemma/prohibited_use_policy).

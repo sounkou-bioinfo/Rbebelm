@@ -100,4 +100,42 @@ expect_error(BebelTokenStateOptions(
   token_batch_size = 0,
   check_interrupt = TRUE
 ))
+expect_error(EmbeddingGemmaLoadOptions(path = "", num_threads = NULL))
+embedding_options <- EmbeddingGemmaOptions(
+  text = c("one", "two"),
+  task = "retrieval_document",
+  title = "notes",
+  dimensions = 256,
+  normalize = TRUE,
+  truncate = TRUE,
+  check_interrupt = TRUE
+)
+expect_true(S7::S7_inherits(embedding_options, EmbeddingGemmaOptions))
+expect_error(EmbeddingGemmaOptions(
+  text = "one",
+  task = "retrieval_query",
+  title = "not valid for a query",
+  dimensions = 768,
+  normalize = TRUE,
+  truncate = TRUE,
+  check_interrupt = TRUE
+))
+expect_error(EmbeddingGemmaOptions(
+  text = c("one", "two"),
+  task = "retrieval_document",
+  title = c("a", "b", "c"),
+  dimensions = 768,
+  normalize = TRUE,
+  truncate = TRUE,
+  check_interrupt = TRUE
+))
+expect_error(EmbeddingGemmaOptions(
+  text = "one",
+  task = "retrieval_query",
+  title = NULL,
+  dimensions = 64,
+  normalize = TRUE,
+  truncate = TRUE,
+  check_interrupt = TRUE
+))
 expect_error(BebelAsyncEventDrainOptions(max = -1))

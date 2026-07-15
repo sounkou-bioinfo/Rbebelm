@@ -44,3 +44,9 @@ SEXP savvy_BebelModel_load__ffi(SEXP c_arg__path, SEXP c_arg__num_threads);
 SEXP savvy_BebelModel_pooled_states__ffi(SEXP self__, SEXP c_arg__text, SEXP c_arg__add_bos, SEXP c_arg__normalize, SEXP c_arg__pooling);
 SEXP savvy_BebelModel_pooled_states_batch__ffi(SEXP self__, SEXP c_arg__text, SEXP c_arg__add_bos, SEXP c_arg__normalize, SEXP c_arg__pooling, SEXP c_arg__check_interrupt, SEXP c_arg__token_batch_size, SEXP c_arg__sequence_batch_size);
 SEXP savvy_BebelModel_token_states__ffi(SEXP self__, SEXP c_arg__text, SEXP c_arg__add_bos, SEXP c_arg__normalize, SEXP c_arg__check_interrupt, SEXP c_arg__token_batch_size);
+
+// methods and associated functions for EmbeddingGemmaModel
+SEXP savvy_EmbeddingGemmaModel_embed_batch__ffi(SEXP self__, SEXP c_arg__text, SEXP c_arg__dimensions, SEXP c_arg__normalize, SEXP c_arg__truncate, SEXP c_arg__check_interrupt);
+SEXP savvy_EmbeddingGemmaModel_info__ffi(SEXP self__);
+SEXP savvy_EmbeddingGemmaModel_load__ffi(SEXP c_arg__path, SEXP c_arg__num_threads);
+SEXP savvy_EmbeddingGemmaModel_tokenize__ffi(SEXP self__, SEXP c_arg__text, SEXP c_arg__truncate);
