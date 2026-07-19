@@ -70,37 +70,9 @@ expect_error(BebelGenerationOptions(
   repeat_penalty = NULL
 ))
 expect_error(BebelTokenizeOptions(add_bos = NA))
-expect_error(BebelPooledStateOptions(
-  add_bos = TRUE,
-  normalize = TRUE,
-  pooling = "weighted_mean",
-  token_batch_size = 0,
-  sequence_batch_size = 1,
-  check_interrupt = TRUE
-))
-expect_error(BebelPooledStateOptions(
-  add_bos = TRUE,
-  normalize = TRUE,
-  pooling = "weighted_mean",
-  token_batch_size = 1,
-  sequence_batch_size = 0,
-  check_interrupt = TRUE
-))
-expect_error(BebelPooledStateOptions(
-  add_bos = TRUE,
-  normalize = TRUE,
-  pooling = "unsupported",
-  token_batch_size = 1,
-  sequence_batch_size = 1,
-  check_interrupt = TRUE
-))
-expect_error(BebelTokenStateOptions(
-  add_bos = FALSE,
-  normalize = TRUE,
-  token_batch_size = 0,
-  check_interrupt = TRUE
-))
 expect_error(EmbeddingGemmaLoadOptions(path = "", num_threads = NULL))
+expect_error(ColbertModelLoadOptions(path = "", num_threads = NULL))
+expect_error(ColbertModelLoadOptions(path = "model.gguf", num_threads = 0))
 embedding_options <- EmbeddingGemmaOptions(
   text = c("one", "two"),
   task = "retrieval_document",

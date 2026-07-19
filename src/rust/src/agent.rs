@@ -49,7 +49,7 @@ impl BebelAgent {
         Ok(Self {
             model: Arc::clone(&model.inner),
             model_path: model.path.clone(),
-            cache: Cache::new(),
+            cache: model.inner.new_cache(),
             sampler: opts.sampler,
             history: Vec::new(),
             max_gen: opts.max_gen,
@@ -207,7 +207,7 @@ impl BebelAgent {
     /// @export
     fn clear(&mut self) -> savvy::Result<savvy::Sexp> {
         self.history.clear();
-        self.cache = Cache::new();
+        self.cache = self.model.new_cache();
         self.sampler.reset();
         self.info()
     }

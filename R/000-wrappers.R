@@ -328,24 +328,6 @@ class(`BebelAsyncJob`) <- c("Rbebelm::BebelAsyncJob__bundle", "savvy_Rbebelm__se
   }
 }
 
-`BebelModel_pooled_states` <- function(self) {
-  function(`text`, `add_bos`, `normalize`, `pooling`) {
-    .Call(savvy_BebelModel_pooled_states__impl, `self`, `text`, `add_bos`, `normalize`, `pooling`)
-  }
-}
-
-`BebelModel_pooled_states_batch` <- function(self) {
-  function(`text`, `add_bos`, `normalize`, `pooling`, `check_interrupt`, `token_batch_size` = NULL, `sequence_batch_size` = NULL) {
-    .Call(savvy_BebelModel_pooled_states_batch__impl, `self`, `text`, `add_bos`, `normalize`, `pooling`, `check_interrupt`, `token_batch_size`, `sequence_batch_size`)
-  }
-}
-
-`BebelModel_token_states` <- function(self) {
-  function(`text`, `add_bos`, `normalize`, `check_interrupt`, `token_batch_size` = NULL) {
-    .Call(savvy_BebelModel_token_states__impl, `self`, `text`, `add_bos`, `normalize`, `check_interrupt`, `token_batch_size`)
-  }
-}
-
 `.savvy_wrap_BebelModel` <- function(ptr) {
   e <- new.env(parent = emptyenv())
   e$.ptr <- ptr
@@ -356,16 +338,13 @@ class(`BebelAsyncJob`) <- c("Rbebelm::BebelAsyncJob__bundle", "savvy_Rbebelm__se
   e$`generate` <- `BebelModel_generate`(ptr)
   e$`generate_async` <- `BebelModel_generate_async`(ptr)
   e$`info` <- `BebelModel_info`(ptr)
-  e$`pooled_states` <- `BebelModel_pooled_states`(ptr)
-  e$`pooled_states_batch` <- `BebelModel_pooled_states_batch`(ptr)
-  e$`token_states` <- `BebelModel_token_states`(ptr)
 
   class(e) <- c("Rbebelm::BebelModel", "BebelModel", "savvy_Rbebelm__sealed")
   e
 }
 
 
-#' Loaded BebeLM GGUF model.
+#' Loaded BebeLM GGUF generation model.
 #' @export
 `BebelModel` <- new.env(parent = emptyenv())
 
@@ -381,6 +360,111 @@ class(`BebelModel`) <- c("Rbebelm::BebelModel__bundle", "savvy_Rbebelm__sealed")
 #' @export
 `print.Rbebelm::BebelModel__bundle` <- function(x, ...) {
   cat('Rbebelm::BebelModel\n')
+}
+
+### wrapper functions for ColbertEmbeddings
+
+`ColbertEmbeddings_ids` <- function(self) {
+  function() {
+    .Call(savvy_ColbertEmbeddings_ids__impl, `self`)
+  }
+}
+
+`ColbertEmbeddings_info` <- function(self) {
+  function() {
+    .Call(savvy_ColbertEmbeddings_info__impl, `self`)
+  }
+}
+
+`ColbertEmbeddings_maxsim` <- function(self) {
+  function(`document`) {
+    `document` <- .savvy_extract_ptr(`document`, "Rbebelm::ColbertEmbeddings")
+    .Call(savvy_ColbertEmbeddings_maxsim__impl, `self`, `document`)
+  }
+}
+
+`ColbertEmbeddings_vectors` <- function(self) {
+  function() {
+    .Call(savvy_ColbertEmbeddings_vectors__impl, `self`)
+  }
+}
+
+`.savvy_wrap_ColbertEmbeddings` <- function(ptr) {
+  e <- new.env(parent = emptyenv())
+  e$.ptr <- ptr
+  e$`ids` <- `ColbertEmbeddings_ids`(ptr)
+  e$`info` <- `ColbertEmbeddings_info`(ptr)
+  e$`maxsim` <- `ColbertEmbeddings_maxsim`(ptr)
+  e$`vectors` <- `ColbertEmbeddings_vectors`(ptr)
+
+  class(e) <- c("Rbebelm::ColbertEmbeddings", "ColbertEmbeddings", "savvy_Rbebelm__sealed")
+  e
+}
+
+
+#' One query or document's L2-normalized ColBERT token vectors.
+#' @export
+`ColbertEmbeddings` <- new.env(parent = emptyenv())
+
+### associated functions for ColbertEmbeddings
+
+
+
+class(`ColbertEmbeddings`) <- c("Rbebelm::ColbertEmbeddings__bundle", "savvy_Rbebelm__sealed")
+
+#' @export
+`print.Rbebelm::ColbertEmbeddings__bundle` <- function(x, ...) {
+  cat('Rbebelm::ColbertEmbeddings\n')
+}
+
+### wrapper functions for ColbertModel
+
+`ColbertModel_encode_document` <- function(self) {
+  function(`text`) {
+    .savvy_wrap_ColbertEmbeddings(.Call(savvy_ColbertModel_encode_document__impl, `self`, `text`))
+  }
+}
+
+`ColbertModel_encode_query` <- function(self) {
+  function(`text`) {
+    .savvy_wrap_ColbertEmbeddings(.Call(savvy_ColbertModel_encode_query__impl, `self`, `text`))
+  }
+}
+
+`ColbertModel_info` <- function(self) {
+  function() {
+    .Call(savvy_ColbertModel_info__impl, `self`)
+  }
+}
+
+`.savvy_wrap_ColbertModel` <- function(ptr) {
+  e <- new.env(parent = emptyenv())
+  e$.ptr <- ptr
+  e$`encode_document` <- `ColbertModel_encode_document`(ptr)
+  e$`encode_query` <- `ColbertModel_encode_query`(ptr)
+  e$`info` <- `ColbertModel_info`(ptr)
+
+  class(e) <- c("Rbebelm::ColbertModel", "ColbertModel", "savvy_Rbebelm__sealed")
+  e
+}
+
+
+#' Loaded LFM2.5-ColBERT GGUF model.
+#' @export
+`ColbertModel` <- new.env(parent = emptyenv())
+
+### associated functions for ColbertModel
+
+`ColbertModel`$`load` <- function(`path`, `num_threads` = NULL) {
+  .savvy_wrap_ColbertModel(.Call(savvy_ColbertModel_load__impl, `path`, `num_threads`))
+}
+
+
+class(`ColbertModel`) <- c("Rbebelm::ColbertModel__bundle", "savvy_Rbebelm__sealed")
+
+#' @export
+`print.Rbebelm::ColbertModel__bundle` <- function(x, ...) {
+  cat('Rbebelm::ColbertModel\n')
 }
 
 ### wrapper functions for EmbeddingGemmaModel

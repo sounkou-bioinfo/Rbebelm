@@ -1,0 +1,64 @@
+---
+title: "Late-interaction retrieval with ColBERT"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Late-interaction retrieval with ColBERT}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup}
+library(Rbebelm)
+weights_file <- Sys.getenv("COLBERT_WEIGHTS_FILE", "/root/bebelm/LFM2.5-ColBERT-350M-Q4_K_M.gguf")
+stopifnot(file.exists(weights_file))
+model <- colbert_model_load(weights_file, num_threads = 2)
+```
+
+`LFM2.5-ColBERT-350M` is a retrieval-trained, non-causal encoder. Unlike a
+dense embedding model, it preserves a matrix of vectors: one L2-normalized
+128-dimensional row for each query or retained document token. Retrieval uses
+ColBERT's late-interaction MaxSim operation:
+
+\[
+\operatorname{score}(q, d) = \sum_i \max_j q_i^\top d_j.
+\]
+
+## Query and document contracts
+
+The native profile implements the release contract: `[Q] ` and `[D] ` prefixes,
+a 32-position query (including learned PAD expansion positions), a 512-position
+document, published document punctuation filtering, a learned dense projection,
+and per-token L2 normalization. These are model semantics, not caller options.
+
+```{r encode}
+query <- colbert_encode_query(model, "capital of Mali")
+document <- colbert_encode_document(
+  model,
+  "Bamako is the capital and largest city of Mali."
+)
+
+colbert_embeddings_info(query)
+colbert_embeddings_info(document)
+head(colbert_embedding_ids(document))
+head(colbert_embedding_vectors(document))
+colbert_maxsim(query, document)
+```
+
+## Exact candidate ranking
+
+`colbert_rank()` is a small exact scorer for re-ranking candidate documents.
+It deliberately does not claim to be an ANN or compressed late-interaction
+index; a production corpus should be indexed by a system that preserves this
+same model and preprocessing contract.
+
+```{r rank}
+colbert_rank(
+  model,
+  "capital of Mali",
+  c(
+    mali = "Bamako is the capital and largest city of Mali.",
+    italy = "Rome is the capital city of Italy.",
+    desert = "The Sahara is a desert in northern Africa."
+  )
+)
+```

@@ -19,12 +19,22 @@ reference:
       - BebelModelLoadOptions
       - BebelScalarText
       - BebelTokenizeOptions
-  - title: Contextual states
+  - title: Late-interaction retrieval with ColBERT
     contents:
-      - bebel_pooled_states
-      - bebel_token_states
-      - BebelPooledStateOptions
-      - BebelTokenStateOptions
+      - colbert_model_load
+      - colbert_model_info
+      - colbert_encode_query
+      - colbert_encode_document
+      - colbert_embeddings_info
+      - colbert_embedding_ids
+      - colbert_embedding_vectors
+      - colbert_maxsim
+      - colbert_rank
+      - ColbertModel
+      - ColbertModelRef
+      - ColbertModelLoadOptions
+      - ColbertEmbeddings
+      - ColbertEmbeddingsRef
   - title: Retrieval embeddings with EmbeddingGemma
     contents:
       - embeddinggemma_model_load
@@ -107,7 +117,7 @@ articles:
     navbar: ~
     contents:
       - getting-started
-      - contextual-states
+      - colbert
       - embeddinggemma
       - agents-and-tools
       - backend-and-webr

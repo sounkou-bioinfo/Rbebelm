@@ -69,6 +69,40 @@ pub fn conv_prefill(
     }
 }
 
+/// Non-causal centered depthwise convolution over one complete sequence.
+///
+/// LFM2 encoders set `attention.causal = false`. For an odd-length filter this uses a centered
+/// window with zero-padding at both sequence boundaries. GGML's `ssm_conv` consumes filter tap
+/// `k` at relative position `k - (l_cache - 1) / 2`; this is the non-causal path in llama.cpp's
+/// LFM2 graph builder.
+pub fn conv_centered(
+    bx: &[f32],
+    weight: &[f32],
+    channels: usize,
+    l_cache: usize,
+    n_tokens: usize,
+    out: &mut [f32],
+) {
+    debug_assert!(l_cache % 2 == 1, "centered conv needs an odd kernel");
+    debug_assert_eq!(bx.len(), n_tokens * channels);
+    debug_assert_eq!(weight.len(), channels * l_cache);
+    debug_assert_eq!(out.len(), n_tokens * channels);
+
+    let radius = l_cache / 2;
+    for token in 0..n_tokens {
+        for channel in 0..channels {
+            let mut sum = 0.0;
+            for tap in 0..l_cache {
+                let source = token as isize + tap as isize - radius as isize;
+                if source >= 0 && (source as usize) < n_tokens {
+                    sum += weight[channel * l_cache + tap] * bx[source as usize * channels + channel];
+                }
+            }
+            out[token * channels + channel] = sum;
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -141,5 +175,15 @@ mod tests {
         // out[0] = w[0][1]*1 + w[0][0]*10 = 2 + 10 = 12
         // out[1] = w[1][1]*1 + w[1][0]*20 = 4 + 60 = 64
         assert_eq!(out, [12.0, 64.0]);
+    }
+
+    #[test]
+    fn centered_alignment_zero_pads_edges() {
+        // One channel, a 3-wide filter, tokens [2, 3, 5].
+        let bx = [2.0f32, 3.0, 5.0];
+        let weight = [10.0f32, 100.0, 1000.0];
+        let mut out = [0.0f32; 3];
+        conv_centered(&bx, &weight, 1, 3, 3, &mut out);
+        assert_eq!(out, [10.0 * 0.0 + 100.0 * 2.0 + 1000.0 * 3.0, 10.0 * 2.0 + 100.0 * 3.0 + 1000.0 * 5.0, 10.0 * 3.0 + 100.0 * 5.0]);
     }
 }

@@ -36,7 +36,7 @@ pub fn run_generation_with_events(
     event_queue: Option<&EventQueue>,
     cancel_flag: Option<&CancelFlag>,
 ) -> savvy::Result<Turn> {
-    let mut cache = Cache::new();
+    let mut cache = model.new_cache();
     let mut history = history;
     run_state(
         model,

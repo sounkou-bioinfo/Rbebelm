@@ -129,20 +129,30 @@ typedef SEXP (*fn_036)(SEXP);
 static fn_036 p_036 = NULL;
 typedef SEXP (*fn_037)(SEXP, SEXP);
 static fn_037 p_037 = NULL;
-typedef SEXP (*fn_038)(SEXP, SEXP, SEXP, SEXP, SEXP);
+typedef SEXP (*fn_038)(SEXP);
 static fn_038 p_038 = NULL;
-typedef SEXP (*fn_039)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+typedef SEXP (*fn_039)(SEXP);
 static fn_039 p_039 = NULL;
-typedef SEXP (*fn_040)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+typedef SEXP (*fn_040)(SEXP, SEXP);
 static fn_040 p_040 = NULL;
-typedef SEXP (*fn_041)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+typedef SEXP (*fn_041)(SEXP);
 static fn_041 p_041 = NULL;
-typedef SEXP (*fn_042)(SEXP);
+typedef SEXP (*fn_042)(SEXP, SEXP);
 static fn_042 p_042 = NULL;
 typedef SEXP (*fn_043)(SEXP, SEXP);
 static fn_043 p_043 = NULL;
-typedef SEXP (*fn_044)(SEXP, SEXP, SEXP);
+typedef SEXP (*fn_044)(SEXP);
 static fn_044 p_044 = NULL;
+typedef SEXP (*fn_045)(SEXP, SEXP);
+static fn_045 p_045 = NULL;
+typedef SEXP (*fn_046)(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+static fn_046 p_046 = NULL;
+typedef SEXP (*fn_047)(SEXP);
+static fn_047 p_047 = NULL;
+typedef SEXP (*fn_048)(SEXP, SEXP);
+static fn_048 p_048 = NULL;
+typedef SEXP (*fn_049)(SEXP, SEXP, SEXP);
+static fn_049 p_049 = NULL;
 
 #ifdef __EMSCRIPTEN__
 static void bind_static_backend_symbols(void) {
@@ -183,13 +193,18 @@ static void bind_static_backend_symbols(void) {
     p_035 = (fn_035)savvy_BebelModel_generate_async__ffi;
     p_036 = (fn_036)savvy_BebelModel_info__ffi;
     p_037 = (fn_037)savvy_BebelModel_load__ffi;
-    p_038 = (fn_038)savvy_BebelModel_pooled_states__ffi;
-    p_039 = (fn_039)savvy_BebelModel_pooled_states_batch__ffi;
-    p_040 = (fn_040)savvy_BebelModel_token_states__ffi;
-    p_041 = (fn_041)savvy_EmbeddingGemmaModel_embed_batch__ffi;
-    p_042 = (fn_042)savvy_EmbeddingGemmaModel_info__ffi;
-    p_043 = (fn_043)savvy_EmbeddingGemmaModel_load__ffi;
-    p_044 = (fn_044)savvy_EmbeddingGemmaModel_tokenize__ffi;
+    p_038 = (fn_038)savvy_ColbertEmbeddings_ids__ffi;
+    p_039 = (fn_039)savvy_ColbertEmbeddings_info__ffi;
+    p_040 = (fn_040)savvy_ColbertEmbeddings_maxsim__ffi;
+    p_041 = (fn_041)savvy_ColbertEmbeddings_vectors__ffi;
+    p_042 = (fn_042)savvy_ColbertModel_encode_document__ffi;
+    p_043 = (fn_043)savvy_ColbertModel_encode_query__ffi;
+    p_044 = (fn_044)savvy_ColbertModel_info__ffi;
+    p_045 = (fn_045)savvy_ColbertModel_load__ffi;
+    p_046 = (fn_046)savvy_EmbeddingGemmaModel_embed_batch__ffi;
+    p_047 = (fn_047)savvy_EmbeddingGemmaModel_info__ffi;
+    p_048 = (fn_048)savvy_EmbeddingGemmaModel_load__ffi;
+    p_049 = (fn_049)savvy_EmbeddingGemmaModel_tokenize__ffi;
 }
 #endif
 
@@ -575,13 +590,18 @@ static int try_load_backend(const char *backend, char *err, size_t err_size) {
     p_035 = (fn_035)load_symbol(handle, "savvy_BebelModel_generate_async__ffi");
     p_036 = (fn_036)load_symbol(handle, "savvy_BebelModel_info__ffi");
     p_037 = (fn_037)load_symbol(handle, "savvy_BebelModel_load__ffi");
-    p_038 = (fn_038)load_symbol(handle, "savvy_BebelModel_pooled_states__ffi");
-    p_039 = (fn_039)load_symbol(handle, "savvy_BebelModel_pooled_states_batch__ffi");
-    p_040 = (fn_040)load_symbol(handle, "savvy_BebelModel_token_states__ffi");
-    p_041 = (fn_041)load_symbol(handle, "savvy_EmbeddingGemmaModel_embed_batch__ffi");
-    p_042 = (fn_042)load_symbol(handle, "savvy_EmbeddingGemmaModel_info__ffi");
-    p_043 = (fn_043)load_symbol(handle, "savvy_EmbeddingGemmaModel_load__ffi");
-    p_044 = (fn_044)load_symbol(handle, "savvy_EmbeddingGemmaModel_tokenize__ffi");
+    p_038 = (fn_038)load_symbol(handle, "savvy_ColbertEmbeddings_ids__ffi");
+    p_039 = (fn_039)load_symbol(handle, "savvy_ColbertEmbeddings_info__ffi");
+    p_040 = (fn_040)load_symbol(handle, "savvy_ColbertEmbeddings_maxsim__ffi");
+    p_041 = (fn_041)load_symbol(handle, "savvy_ColbertEmbeddings_vectors__ffi");
+    p_042 = (fn_042)load_symbol(handle, "savvy_ColbertModel_encode_document__ffi");
+    p_043 = (fn_043)load_symbol(handle, "savvy_ColbertModel_encode_query__ffi");
+    p_044 = (fn_044)load_symbol(handle, "savvy_ColbertModel_info__ffi");
+    p_045 = (fn_045)load_symbol(handle, "savvy_ColbertModel_load__ffi");
+    p_046 = (fn_046)load_symbol(handle, "savvy_EmbeddingGemmaModel_embed_batch__ffi");
+    p_047 = (fn_047)load_symbol(handle, "savvy_EmbeddingGemmaModel_info__ffi");
+    p_048 = (fn_048)load_symbol(handle, "savvy_EmbeddingGemmaModel_load__ffi");
+    p_049 = (fn_049)load_symbol(handle, "savvy_EmbeddingGemmaModel_tokenize__ffi");
     snprintf(selected_backend, sizeof(selected_backend), "%s", backend);
     backend_loaded = 1;
     return 1;
@@ -677,13 +697,18 @@ SEXP Rbebelm_BebelModel_generate_ffi(SEXP self__, SEXP c_arg__prompt, SEXP c_arg
 SEXP Rbebelm_BebelModel_generate_async_ffi(SEXP self__, SEXP c_arg__prompt, SEXP c_arg__greedy, SEXP c_arg__max_gen, SEXP c_arg__max_context, SEXP c_arg__max_think, SEXP c_arg__temperature, SEXP c_arg__top_k, SEXP c_arg__repeat_penalty) { Rbebelm_init_backend(); return p_035(self__, c_arg__prompt, c_arg__greedy, c_arg__max_gen, c_arg__max_context, c_arg__max_think, c_arg__temperature, c_arg__top_k, c_arg__repeat_penalty); }
 SEXP Rbebelm_BebelModel_info_ffi(SEXP self__) { Rbebelm_init_backend(); return p_036(self__); }
 SEXP Rbebelm_BebelModel_load_ffi(SEXP c_arg__path, SEXP c_arg__num_threads) { Rbebelm_init_backend(); return p_037(c_arg__path, c_arg__num_threads); }
-SEXP Rbebelm_BebelModel_pooled_states_ffi(SEXP self__, SEXP c_arg__text, SEXP c_arg__add_bos, SEXP c_arg__normalize, SEXP c_arg__pooling) { Rbebelm_init_backend(); return p_038(self__, c_arg__text, c_arg__add_bos, c_arg__normalize, c_arg__pooling); }
-SEXP Rbebelm_BebelModel_pooled_states_batch_ffi(SEXP self__, SEXP c_arg__text, SEXP c_arg__add_bos, SEXP c_arg__normalize, SEXP c_arg__pooling, SEXP c_arg__check_interrupt, SEXP c_arg__token_batch_size, SEXP c_arg__sequence_batch_size) { Rbebelm_init_backend(); return p_039(self__, c_arg__text, c_arg__add_bos, c_arg__normalize, c_arg__pooling, c_arg__check_interrupt, c_arg__token_batch_size, c_arg__sequence_batch_size); }
-SEXP Rbebelm_BebelModel_token_states_ffi(SEXP self__, SEXP c_arg__text, SEXP c_arg__add_bos, SEXP c_arg__normalize, SEXP c_arg__check_interrupt, SEXP c_arg__token_batch_size) { Rbebelm_init_backend(); return p_040(self__, c_arg__text, c_arg__add_bos, c_arg__normalize, c_arg__check_interrupt, c_arg__token_batch_size); }
-SEXP Rbebelm_EmbeddingGemmaModel_embed_batch_ffi(SEXP self__, SEXP c_arg__text, SEXP c_arg__dimensions, SEXP c_arg__normalize, SEXP c_arg__truncate, SEXP c_arg__check_interrupt) { Rbebelm_init_backend(); return p_041(self__, c_arg__text, c_arg__dimensions, c_arg__normalize, c_arg__truncate, c_arg__check_interrupt); }
-SEXP Rbebelm_EmbeddingGemmaModel_info_ffi(SEXP self__) { Rbebelm_init_backend(); return p_042(self__); }
-SEXP Rbebelm_EmbeddingGemmaModel_load_ffi(SEXP c_arg__path, SEXP c_arg__num_threads) { Rbebelm_init_backend(); return p_043(c_arg__path, c_arg__num_threads); }
-SEXP Rbebelm_EmbeddingGemmaModel_tokenize_ffi(SEXP self__, SEXP c_arg__text, SEXP c_arg__truncate) { Rbebelm_init_backend(); return p_044(self__, c_arg__text, c_arg__truncate); }
+SEXP Rbebelm_ColbertEmbeddings_ids_ffi(SEXP self__) { Rbebelm_init_backend(); return p_038(self__); }
+SEXP Rbebelm_ColbertEmbeddings_info_ffi(SEXP self__) { Rbebelm_init_backend(); return p_039(self__); }
+SEXP Rbebelm_ColbertEmbeddings_maxsim_ffi(SEXP self__, SEXP c_arg__document) { Rbebelm_init_backend(); return p_040(self__, c_arg__document); }
+SEXP Rbebelm_ColbertEmbeddings_vectors_ffi(SEXP self__) { Rbebelm_init_backend(); return p_041(self__); }
+SEXP Rbebelm_ColbertModel_encode_document_ffi(SEXP self__, SEXP c_arg__text) { Rbebelm_init_backend(); return p_042(self__, c_arg__text); }
+SEXP Rbebelm_ColbertModel_encode_query_ffi(SEXP self__, SEXP c_arg__text) { Rbebelm_init_backend(); return p_043(self__, c_arg__text); }
+SEXP Rbebelm_ColbertModel_info_ffi(SEXP self__) { Rbebelm_init_backend(); return p_044(self__); }
+SEXP Rbebelm_ColbertModel_load_ffi(SEXP c_arg__path, SEXP c_arg__num_threads) { Rbebelm_init_backend(); return p_045(c_arg__path, c_arg__num_threads); }
+SEXP Rbebelm_EmbeddingGemmaModel_embed_batch_ffi(SEXP self__, SEXP c_arg__text, SEXP c_arg__dimensions, SEXP c_arg__normalize, SEXP c_arg__truncate, SEXP c_arg__check_interrupt) { Rbebelm_init_backend(); return p_046(self__, c_arg__text, c_arg__dimensions, c_arg__normalize, c_arg__truncate, c_arg__check_interrupt); }
+SEXP Rbebelm_EmbeddingGemmaModel_info_ffi(SEXP self__) { Rbebelm_init_backend(); return p_047(self__); }
+SEXP Rbebelm_EmbeddingGemmaModel_load_ffi(SEXP c_arg__path, SEXP c_arg__num_threads) { Rbebelm_init_backend(); return p_048(c_arg__path, c_arg__num_threads); }
+SEXP Rbebelm_EmbeddingGemmaModel_tokenize_ffi(SEXP self__, SEXP c_arg__text, SEXP c_arg__truncate) { Rbebelm_init_backend(); return p_049(self__, c_arg__text, c_arg__truncate); }
 
 SEXP Rbebelm_set_backend_impl(SEXP backend_s) {
     if (TYPEOF(backend_s) != STRSXP || XLENGTH(backend_s) != 1 || STRING_ELT(backend_s, 0) == NA_STRING) {

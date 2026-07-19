@@ -76,6 +76,20 @@ pub struct Tokenizer {
 impl Tokenizer {
     /// Build from a loaded GGUF's `tokenizer.ggml.*` metadata.
     pub fn from_gguf(g: &GgufFile) -> Result<Tokenizer, Box<dyn Error>> {
+        Self::from_gguf_impl(g, true)
+    }
+
+    /// Build a GPT-2 tokenizer without imposing BebeLM's generation-token id contract.
+    ///
+    /// Retrieval profiles can use the same tokenizer family while assigning control tokens to
+    /// different ids (for example LFM2.5-ColBERT uses PAD=7 and BOS=1). They still get atomic
+    /// handling for every GGUF-declared control token; only the chat/generation-specific id
+    /// assertion is skipped.
+    pub fn from_gguf_relaxed(g: &GgufFile) -> Result<Tokenizer, Box<dyn Error>> {
+        Self::from_gguf_impl(g, false)
+    }
+
+    fn from_gguf_impl(g: &GgufFile, require_bebelm_special_ids: bool) -> Result<Tokenizer, Box<dyn Error>> {
         let model = g.get_str("tokenizer.ggml.model").unwrap_or("");
         if model != "gpt2" {
             return Err(format!("unsupported tokenizer model {model:?} (expected gpt2)").into());
@@ -101,11 +115,14 @@ impl Tokenizer {
             }
         }
 
-        // Validate the named control tokens against the file before trusting their ids.
-        for &(lit, id) in SPECIAL_TOKENS {
-            let got = id_to_token.get(id as usize).map(String::as_str);
-            if got != Some(lit) {
-                return Err(format!("special token id {id}: expected {lit:?}, got {got:?}").into());
+        if require_bebelm_special_ids {
+            // Validate the named control tokens against the generation profile before trusting
+            // its ChatML helpers. Other profiles use the relaxed constructor above.
+            for &(lit, id) in SPECIAL_TOKENS {
+                let got = id_to_token.get(id as usize).map(String::as_str);
+                if got != Some(lit) {
+                    return Err(format!("special token id {id}: expected {lit:?}, got {got:?}").into());
+                }
             }
         }
 
@@ -133,6 +150,11 @@ impl Tokenizer {
 
     pub fn vocab_size(&self) -> usize {
         self.id_to_token.len()
+    }
+
+    /// Look up a literal token in the GGUF vocabulary.
+    pub fn token_id(&self, token: &str) -> Option<u32> {
+        self.token_to_id.get(token).copied()
     }
 
     /// Encode text to token ids, optionally prepending BOS. Any special-token literal in `text`

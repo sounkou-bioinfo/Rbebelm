@@ -1,10 +1,12 @@
-//! bebelm — CPU-only, pure-Rust inference for Liquid AI LFM2.5-8B-A1B (Q4_K_M).
+//! bebelm — curated CPU-only, pure-Rust inference profiles for GGUF models.
 //!
 //! Library surface: the GGUF loader, dtype/block sizing, and the compute kernels. The
 //! `bebelm` binary (`src/main.rs`) is a thin CLI over this crate.
 
 pub mod agent;
+pub mod architecture;
 pub mod cache;
+pub mod colbert;
 pub mod config;
 pub mod gguf;
 pub mod kernels;

@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::path::Path;
 
+use crate::architecture::{self, Architecture};
 use crate::config::{
     self, CONV_L_CACHE, DENSE_FF, HEAD_DIM, HIDDEN, KV_DIM, MOE_FF, N_EXPERTS, N_EXPERTS_USED,
     N_HEADS, N_KV_HEADS, N_LAYERS, RMS_EPS, ROPE_THETA, VOCAB,
@@ -25,6 +26,7 @@ use crate::tokenizer::Tokenizer;
 /// A loaded, validated model: the mmapped GGUF plus a name → tensor index, plus the small
 /// F32 tensors (norm gains, conv filters, expert biases) pre-dequantized once (9b).
 pub struct Model {
+    architecture: Architecture,
     gguf: GgufFile,
     by_name: HashMap<String, usize>,
     f32_cache: HashMap<String, Vec<f32>>,
@@ -35,7 +37,7 @@ impl Model {
     /// Open, validate config, and check that all expected tensors are present and shaped.
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Model, Box<dyn Error>> {
         let gguf = GgufFile::open(path)?;
-        config::validate(&gguf)?;
+        let architecture = architecture::select(&gguf)?;
         let by_name = gguf
             .tensors
             .iter()
@@ -43,7 +45,7 @@ impl Model {
             .map(|(i, t)| (t.name.clone(), i))
             .collect();
         let tokenizer = Tokenizer::from_gguf(&gguf)?;
-        let mut model = Model { gguf, by_name, f32_cache: HashMap::new(), tokenizer };
+        let mut model = Model { architecture, gguf, by_name, f32_cache: HashMap::new(), tokenizer };
         model.check_tensors()?;
         model.precompute_f32();
         Ok(model)
@@ -90,6 +92,38 @@ impl Model {
         &self.tokenizer
     }
 
+    /// The validated architecture profile selected from GGUF metadata.
+    pub const fn architecture(&self) -> Architecture {
+        self.architecture
+    }
+
+    /// Stable identifier for the validated execution profile.
+    pub const fn profile_name(&self) -> &'static str {
+        self.architecture.profile_name()
+    }
+
+    /// Width of the final hidden state exposed by this profile.
+    pub const fn hidden_size(&self) -> usize {
+        match self.architecture {
+            Architecture::Lfm2Moe => HIDDEN,
+        }
+    }
+
+    /// Allocate decode state that is compatible with this loaded model.
+    pub fn new_cache(&self) -> Cache {
+        Cache::for_architecture(self.architecture)
+    }
+
+    fn assert_cache_compatible(&self, cache: &Cache) {
+        assert_eq!(
+            cache.architecture(),
+            self.architecture,
+            "cache profile {} is incompatible with model profile {}",
+            cache.architecture().profile_name(),
+            self.profile_name(),
+        );
+    }
+
     // --- forward pass (single-token, cached) ---
 
     /// Process one token at position `cache.pos`, update the caches, and return its
@@ -110,6 +144,7 @@ impl Model {
     /// `cache.pos`), returning the final hidden state — *without* the logits projection.
     /// Used for prefill tokens whose logits aren't needed (9a).
     pub(crate) fn run_layers(&self, token: u32, cache: &mut Cache) -> Vec<f32> {
+        self.assert_cache_compatible(cache);
         let pos = cache.pos;
         let mut h = vec![0.0f32; HIDDEN];
         self.embed_token(token, &mut h);
@@ -152,6 +187,7 @@ impl Model {
     /// The caller must ensure the batch does not overflow the KV window (no mid-batch sliding);
     /// [`crate::agent::Agent`] only batches when the whole prompt fits, falling back otherwise.
     pub(crate) fn run_layers_batch(&self, tokens: &[u32], cache: &mut Cache) -> Vec<f32> {
+        self.assert_cache_compatible(cache);
         let t = tokens.len();
         let pos0 = cache.pos;
         let mut h = vec![0.0f32; t * HIDDEN];
@@ -196,6 +232,9 @@ impl Model {
     /// `(token, cache)` pair, without letting one sequence attend to another.
     pub fn hidden_independent_batch(&self, tokens: &[u32], caches: &mut [&mut Cache]) -> Vec<f32> {
         assert_eq!(tokens.len(), caches.len(), "hidden_independent_batch: one cache per token");
+        for cache in caches.iter() {
+            self.assert_cache_compatible(cache);
+        }
         let t = tokens.len();
         let positions: Vec<usize> = caches.iter().map(|cache| cache.pos).collect();
         let mut h = vec![0.0f32; t * HIDDEN];
@@ -719,7 +758,7 @@ impl Model {
 
     /// Verify every tensor the forward pass will need exists with the expected shape.
     fn check_tensors(&self) -> Result<(), Box<dyn Error>> {
-        for (name, shape) in expected_tensors() {
+        for (name, shape) in expected_tensors_for(self.architecture) {
             let t = self
                 .tensor(&name)
                 .ok_or_else(|| format!("missing tensor {name}"))?;
@@ -766,6 +805,17 @@ fn expert_bytes(dtype: GgmlType, n_in: usize, n_out: usize) -> usize {
 /// The full list of `(name, shape)` the forward pass depends on, derived from the
 /// hardcoded schedule. GGUF dims are `[in, out]` for a `y = W·x` weight.
 pub fn expected_tensors() -> Vec<(String, Vec<u64>)> {
+    expected_tensors_for(Architecture::Lfm2Moe)
+}
+
+/// Tensor contract for one fully implemented architecture profile.
+pub fn expected_tensors_for(architecture: Architecture) -> Vec<(String, Vec<u64>)> {
+    match architecture {
+        Architecture::Lfm2Moe => expected_lfm2moe_tensors(),
+    }
+}
+
+fn expected_lfm2moe_tensors() -> Vec<(String, Vec<u64>)> {
     use config::*;
     let h = HIDDEN as u64;
     let mut v: Vec<(String, Vec<u64>)> = vec![
@@ -811,7 +861,6 @@ pub fn expected_tensors() -> Vec<(String, Vec<u64>)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cache::Cache;
 
     /// Batched prefill must be **bit-for-bit identical** to prefilling token by token: same KV /
     /// conv caches and same final logits. This is the core correctness guarantee of opt 9f, so
@@ -832,7 +881,7 @@ mod tests {
         let (&last, rest) = ids.split_last().unwrap();
 
         // Reference: per-token prefill.
-        let mut ca = Cache::new();
+        let mut ca = model.new_cache();
         for &tok in rest {
             model.run_layers(tok, &mut ca);
         }
@@ -840,7 +889,7 @@ mod tests {
 
         // One-shot batched, and chunked batched (chunk 3 < rest.len()) — both must match exactly.
         for chunk in [rest.len(), 3] {
-            let mut cb = Cache::new();
+            let mut cb = model.new_cache();
             for part in rest.chunks(chunk) {
                 model.run_layers_batch(part, &mut cb);
             }
@@ -860,6 +909,11 @@ mod tests {
     fn expected_tensor_count_matches_file() {
         // The real Q4_K_M file has exactly 256 tensors; our derived list must match.
         assert_eq!(expected_tensors().len(), 256);
+    }
+
+    #[test]
+    fn lfm2moe_profile_matches_legacy_tensor_contract() {
+        assert_eq!(expected_tensors_for(Architecture::Lfm2Moe), expected_tensors());
     }
 
     #[test]

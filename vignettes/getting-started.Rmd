@@ -10,33 +10,45 @@ vignette: >
 ```{r setup}
 library(Rbebelm)
 weights_file <- Sys.getenv("BEBELM_WEIGHTS_FILE", "/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf")
+colbert_weights_file <- Sys.getenv("COLBERT_WEIGHTS_FILE", "")
 stopifnot(file.exists(weights_file))
+colbert_available <- nzchar(colbert_weights_file) && file.exists(colbert_weights_file)
 model <- bebel_model_load(weights_file, num_threads = 2)
 ```
 
-`Rbebelm` loads a local BebeLM GGUF, exposes tokenizer and contextual-state
-primitives, and runs bounded CPU generation from R.
+`Rbebelm` loads local BebeLM generation and ColBERT late-interaction GGUF
+profiles, then runs bounded CPU inference from R.
 
 ```{r diagnostics}
 rbebelm_backend_info()
 rbebelm_backend_features()
 ```
 
-Tokenization and contextual-state extraction are direct model operations.
+Tokenization is a direct BebeLM model operation.
 
-```{r contextual-states}
+```{r tokenize}
 ids <- bebel_tokenize(model, "Bamako", add_bos = FALSE)
 ids
 bebel_detokenize(model, ids)
-
-states <- bebel_pooled_states(model, c("Mali capital", "Italy capital"))
-states
 ```
 
-`bebel_pooled_states()` applies the model's final output norm before pooling;
-`bebel_token_states()` returns those post-norm states token by token. These are
-causal language-model features, not retrieval-trained semantic embeddings.
-Their cosine or late-interaction behavior must be validated for each task.
+A real late-interaction retriever uses a distinct retrieval-trained profile,
+with query/document token vectors and ColBERT MaxSim scoring.
+
+```{r colbert, eval=colbert_available}
+colbert <- colbert_model_load(colbert_weights_file, num_threads = 2)
+colbert_rank(
+  colbert,
+  "capital of Mali",
+  c(
+    mali = "Bamako is the capital of Mali.",
+    italy = "Rome is the capital of Italy."
+  )
+)
+```
+
+Set `COLBERT_WEIGHTS_FILE` to a local `LFM2.5-ColBERT-350M` GGUF when building
+this vignette to execute the late-interaction example.
 
 Generation returns text, token ids, stop reason, and timing statistics.
 

@@ -43,6 +43,36 @@ EmbeddingGemmaModelRef <- S7::new_class(
   }
 )
 
+#' ColBERT model reference
+#'
+#' @param value A one-element list containing a `ColbertModel`.
+#' @export
+ColbertModelRef <- S7::new_class(
+  "ColbertModelRef",
+  properties = list(value = S7::class_list),
+  validator = function(self) {
+    value <- S7::prop(self, "value")
+    if (length(value) != 1L || !inherits(value[[1L]], "ColbertModel")) {
+      "`value` must contain one ColbertModel."
+    }
+  }
+)
+
+#' ColBERT token-vector reference
+#'
+#' @param value A one-element list containing `ColbertEmbeddings`.
+#' @export
+ColbertEmbeddingsRef <- S7::new_class(
+  "ColbertEmbeddingsRef",
+  properties = list(value = S7::class_list),
+  validator = function(self) {
+    value <- S7::prop(self, "value")
+    if (length(value) != 1L || !inherits(value[[1L]], "ColbertEmbeddings")) {
+      "`value` must contain one ColbertEmbeddings object."
+    }
+  }
+)
+
 #' BebeLM agent reference
 #'
 #' @param value A one-element list containing a `BebelAgent`.
@@ -209,6 +239,34 @@ BebelModelLoadOptions <- S7::new_class(
 #' @export
 EmbeddingGemmaLoadOptions <- S7::new_class(
   "EmbeddingGemmaLoadOptions",
+  properties = list(path = S7::class_character, num_threads = S7::class_any),
+  validator = function(self) {
+    path <- S7::prop(self, "path")
+    if (length(path) != 1L || is.na(path) || !nzchar(path)) {
+      return("`path` must be a non-empty character scalar.")
+    }
+    num_threads <- S7::prop(self, "num_threads")
+    if (!is.null(num_threads) && (
+      !is.numeric(num_threads) ||
+        length(num_threads) != 1L ||
+        is.na(num_threads) ||
+        !is.finite(num_threads) ||
+        num_threads < 1 ||
+        num_threads != floor(num_threads)
+    )) {
+      return("`num_threads` must be NULL or a positive whole number.")
+    }
+    NULL
+  }
+)
+
+#' ColBERT loading options
+#'
+#' @param path Path to an LFM2.5-ColBERT GGUF weights file.
+#' @param num_threads Optional positive whole-number Rayon thread count.
+#' @export
+ColbertModelLoadOptions <- S7::new_class(
+  "ColbertModelLoadOptions",
   properties = list(path = S7::class_character, num_threads = S7::class_any),
   validator = function(self) {
     path <- S7::prop(self, "path")
@@ -464,92 +522,6 @@ BebelTokenizeOptions <- S7::new_class(
     if (length(add_bos) != 1L || is.na(add_bos)) {
       "`add_bos` must be TRUE or FALSE."
     }
-  }
-)
-
-#' Pooled contextual-state options
-#'
-#' @param add_bos Whether to prepend the model's beginning-of-sequence token.
-#' @param normalize Whether to L2-normalize each pooled row.
-#' @param pooling Pooling mode: `"weighted_mean"` gives later causal states
-#'   linearly increasing weight, `"mean"` uses equal weights, and `"last"`
-#'   selects the final state.
-#' @param token_batch_size Number of tokens per Rust batched prefill/matmul call.
-#' @param sequence_batch_size Number of texts per independent-sequence state
-#'   batch.
-#' @param check_interrupt Whether long extraction runs should poll R interrupts
-#'   between texts and token batches.
-#' @export
-BebelPooledStateOptions <- S7::new_class(
-  "BebelPooledStateOptions",
-  properties = list(
-    add_bos = S7::class_logical,
-    normalize = S7::class_logical,
-    pooling = S7::class_character,
-    token_batch_size = S7::class_numeric,
-    sequence_batch_size = S7::class_numeric,
-    check_interrupt = S7::class_logical
-  ),
-  validator = function(self) {
-    errors <- character()
-    for (name in c("add_bos", "normalize", "check_interrupt")) {
-      value <- S7::prop(self, name)
-      if (length(value) != 1L || is.na(value)) {
-        errors <- c(errors, paste0("`", name, "` must be TRUE or FALSE."))
-      }
-    }
-    pooling <- S7::prop(self, "pooling")
-    pooling_modes <- c("weighted_mean", "mean", "last")
-    if (length(pooling) != 1L || is.na(pooling) || !pooling %in% pooling_modes) {
-      errors <- c(errors, "`pooling` must be \"weighted_mean\", \"mean\", or \"last\".")
-    }
-    for (name in c("token_batch_size", "sequence_batch_size")) {
-      value <- S7::prop(self, name)
-      if (length(value) != 1L ||
-          is.na(value) ||
-          !is.finite(value) ||
-          value < 1 ||
-          value != floor(value)) {
-        errors <- c(errors, paste0("`", name, "` must be a positive whole number."))
-      }
-    }
-    if (length(errors)) errors else NULL
-  }
-)
-
-#' Token contextual-state options
-#'
-#' @param add_bos Whether to prepend the model's beginning-of-sequence token.
-#' @param normalize Whether to L2-normalize each token-state row.
-#' @param token_batch_size Number of tokens per Rust batched prefill/matmul call.
-#' @param check_interrupt Whether long extraction runs should poll R interrupts
-#'   between token batches.
-#' @export
-BebelTokenStateOptions <- S7::new_class(
-  "BebelTokenStateOptions",
-  properties = list(
-    add_bos = S7::class_logical,
-    normalize = S7::class_logical,
-    token_batch_size = S7::class_numeric,
-    check_interrupt = S7::class_logical
-  ),
-  validator = function(self) {
-    errors <- character()
-    for (name in c("add_bos", "normalize", "check_interrupt")) {
-      value <- S7::prop(self, name)
-      if (length(value) != 1L || is.na(value)) {
-        errors <- c(errors, paste0("`", name, "` must be TRUE or FALSE."))
-      }
-    }
-    token_batch_size <- S7::prop(self, "token_batch_size")
-    if (length(token_batch_size) != 1L ||
-        is.na(token_batch_size) ||
-        !is.finite(token_batch_size) ||
-        token_batch_size < 1 ||
-        token_batch_size != floor(token_batch_size)) {
-      errors <- c(errors, "`token_batch_size` must be a positive whole number.")
-    }
-    if (length(errors)) errors else NULL
   }
 )
 

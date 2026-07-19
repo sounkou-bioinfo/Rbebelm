@@ -1,7 +1,7 @@
-//! Hardcoded architecture for LFM2.5-8B-A1B (Q4_K_M).
+//! LFM2.5-8B-A1B CPU execution profile.
 //!
 //! These were extracted from the real GGUF in milestone 1, so the forward pass can treat
-//! them as compile-time constants instead of parsing config at runtime. [`validate`] is a
+//! them as compile-time constants instead of parsing config at runtime. [`validate_lfm2moe`] is a
 //! cheap startup check that the loaded file actually matches — a wrong or updated file
 //! fails loudly instead of silently producing garbage.
 
@@ -47,8 +47,11 @@ pub fn is_dense_ffn(layer: usize) -> bool {
     layer < N_DENSE_LAYERS
 }
 
-/// Assert the GGUF metadata matches the hardcoded constants above.
-pub fn validate(g: &GgufFile) -> Result<(), Box<dyn Error>> {
+/// Assert the GGUF metadata matches the LFM2.5 profile's hardcoded constants.
+///
+/// Architecture selection belongs to [`crate::architecture`].  Keep this validator scoped to
+/// one profile so a future model cannot accidentally inherit LFM-specific metadata checks.
+pub fn validate_lfm2moe(g: &GgufFile) -> Result<(), Box<dyn Error>> {
     let arch = g.architecture().ok_or("missing general.architecture")?;
     if arch != ARCH {
         return Err(format!("architecture: expected {ARCH:?}, got {arch:?}").into());
@@ -194,26 +197,26 @@ mod tests {
     #[test]
     fn validate_accepts_matching_metadata() {
         let g = parse(build_gguf(ARCH, N_LAYERS as u32, &valid_schedule()));
-        assert!(validate(&g).is_ok());
+        assert!(validate_lfm2moe(&g).is_ok());
     }
 
     #[test]
     fn validate_rejects_wrong_architecture() {
         let g = parse(build_gguf("llama", N_LAYERS as u32, &valid_schedule()));
-        assert!(validate(&g).is_err());
+        assert!(validate_lfm2moe(&g).is_err());
     }
 
     #[test]
     fn validate_rejects_wrong_block_count() {
         let g = parse(build_gguf(ARCH, 12, &valid_schedule()));
-        assert!(validate(&g).is_err());
+        assert!(validate_lfm2moe(&g).is_err());
     }
 
     #[test]
     fn validate_rejects_schedule_mismatch() {
         // All-zero kv heads contradicts ATTENTION_LAYERS (which expect N_KV_HEADS on those).
         let g = parse(build_gguf(ARCH, N_LAYERS as u32, &[0u32; N_LAYERS]));
-        assert!(validate(&g).is_err());
+        assert!(validate_lfm2moe(&g).is_err());
     }
 
     #[test]

@@ -4,10 +4,14 @@
 //! layer type. The KV buffers grow by one position per token; the conv state is fixed at
 //! the last `CONV_L_CACHE-1` columns of Bx.
 
+use crate::architecture::Architecture;
 use crate::config::{CONV_L_CACHE, HIDDEN, KV_DIM, N_LAYERS};
 
 #[derive(Clone)]
 pub struct Cache {
+    /// Execution profile that defines the state layout. A cache may never be reused across
+    /// architectures, even when a GGUF happens to share a few tensor names.
+    architecture: Architecture,
     /// Per attention layer: appended key history (`KV_DIM` floats per position).
     pub k: Vec<Vec<f32>>,
     /// Per attention layer: appended value history.
@@ -19,13 +23,30 @@ pub struct Cache {
 }
 
 impl Cache {
-    pub fn new() -> Self {
-        Cache {
-            k: (0..N_LAYERS).map(|_| Vec::new()).collect(),
-            v: (0..N_LAYERS).map(|_| Vec::new()).collect(),
-            conv: (0..N_LAYERS).map(|_| vec![0.0; HIDDEN * (CONV_L_CACHE - 1)]).collect(),
-            pos: 0,
+    /// Construct state for a specific architecture profile.
+    pub(crate) fn for_architecture(architecture: Architecture) -> Self {
+        match architecture {
+            Architecture::Lfm2Moe => Cache {
+                architecture,
+                k: (0..N_LAYERS).map(|_| Vec::new()).collect(),
+                v: (0..N_LAYERS).map(|_| Vec::new()).collect(),
+                conv: (0..N_LAYERS).map(|_| vec![0.0; HIDDEN * (CONV_L_CACHE - 1)]).collect(),
+                pos: 0,
+            },
         }
+    }
+
+    /// Execution profile this cache was allocated for.
+    pub const fn architecture(&self) -> Architecture {
+        self.architecture
+    }
+
+    /// Construct LFM2.5-8B-A1B cache state.
+    ///
+    /// Host integrations should prefer [`crate::model::Model::new_cache`] so their cache is
+    /// automatically tied to the loaded model's profile.
+    pub fn new() -> Self {
+        Self::for_architecture(Architecture::Lfm2Moe)
     }
 
     /// Number of positions currently held in the KV attention window. Conv layers keep no KV

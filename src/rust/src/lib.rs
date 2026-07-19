@@ -3,6 +3,7 @@ mod async_job;
 mod backend;
 mod cancel;
 mod chatml;
+mod colbert;
 mod events;
 mod generation;
 mod embedding_gemma;

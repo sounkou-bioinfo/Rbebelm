@@ -224,18 +224,43 @@ SEXP savvy_BebelModel_load__impl(SEXP c_arg__path, SEXP c_arg__num_threads) {
     return handle_result(res);
 }
 
-SEXP savvy_BebelModel_pooled_states__impl(SEXP self__, SEXP c_arg__text, SEXP c_arg__add_bos, SEXP c_arg__normalize, SEXP c_arg__pooling) {
-    SEXP res = Rbebelm_BebelModel_pooled_states_ffi(self__, c_arg__text, c_arg__add_bos, c_arg__normalize, c_arg__pooling);
+SEXP savvy_ColbertEmbeddings_ids__impl(SEXP self__) {
+    SEXP res = Rbebelm_ColbertEmbeddings_ids_ffi(self__);
     return handle_result(res);
 }
 
-SEXP savvy_BebelModel_pooled_states_batch__impl(SEXP self__, SEXP c_arg__text, SEXP c_arg__add_bos, SEXP c_arg__normalize, SEXP c_arg__pooling, SEXP c_arg__check_interrupt, SEXP c_arg__token_batch_size, SEXP c_arg__sequence_batch_size) {
-    SEXP res = Rbebelm_BebelModel_pooled_states_batch_ffi(self__, c_arg__text, c_arg__add_bos, c_arg__normalize, c_arg__pooling, c_arg__check_interrupt, c_arg__token_batch_size, c_arg__sequence_batch_size);
+SEXP savvy_ColbertEmbeddings_info__impl(SEXP self__) {
+    SEXP res = Rbebelm_ColbertEmbeddings_info_ffi(self__);
     return handle_result(res);
 }
 
-SEXP savvy_BebelModel_token_states__impl(SEXP self__, SEXP c_arg__text, SEXP c_arg__add_bos, SEXP c_arg__normalize, SEXP c_arg__check_interrupt, SEXP c_arg__token_batch_size) {
-    SEXP res = Rbebelm_BebelModel_token_states_ffi(self__, c_arg__text, c_arg__add_bos, c_arg__normalize, c_arg__check_interrupt, c_arg__token_batch_size);
+SEXP savvy_ColbertEmbeddings_maxsim__impl(SEXP self__, SEXP c_arg__document) {
+    SEXP res = Rbebelm_ColbertEmbeddings_maxsim_ffi(self__, c_arg__document);
+    return handle_result(res);
+}
+
+SEXP savvy_ColbertEmbeddings_vectors__impl(SEXP self__) {
+    SEXP res = Rbebelm_ColbertEmbeddings_vectors_ffi(self__);
+    return handle_result(res);
+}
+
+SEXP savvy_ColbertModel_encode_document__impl(SEXP self__, SEXP c_arg__text) {
+    SEXP res = Rbebelm_ColbertModel_encode_document_ffi(self__, c_arg__text);
+    return handle_result(res);
+}
+
+SEXP savvy_ColbertModel_encode_query__impl(SEXP self__, SEXP c_arg__text) {
+    SEXP res = Rbebelm_ColbertModel_encode_query_ffi(self__, c_arg__text);
+    return handle_result(res);
+}
+
+SEXP savvy_ColbertModel_info__impl(SEXP self__) {
+    SEXP res = Rbebelm_ColbertModel_info_ffi(self__);
+    return handle_result(res);
+}
+
+SEXP savvy_ColbertModel_load__impl(SEXP c_arg__path, SEXP c_arg__num_threads) {
+    SEXP res = Rbebelm_ColbertModel_load_ffi(c_arg__path, c_arg__num_threads);
     return handle_result(res);
 }
 
@@ -298,9 +323,14 @@ static const R_CallMethodDef CallEntries[] = {
     {"savvy_BebelModel_generate_async__impl", (DL_FUNC) &savvy_BebelModel_generate_async__impl, 9},
     {"savvy_BebelModel_info__impl", (DL_FUNC) &savvy_BebelModel_info__impl, 1},
     {"savvy_BebelModel_load__impl", (DL_FUNC) &savvy_BebelModel_load__impl, 2},
-    {"savvy_BebelModel_pooled_states__impl", (DL_FUNC) &savvy_BebelModel_pooled_states__impl, 5},
-    {"savvy_BebelModel_pooled_states_batch__impl", (DL_FUNC) &savvy_BebelModel_pooled_states_batch__impl, 8},
-    {"savvy_BebelModel_token_states__impl", (DL_FUNC) &savvy_BebelModel_token_states__impl, 6},
+    {"savvy_ColbertEmbeddings_ids__impl", (DL_FUNC) &savvy_ColbertEmbeddings_ids__impl, 1},
+    {"savvy_ColbertEmbeddings_info__impl", (DL_FUNC) &savvy_ColbertEmbeddings_info__impl, 1},
+    {"savvy_ColbertEmbeddings_maxsim__impl", (DL_FUNC) &savvy_ColbertEmbeddings_maxsim__impl, 2},
+    {"savvy_ColbertEmbeddings_vectors__impl", (DL_FUNC) &savvy_ColbertEmbeddings_vectors__impl, 1},
+    {"savvy_ColbertModel_encode_document__impl", (DL_FUNC) &savvy_ColbertModel_encode_document__impl, 2},
+    {"savvy_ColbertModel_encode_query__impl", (DL_FUNC) &savvy_ColbertModel_encode_query__impl, 2},
+    {"savvy_ColbertModel_info__impl", (DL_FUNC) &savvy_ColbertModel_info__impl, 1},
+    {"savvy_ColbertModel_load__impl", (DL_FUNC) &savvy_ColbertModel_load__impl, 2},
     {"savvy_EmbeddingGemmaModel_embed_batch__impl", (DL_FUNC) &savvy_EmbeddingGemmaModel_embed_batch__impl, 6},
     {"savvy_EmbeddingGemmaModel_info__impl", (DL_FUNC) &savvy_EmbeddingGemmaModel_info__impl, 1},
     {"savvy_EmbeddingGemmaModel_load__impl", (DL_FUNC) &savvy_EmbeddingGemmaModel_load__impl, 2},

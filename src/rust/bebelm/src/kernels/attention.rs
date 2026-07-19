@@ -54,6 +54,55 @@ pub fn attention_decode(
     }
 }
 
+/// Full (non-causal) grouped-query self-attention over a complete sequence.
+///
+/// `q` and `out` are token-major `[n_tokens, n_heads, head_dim]`; `k` and `v` are
+/// token-major `[n_tokens, n_kv_heads, head_dim]`. Every query sees every key, which is the
+/// encoder path used by LFM2.5-ColBERT. Padding, if desired by a profile, must be represented
+/// in the input tokens exactly as that profile prescribes rather than inferred here.
+#[allow(clippy::too_many_arguments)]
+pub fn attention_full(
+    q: &[f32],
+    k: &[f32],
+    v: &[f32],
+    n_tokens: usize,
+    n_heads: usize,
+    n_kv_heads: usize,
+    head_dim: usize,
+    out: &mut [f32],
+) {
+    debug_assert_eq!(q.len(), n_tokens * n_heads * head_dim);
+    debug_assert_eq!(k.len(), n_tokens * n_kv_heads * head_dim);
+    debug_assert_eq!(v.len(), n_tokens * n_kv_heads * head_dim);
+    debug_assert_eq!(out.len(), n_tokens * n_heads * head_dim);
+    debug_assert_eq!(n_heads % n_kv_heads, 0);
+
+    let scale = 1.0 / (head_dim as f32).sqrt();
+    let group = n_heads / n_kv_heads;
+    let mut scores = vec![0.0f32; n_tokens];
+
+    for token in 0..n_tokens {
+        for head in 0..n_heads {
+            let kv_head = head / group;
+            let q_vec = &q[(token * n_heads + head) * head_dim..][..head_dim];
+            for (other, score) in scores.iter_mut().enumerate() {
+                let k_vec = &k[(other * n_kv_heads + kv_head) * head_dim..][..head_dim];
+                *score = dot(q_vec, k_vec) * scale;
+            }
+            softmax(&mut scores);
+
+            let out_vec = &mut out[(token * n_heads + head) * head_dim..][..head_dim];
+            out_vec.fill(0.0);
+            for (other, &weight) in scores.iter().enumerate() {
+                let v_vec = &v[(other * n_kv_heads + kv_head) * head_dim..][..head_dim];
+                for (value, &source) in out_vec.iter_mut().zip(v_vec) {
+                    *value += weight * source;
+                }
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -89,5 +138,17 @@ mod tests {
         let mut out = [0.0f32; 4];
         attention_decode(&q, &k, &v, 1, 2, 1, 2, &mut out);
         assert_eq!(out, [5.0, 7.0, 5.0, 7.0]);
+    }
+
+    #[test]
+    fn full_attention_is_symmetric_for_identical_tokens() {
+        // Two identical query/key/value positions: each position averages both values.
+        let q = [1.0f32, 0.0, 1.0, 0.0];
+        let k = [1.0f32, 0.0, 1.0, 0.0];
+        let v = [2.0f32, 0.0, 4.0, 0.0];
+        let mut out = [0.0f32; 4];
+        attention_full(&q, &k, &v, 2, 1, 1, 2, &mut out);
+        assert!((out[0] - 3.0).abs() < 1e-6 && out[1] == 0.0);
+        assert!((out[2] - 3.0).abs() < 1e-6 && out[3] == 0.0);
     }
 }

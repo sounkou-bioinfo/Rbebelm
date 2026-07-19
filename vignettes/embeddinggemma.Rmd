@@ -20,10 +20,9 @@ model <- embeddinggemma_model_load(weights_file, num_threads = 2)
 ## A separate retrieval model
 
 `BebelModel` and `EmbeddingGemmaModel` deliberately have different APIs.
-LFM2.5 is a causal generator whose intermediate states are exposed only as
-contextual features. EmbeddingGemma is a retrieval-trained, bidirectional text
-encoder whose final vectors are intended for cosine similarity, retrieval,
-clustering, and related representation tasks.
+LFM2.5-8B-A1B is a causal generator. EmbeddingGemma is a retrieval-trained,
+bidirectional text encoder whose final vectors are intended for cosine
+similarity, retrieval, clustering, and related representation tasks.
 
 The package's EmbeddingGemma path is implemented in Rust. It reads the GGUF and
 its tokenizer metadata directly, then runs:

@@ -11,7 +11,15 @@ embedding_weights_file <- Sys.getenv(
   "EMBEDDING_GEMMA_WEIGHTS_FILE",
   "/root/bebelm/embeddinggemma-300M-Q8_0.gguf"
 )
-stopifnot(file.exists(weights_file), file.exists(embedding_weights_file))
+colbert_weights_file <- Sys.getenv(
+  "COLBERT_WEIGHTS_FILE",
+  ""
+)
+stopifnot(
+  file.exists(weights_file),
+  file.exists(embedding_weights_file)
+)
+colbert_available <- nzchar(colbert_weights_file) && file.exists(colbert_weights_file)
 bebel_threads <- as.integer(Sys.getenv("BEBELM_NUM_THREADS", "8"))
 if (is.na(bebel_threads) || bebel_threads < 1L) bebel_threads <- 8L
 ```
@@ -24,16 +32,18 @@ if (is.na(bebel_threads) || bebel_threads < 1L) bebel_threads <- 8L
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
-`Rbebelm` provides local pure-Rust CPU inference for two complementary GGUF
+`Rbebelm` provides local pure-Rust CPU inference for three complementary GGUF
 models: Liquid AI LFM2.5-8B-A1B through
 [`maximecb/bebelm`](https://github.com/maximecb/bebelm), and Google's
-retrieval-trained EmbeddingGemma-300M through a dedicated native encoder.
+retrieval-trained EmbeddingGemma-300M and LiquidAI's LFM2.5-ColBERT-350M
+through dedicated native encoders.
 
 The package provides model loading, tokenizer access, semantic text embeddings,
-causal contextual-state extraction, bounded generation, persistent agents,
-BebeLM tool-call parsing, R tool dispatch, stream events, and Rust-thread async
-jobs. It does not ship weights. Set `BEBELM_WEIGHTS_FILE` and
-`EMBEDDING_GEMMA_WEIGHTS_FILE` to local GGUF paths or pass paths directly.
+trained late-interaction token vectors and MaxSim scoring, bounded generation,
+persistent agents, BebeLM tool-call parsing, R tool dispatch, stream events,
+and Rust-thread async jobs. It does not ship weights. Set
+`BEBELM_WEIGHTS_FILE`, `EMBEDDING_GEMMA_WEIGHTS_FILE`, and
+`COLBERT_WEIGHTS_FILE` to local GGUF paths or pass paths directly.
 EmbeddingGemma weights are governed by the
 [Gemma Terms of Use](https://ai.google.dev/gemma/terms).
 
@@ -67,42 +77,18 @@ Separate processes that load the same GGUF can share physical pages through the
 operating-system page cache.
 
 Threading is set when the model is loaded. `num_threads` initializes the
-process-global Rayon pool once; generation and state-extraction calls use that pool.
+process-global Rayon pool once; generation and retrieval calls use that pool.
 Async calls add one Rust worker per job and can execute concurrently, so total
 CPU demand is controlled by the model-load thread count and by how many jobs the
 caller launches.
 
-## Tokenizer and contextual states
+## Tokenizer
 
-```{r tokenize-states}
+```{r tokenize}
 ids <- bebel_tokenize(model, "Bamako", add_bos = FALSE)
 ids
 bebel_detokenize(model, ids)
-
-states <- bebel_pooled_states(model, c(
-  mali = "Bamako is the capital of Mali",
-  italy = "Rome is the capital of Italy",
-  france = "Paris is the capital of France"
-))
-states
-
-token_states <- bebel_token_states(model, "short stature")
-token_states
-data.frame(
-  token_index = token_states$token_index,
-  token_id = token_states$ids,
-  token = token_states$tokens
-)
 ```
-
-These vectors are post-final-RMSNorm contextual states from a causal language
-model. The default pooled representation uses SGPT-style position-weighted mean
-pooling, which gives later states more weight because they have observed more of
-the sequence. LFM2.5-8B-A1B was not trained as a semantic embedding or
-late-interaction retrieval model, so `Rbebelm` labels these outputs as contextual
-states and records `retrieval_trained = FALSE`. Do not use raw cosine or MaxSim
-scores as production relevance scores without task-specific training and
-evaluation.
 
 ## Retrieval-trained EmbeddingGemma
 
@@ -139,6 +125,40 @@ encoder batches while retaining independent positions and attention boundaries.
 `embeddinggemma_embed()` requires an explicit task for other uses. Set
 `dimensions` to 512, 256, or 128 for
 Matryoshka truncation and re-normalization.
+
+## Late-interaction ColBERT
+
+LFM2.5-ColBERT-350M is a separate, retrieval-trained bidirectional encoder.
+It produces 128-dimensional L2-normalized vectors for individual query and
+document tokens, then scores a query with ColBERT MaxSim rather than reducing
+text to a single pooled vector.
+
+```{r colbert, eval=colbert_available}
+colbert_model <- colbert_model_load(
+  colbert_weights_file,
+  num_threads = bebel_threads
+)
+
+ranking <- colbert_rank(
+  colbert_model,
+  "capital of Mali",
+  c(
+    mali = "Bamako is the capital and largest city of Mali.",
+    italy = "Rome is the capital city of Italy.",
+    desert = "The Sahara is a desert in northern Africa."
+  )
+)
+ranking
+
+query_vectors <- colbert_encode_query(colbert_model, "capital of Mali")
+colbert_embeddings_info(query_vectors)
+```
+
+The encoder owns the model's published `[Q] ` and `[D] ` prefixes, 32-query and
+512-document limits, punctuation filtering, token-vector L2 normalization, and
+MaxSim contract. `colbert_rank()` is exact candidate scoring; use a dedicated
+late-interaction index for large corpora. Set `COLBERT_WEIGHTS_FILE` to a local
+`LFM2.5-ColBERT-350M` GGUF to execute this example when rendering the README.
 
 ## Generation
 

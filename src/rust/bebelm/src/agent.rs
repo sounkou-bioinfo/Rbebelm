@@ -114,7 +114,7 @@ impl<'m> Agent<'m> {
     pub fn new(model: &'m Model) -> Self {
         Agent {
             model,
-            cache: Cache::new(),
+            cache: model.new_cache(),
             sampler: Sampler::recommended(),
             history: Vec::new(),
             max_gen: DEFAULT_MAX_GEN,
@@ -478,7 +478,7 @@ impl<'m> Agent<'m> {
     /// Clear the conversation (transcript + caches), keeping the loaded weights and config.
     pub fn clear(&mut self) {
         self.history.clear();
-        self.cache = Cache::new();
+        self.cache = self.model.new_cache();
         self.sampler.reset();
     }
 
