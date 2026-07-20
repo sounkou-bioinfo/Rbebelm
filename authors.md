@@ -18,12 +18,12 @@
 Source:
 [`DESCRIPTION`](https://github.com/sounkou-bioinfo/Rbebelm/blob/main/DESCRIPTION)
 
-Toure S (2026). *Rbebelm: Native 'BebeLM' and 'EmbeddingGemma' CPU
-Backends for R*. R package version 0.3.6-0.1.0,
+Toure S (2026). *Rbebelm: Native 'BebeLM', 'EmbeddingGemma', and
+'ColBERT' CPU Backends for R*. R package version 0.3.6-0.1.0,
 <https://github.com/sounkou-bioinfo/Rbebelm>.
 
     @Manual{,
-      title = {Rbebelm: Native 'BebeLM' and 'EmbeddingGemma' CPU Backends for R},
+      title = {Rbebelm: Native 'BebeLM', 'EmbeddingGemma', and 'ColBERT' CPU Backends for R},
       author = {Sounkou Mahamane Toure},
       year = {2026},
       note = {R package version 0.3.6-0.1.0},

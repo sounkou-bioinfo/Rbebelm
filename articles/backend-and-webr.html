@@ -34,7 +34,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/getting-started.html">Getting started</a></li>
-    <li><a class="dropdown-item" href="../articles/contextual-states.html">Contextual states and retrieval boundaries</a></li>
+    <li><a class="dropdown-item" href="../articles/colbert.html">Late-interaction retrieval with ColBERT</a></li>
     <li><a class="dropdown-item" href="../articles/embeddinggemma.html">Retrieval embeddings with EmbeddingGemma</a></li>
     <li><a class="dropdown-item" href="../articles/agents-and-tools.html">Agents and tools</a></li>
     <li><a class="dropdown-item" href="../articles/backend-and-webr.html">Backends and webR</a></li>
@@ -115,6 +115,12 @@ policy used for GGUF files.</p>
 <pre><code><span><span class="co">## $path</span></span>
 <span><span class="co">## [1] "/home/runner/work/Rbebelm/Rbebelm/.models/LFM2.5-8B-A1B-Q4_K_M.gguf"</span></span>
 <span><span class="co">## </span></span>
+<span><span class="co">## $architecture</span></span>
+<span><span class="co">## [1] "lfm2moe"</span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## $profile</span></span>
+<span><span class="co">## [1] "lfm2.5-8b-a1b-cpu"</span></span>
+<span><span class="co">## </span></span>
 <span><span class="co">## $backend</span></span>
 <span><span class="co">## [1] "avx2"</span></span>
 <span><span class="co">## </span></span>
@@ -134,8 +140,8 @@ agents from one model share weights through Rust
 <pre><code><span><span class="co">## &lt;BebeLM agent generation&gt;</span></span>
 <span><span class="co">##   stop: max_new</span></span>
 <span><span class="co">##   tokens: 8 generated; 6 prompt</span></span>
-<span><span class="co">##   prefill: 9.9 tok/s</span></span>
-<span><span class="co">##   decode: 11.34 tok/s</span></span>
+<span><span class="co">##   prefill: 9.8 tok/s</span></span>
+<span><span class="co">##   decode: 11.87 tok/s</span></span>
 <span><span class="co">##   text:</span></span>
 <span><span class="co">##  the city of Bamako. city of</span></span></code></pre>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
@@ -143,8 +149,8 @@ agents from one model share weights through Rust
 <pre><code><span><span class="co">## &lt;BebeLM agent generation&gt;</span></span>
 <span><span class="co">##   stop: max_new</span></span>
 <span><span class="co">##   tokens: 8 generated; 6 prompt</span></span>
-<span><span class="co">##   prefill: 11.0 tok/s</span></span>
-<span><span class="co">##   decode: 11.44 tok/s</span></span>
+<span><span class="co">##   prefill: 11.1 tok/s</span></span>
+<span><span class="co">##   decode: 11.95 tok/s</span></span>
 <span><span class="co">##   text:</span></span>
 <span><span class="co">##  Rome. city of... ... ... ...</span></span></code></pre>
 <p>For webR, the same R API is the target. The browser runtime must

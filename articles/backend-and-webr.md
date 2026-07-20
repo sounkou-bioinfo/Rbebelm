@@ -66,6 +66,12 @@ model$info()
     ## $path
     ## [1] "/home/runner/work/Rbebelm/Rbebelm/.models/LFM2.5-8B-A1B-Q4_K_M.gguf"
     ## 
+    ## $architecture
+    ## [1] "lfm2moe"
+    ## 
+    ## $profile
+    ## [1] "lfm2.5-8b-a1b-cpu"
+    ## 
     ## $backend
     ## [1] "avx2"
     ## 
@@ -89,8 +95,8 @@ bebel_agent_generate(a, on_event = NULL)
     ## <BebeLM agent generation>
     ##   stop: max_new
     ##   tokens: 8 generated; 6 prompt
-    ##   prefill: 9.9 tok/s
-    ##   decode: 11.34 tok/s
+    ##   prefill: 9.8 tok/s
+    ##   decode: 11.87 tok/s
     ##   text:
     ##  the city of Bamako. city of
 
@@ -102,8 +108,8 @@ bebel_agent_generate(b, on_event = NULL)
     ## <BebeLM agent generation>
     ##   stop: max_new
     ##   tokens: 8 generated; 6 prompt
-    ##   prefill: 11.0 tok/s
-    ##   decode: 11.44 tok/s
+    ##   prefill: 11.1 tok/s
+    ##   decode: 11.95 tok/s
     ##   text:
     ##  Rome. city of... ... ... ...
 

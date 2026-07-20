@@ -4,12 +4,14 @@
 
 library(Rbebelm)
 weights_file <- Sys.getenv("BEBELM_WEIGHTS_FILE", "/root/bebelm/LFM2.5-8B-A1B-Q4_K_M.gguf")
+colbert_weights_file <- Sys.getenv("COLBERT_WEIGHTS_FILE", "")
 stopifnot(file.exists(weights_file))
+colbert_available <- nzchar(colbert_weights_file) && file.exists(colbert_weights_file)
 model <- bebel_model_load(weights_file, num_threads = 2)
 ```
 
-`Rbebelm` loads a local BebeLM GGUF, exposes tokenizer and
-contextual-state primitives, and runs bounded CPU generation from R.
+`Rbebelm` loads local BebeLM generation and ColBERT late-interaction
+GGUF profiles, then runs bounded CPU inference from R.
 
 ``` r
 
@@ -42,8 +44,7 @@ rbebelm_backend_features()
     ##     wasm simd128: no
     ##   model storage: read-only GGUF mmap; repeated loads of the same file share physical pages through the OS page cache
 
-Tokenization and contextual-state extraction are direct model
-operations.
+Tokenization is a direct BebeLM model operation.
 
 ``` r
 
@@ -60,27 +61,28 @@ bebel_detokenize(model, ids)
 
     ## [1] "Bamako"
 
+A real late-interaction retriever uses a distinct retrieval-trained
+profile, with query/document token vectors and ColBERT MaxSim scoring.
+
 ``` r
 
-states <- bebel_pooled_states(model, c("Mali capital", "Italy capital"))
-states
+colbert <- colbert_model_load(colbert_weights_file, num_threads = 2)
+colbert_rank(
+  colbert,
+  "capital of Mali",
+  c(
+    mali = "Bamako is the capital of Mali.",
+    italy = "Rome is the capital of Italy."
+  )
+)
 ```
 
-    ## <BebeLM pooled contextual states>
-    ##   rows: 2
-    ##   dimensions: 2048
-    ##   pooling: weighted_mean
-    ##   final model norm: yes
-    ##   L2 normalized: yes
-    ##   retrieval trained: no
+    ## <ColBERT MaxSim ranking>
+    ##     mali    italy 
+    ## 30.65593 30.03525
 
-[`bebel_pooled_states()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_pooled_states.md)
-applies the model’s final output norm before pooling;
-[`bebel_token_states()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_token_states.md)
-returns those post-norm states token by token. These are causal
-language-model features, not retrieval-trained semantic embeddings.
-Their cosine or late-interaction behavior must be validated for each
-task.
+Set `COLBERT_WEIGHTS_FILE` to a local `LFM2.5-ColBERT-350M` GGUF when
+building this vignette to execute the late-interaction example.
 
 Generation returns text, token ids, stop reason, and timing statistics.
 
@@ -100,8 +102,8 @@ out
     ## <BebeLM generation result>
     ##   stop: max_new
     ##   tokens: 8 generated; 6 prompt
-    ##   prefill: 10.4 tok/s
-    ##   decode: 11.28 tok/s
+    ##   prefill: 9.7 tok/s
+    ##   decode: 11.83 tok/s
     ##   text:
     ##  the city of Paris. city of Paris
 
@@ -119,8 +121,8 @@ bebel_assistant_turn(agent, on_event = NULL)
     ## <BebeLM assistant turn>
     ##   stop: eos
     ##   tokens: 10 generated; 15 prompt
-    ##   prefill: 13.5 tok/s
-    ##   decode: 9.92 tok/s
+    ##   prefill: 13.2 tok/s
+    ##   decode: 10.53 tok/s
     ##   text:
     ## <
     ## </think>
@@ -136,8 +138,8 @@ bebel_assistant_turn(agent, on_event = NULL)
     ## <BebeLM assistant turn>
     ##   stop: eos
     ##   tokens: 11 generated; 17 prompt
-    ##   prefill: 14.2 tok/s
-    ##   decode: 10.05 tok/s
+    ##   prefill: 13.9 tok/s
+    ##   decode: 10.69 tok/s
     ##   text:
     ## <
     ## </Answer>  

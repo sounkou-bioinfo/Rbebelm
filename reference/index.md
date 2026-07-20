@@ -11,7 +11,7 @@
 - [`bebel_token_ids()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_token_ids.md)
   : Return BebeLM tokenizer special token ids.
 - [`BebelModel`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelModel.md)
-  : Loaded BebeLM GGUF model.
+  : Loaded BebeLM GGUF generation model.
 - [`BebelModelRef()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelModelRef.md)
   : BebeLM model reference
 - [`BebelModelLoadOptions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelModelLoadOptions.md)
@@ -21,16 +21,36 @@
 - [`BebelTokenizeOptions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelTokenizeOptions.md)
   : Tokenizer options
 
-## Contextual states
+## Late-interaction retrieval with ColBERT
 
-- [`bebel_pooled_states()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_pooled_states.md)
-  : Extract pooled BebeLM contextual states
-- [`bebel_token_states()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/bebel_token_states.md)
-  : Extract per-token BebeLM contextual states
-- [`BebelPooledStateOptions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelPooledStateOptions.md)
-  : Pooled contextual-state options
-- [`BebelTokenStateOptions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/BebelTokenStateOptions.md)
-  : Token contextual-state options
+- [`colbert_model_load()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/colbert_model_load.md)
+  : Load a native LFM2.5-ColBERT GGUF model
+- [`colbert_model_info()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/colbert_model_info.md)
+  : Inspect a ColBERT model
+- [`colbert_encode_query()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/colbert_encode_query.md)
+  : Encode a retrieval query with ColBERT
+- [`colbert_encode_document()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/colbert_encode_document.md)
+  : Encode a retrieval document with ColBERT
+- [`colbert_embeddings_info()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/colbert_embeddings_info.md)
+  : Inspect ColBERT token vectors
+- [`colbert_embedding_ids()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/colbert_embedding_ids.md)
+  : Return model-input ids aligned to ColBERT token vectors
+- [`colbert_embedding_vectors()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/colbert_embedding_vectors.md)
+  : Materialize ColBERT token vectors
+- [`colbert_maxsim()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/colbert_maxsim.md)
+  : Score a query and document with ColBERT MaxSim
+- [`colbert_rank()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/colbert_rank.md)
+  : Rank documents with ColBERT MaxSim
+- [`ColbertModel`](https://sounkou-bioinfo.github.io/Rbebelm/reference/ColbertModel.md)
+  : Loaded LFM2.5-ColBERT GGUF model.
+- [`ColbertModelRef()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/ColbertModelRef.md)
+  : ColBERT model reference
+- [`ColbertModelLoadOptions()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/ColbertModelLoadOptions.md)
+  : ColBERT loading options
+- [`ColbertEmbeddings`](https://sounkou-bioinfo.github.io/Rbebelm/reference/ColbertEmbeddings.md)
+  : One query or document's L2-normalized ColBERT token vectors.
+- [`ColbertEmbeddingsRef()`](https://sounkou-bioinfo.github.io/Rbebelm/reference/ColbertEmbeddingsRef.md)
+  : ColBERT token-vector reference
 
 ## Retrieval embeddings with EmbeddingGemma
 

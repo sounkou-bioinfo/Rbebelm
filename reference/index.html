@@ -19,7 +19,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/getting-started.html">Getting started</a></li>
-    <li><a class="dropdown-item" href="../articles/contextual-states.html">Contextual states and retrieval boundaries</a></li>
+    <li><a class="dropdown-item" href="../articles/colbert.html">Late-interaction retrieval with ColBERT</a></li>
     <li><a class="dropdown-item" href="../articles/embeddinggemma.html">Retrieval embeddings with EmbeddingGemma</a></li>
     <li><a class="dropdown-item" href="../articles/agents-and-tools.html">Agents and tools</a></li>
     <li><a class="dropdown-item" href="../articles/backend-and-webr.html">Backends and webR</a></li>
@@ -82,7 +82,7 @@
           <code><a href="BebelModel.html">BebelModel</a></code>
 
         </dt>
-        <dd>Loaded BebeLM GGUF model.</dd>
+        <dd>Loaded BebeLM GGUF generation model.</dd>
 
         <dt>
 
@@ -112,7 +112,7 @@
         </dt>
         <dd>Tokenizer options</dd>
       </dl></div><div class="section level2">
-      <h2 id="contextual-states">Contextual states<a class="anchor" aria-label="anchor" href="#contextual-states"></a></h2>
+      <h2 id="late-interaction-retrieval-with-colbert">Late-interaction retrieval with ColBERT<a class="anchor" aria-label="anchor" href="#late-interaction-retrieval-with-colbert"></a></h2>
 
 
 
@@ -123,31 +123,101 @@
 
       <dl><dt>
 
-          <code><a href="bebel_pooled_states.html">bebel_pooled_states()</a></code>
+          <code><a href="colbert_model_load.html">colbert_model_load()</a></code>
 
         </dt>
-        <dd>Extract pooled BebeLM contextual states</dd>
+        <dd>Load a native LFM2.5-ColBERT GGUF model</dd>
 
         <dt>
 
-          <code><a href="bebel_token_states.html">bebel_token_states()</a></code>
+          <code><a href="colbert_model_info.html">colbert_model_info()</a></code>
 
         </dt>
-        <dd>Extract per-token BebeLM contextual states</dd>
+        <dd>Inspect a ColBERT model</dd>
 
         <dt>
 
-          <code><a href="BebelPooledStateOptions.html">BebelPooledStateOptions()</a></code>
+          <code><a href="colbert_encode_query.html">colbert_encode_query()</a></code>
 
         </dt>
-        <dd>Pooled contextual-state options</dd>
+        <dd>Encode a retrieval query with ColBERT</dd>
 
         <dt>
 
-          <code><a href="BebelTokenStateOptions.html">BebelTokenStateOptions()</a></code>
+          <code><a href="colbert_encode_document.html">colbert_encode_document()</a></code>
 
         </dt>
-        <dd>Token contextual-state options</dd>
+        <dd>Encode a retrieval document with ColBERT</dd>
+
+        <dt>
+
+          <code><a href="colbert_embeddings_info.html">colbert_embeddings_info()</a></code>
+
+        </dt>
+        <dd>Inspect ColBERT token vectors</dd>
+
+        <dt>
+
+          <code><a href="colbert_embedding_ids.html">colbert_embedding_ids()</a></code>
+
+        </dt>
+        <dd>Return model-input ids aligned to ColBERT token vectors</dd>
+
+        <dt>
+
+          <code><a href="colbert_embedding_vectors.html">colbert_embedding_vectors()</a></code>
+
+        </dt>
+        <dd>Materialize ColBERT token vectors</dd>
+
+        <dt>
+
+          <code><a href="colbert_maxsim.html">colbert_maxsim()</a></code>
+
+        </dt>
+        <dd>Score a query and document with ColBERT MaxSim</dd>
+
+        <dt>
+
+          <code><a href="colbert_rank.html">colbert_rank()</a></code>
+
+        </dt>
+        <dd>Rank documents with ColBERT MaxSim</dd>
+
+        <dt>
+
+          <code><a href="ColbertModel.html">ColbertModel</a></code>
+
+        </dt>
+        <dd>Loaded LFM2.5-ColBERT GGUF model.</dd>
+
+        <dt>
+
+          <code><a href="ColbertModelRef.html">ColbertModelRef()</a></code>
+
+        </dt>
+        <dd>ColBERT model reference</dd>
+
+        <dt>
+
+          <code><a href="ColbertModelLoadOptions.html">ColbertModelLoadOptions()</a></code>
+
+        </dt>
+        <dd>ColBERT loading options</dd>
+
+        <dt>
+
+          <code><a href="ColbertEmbeddings.html">ColbertEmbeddings</a></code>
+
+        </dt>
+        <dd>One query or document's L2-normalized ColBERT token vectors.</dd>
+
+        <dt>
+
+          <code><a href="ColbertEmbeddingsRef.html">ColbertEmbeddingsRef()</a></code>
+
+        </dt>
+        <dd>ColBERT token-vector reference</dd>
       </dl></div><div class="section level2">
       <h2 id="retrieval-embeddings-with-embeddinggemma">Retrieval embeddings with EmbeddingGemma<a class="anchor" aria-label="anchor" href="#retrieval-embeddings-with-embeddinggemma"></a></h2>
 
