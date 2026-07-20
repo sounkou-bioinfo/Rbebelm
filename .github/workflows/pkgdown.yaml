@@ -21,6 +21,7 @@ jobs:
       CARGO_BUILD_JOBS: 2
       BEBELM_WEIGHTS_FILE: ${{ github.workspace }}/.models/LFM2.5-8B-A1B-Q4_K_M.gguf
       EMBEDDING_GEMMA_WEIGHTS_FILE: ${{ github.workspace }}/.models/embeddinggemma-300M-Q8_0.gguf
+      COLBERT_WEIGHTS_FILE: ${{ github.workspace }}/.models/LFM2.5-ColBERT-350M-Q4_K_M.gguf
     permissions:
       contents: write
     steps:
@@ -44,7 +45,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .models
-          key: LFM2.5-8B-A1B-plus-EmbeddingGemma-b5ce9d77-v1
+          key: LFM2.5-8B-A1B-plus-EmbeddingGemma-plus-ColBERT-1f783c71-v1
           enableCrossOsArchive: true
 
       - name: Download GGUF weights
@@ -59,12 +60,18 @@ jobs:
           curl -L --fail --retry 3 --retry-delay 5 \
             -o "$EMBEDDING_GEMMA_WEIGHTS_FILE" \
             "https://huggingface.co/ggml-org/embeddinggemma-300M-GGUF/resolve/0f741b5a6585bd53aeb15cd1372c56f2a0f65e12/embeddinggemma-300M-Q8_0.gguf"
+          curl -L --fail --retry 3 --retry-delay 5 \
+            -o "$COLBERT_WEIGHTS_FILE" \
+            "https://huggingface.co/LiquidAI/LFM2.5-ColBERT-350M-GGUF/resolve/bc240003aba07253e261a8aaf0d2c9683318a967/LFM2.5-ColBERT-350M-Q4_K_M.gguf"
           test -s "$BEBELM_WEIGHTS_FILE"
           test -s "$EMBEDDING_GEMMA_WEIGHTS_FILE"
+          test -s "$COLBERT_WEIGHTS_FILE"
 
-      - name: Verify EmbeddingGemma GGUF
+      - name: Verify GGUF weights
         shell: bash
-        run: echo "b5ce9d77a3fc4b3b39ccb5643c36777911cc4eb46a66962eadfa3f5f60490d63  $EMBEDDING_GEMMA_WEIGHTS_FILE" | sha256sum -c -
+        run: |
+          echo "b5ce9d77a3fc4b3b39ccb5643c36777911cc4eb46a66962eadfa3f5f60490d63  $EMBEDDING_GEMMA_WEIGHTS_FILE" | sha256sum -c -
+          echo "1f783c71a42dd367cf296496c23e0f53c6a2685f2d5bd10e062878346844b5b7  $COLBERT_WEIGHTS_FILE" | sha256sum -c -
 
       - name: Build site
         run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)
